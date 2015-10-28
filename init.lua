@@ -4,9 +4,18 @@ RASTERS = MODPATH .. "/rasters/"
 local realterrain = {}
 realterrain.settings = {}
 
-
 local ie = minetest.request_insecure_environment()
-ie.require "luarocks.loader"
+
+--[[ie.require "luarocks.loader"
+local magick = ie.require "magick"--]]
+
+package.path = (MODPATH.."/lua-imagesize-1.2/?.lua;"..package.path)
+local imagesize = ie.require "imagesize"
+
+package.path = (MODPATH.."/lunatic-python-1.0/?.lua;"..package.path)
+local python = ie.require "imagesize"
+
+package.path = (MODPATH.."/magick/?.lua;"..MODPATH.."/magick/?/init.lua;"..package.path)
 local magick = ie.require "magick"
 
 --defaults
@@ -262,7 +271,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	for z = z0, z1 do
 	for x = x0, x1 do
 		--normal mapgen for gameplay and exploration -- not raster analysis output
-		if output == "normal" then
+		if realterrain.settings.output == "normal" then
 			local elev, biome, water, road = realterrain.get_pixel(x, z) -- elevation in meters from DEM and water true/false
 			--print("elev: "..elev..", biome: "..biome..", water: "..water..", road: "..road)
 			
