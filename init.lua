@@ -19,7 +19,7 @@ package.path = (MODPATH.."/magick/?.lua;"..MODPATH.."/magick/?/init.lua;"..packa
 local magick = ie.require "magick"
 
 --defaults
-realterrain.settings.output = "normal"
+realterrain.settings.output = "normal" --try "slope"
 realterrain.settings.bits = 8 --@todo remove this setting when magick autodetects bitdepth
 realterrain.settings.yscale = 1
 realterrain.settings.xscale = 1
@@ -109,11 +109,39 @@ neighborhood.a = {x= 1,y= 0,z= 1} -- NW
 neighborhood.b = {x= 0,y= 0,z= 1} -- N
 neighborhood.c = {x= 1,y= 0,z= 1} -- NE
 neighborhood.d = {x=-1,y= 0,z= 0} -- W
-neighborhood.e = {x= 0,y= 0,z= 0} -- SELF
+--neighborhood.e = {x= 0,y= 0,z= 0} -- SELF
 neighborhood.f = {x= 1,y= 0,z= 0} -- E
 neighborhood.g = {x=-1,y= 0,z=-1} -- SW
 neighborhood.h = {x= 0,y= 0,z=-1} -- S
 neighborhood.i = {x= 1,y= 0,z=-1} -- SE
+
+local colors = {}
+for r=0, 15 do
+	if r == 0 then r = '00' else r = string.format('%x', r * 17) end
+	table.insert(colors, r..'00'..'00')
+end
+for g=1, 15 do
+	g = string.format('%x', g * 17)
+	table.insert(colors, '00'..g..'00')
+end
+for b=1, 15 do
+	b = string.format('%x', b * 17)
+	table.insert(colors, '00'..'00'..b)
+end
+for k, colorcode in next, colors do
+	minetest.register_node(
+		'realterrain:'..colorcode, {
+			description = "Raster Output: "..colorcode,
+			tiles = { colorcode..'.png' },
+			light_source = 3,
+			groups = {oddly_breakable_by_hand=1, gis=1},
+			--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
+				local meta = minetest.get_meta(pos)
+				meta:set_string("infotext", "Gis:"..colorcode);
+				meta:set_int("placed", os.clock()*1000);
+			end,--]]
+	})	
+end
 
 --called at each form submission
 function realterrain.save_settings()
@@ -387,26 +415,41 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				vi = vi + ystridevm
 			end
 		--if raster output then display only that
-		else
-			if realterrain.settings.output == "slope" then
-				local neighbors = {}
-				for dir, offset in next, automata.moving_window do
-					if pixels[z + offset.z] and pixels[z + offset.z][x + offset.x] then
-						neighbors[dir] = pixels[z + offset.z][x + offset.x]
-					else --edge case, need to abandon this pixel for slope
-						edge_case = true
+		elseif realterrain.settings.output == "slope" then
+			--cids for symbology nodetypes
+			local cids = {}
+			for k, colorcode in next, colors do
+				cids[colorcode] = minetest.get_content_id("realterrain:"..colorcode)
+			end
+			
+			local vi = area:index(x, y0, z) -- voxelmanip index
+			for y = y0, y1 do
+				local elev = realterrain.get_pixel(x,z)
+					if y == elev then
+					local neighbors = {}
+					neighbors["e"] = y
+					local edge_case = false
+					for dir, offset in next, neighborhood do
+						--get elev for all surrounding nodes
+						elev = realterrain.get_pixel(x+offset.x, z+offset.z)
+						if elev then
+							neighbors[dir] = elev
+						else --edge case, need to abandon this pixel for slope
+							edge_case = true
+						end
+					end
+					if not edge_case then 
+						local slope = realterrain.get_slope(neighbors)
+						--print("slope: "..slope)
+						--set the node to the symbology node for this slope
+						local color = math.floor( (slope / 16) + 0.5) -- contrast stretch?
+						if color == 0 then color = '00' else color = string.format('%x', color * 17) end
+						color = color.."0000"
+						--print(slope..":"..color)
+						data[vi] = cids[color]
 					end
 				end
-				if not edge_case then 
-					if not slope_pixels[z] then slope_pixels[z] = {} end
-					local slope = gis.get_slope({x=x,z=z}, neighbors)
-					slope_pixels[z][x] = slope
-					if not slmin then slmin = slope ; slmax = slope
-					else
-						if slope < slmin then slmin = slope end
-						if slope > slmax then slmax = slope end
-					end
-				end
+				vi = vi + ystridevm
 			end
 		end
 	end
@@ -464,7 +507,7 @@ minetest.register_tool("realterrain:remote" , {
 	end,
 })
 
-function realterrain.get_slope(pos, n, rad)
+function realterrain.get_slope(n, rad)
 	local x_cellsize, z_cellsize = 1, 1
 	local rise_xrun = ((n.c + 2 * n.f + n.i) - (n.a + 2 * n.d + n.g)) / (8 * x_cellsize)
 	local rise_zrun = ((n.g + 2 * n.h + n.i) - (n.a + 2 * n.b + n.c)) / (8 * z_cellsize)
