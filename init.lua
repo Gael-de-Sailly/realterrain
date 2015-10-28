@@ -165,34 +165,28 @@ function realterrain.esc(str)
 end
 
 function realterrain.list_images()
-	local rtypes = {".png", ".tif"}
-	
+	local list = {}
 	if package.config:sub(1,1) == "/" then
 	--Unix
-		local list = {}
-		--Open directory look for files, save data in p. By giving '-type f' as parameter, it returns all files.
-		local p = io.popen('find "'..RASTERS..'" -type f')
 		--Loop through all files
-		for file in p:lines() do                         
-			file = string.sub(file, #RASTERS + 1)
-			for j, extension in ipairs(rtypes) do
-				if string.find(file, extension, -4) ~= nil then
-					table.insert(list, file)
-				end
+		for file in io.popen('find "'..RASTERS..'" -type f'):lines() do                         
+			filename = string.sub(file, #RASTERS + 1)
+			local im = imagesize.imgsize(RASTERS .. filename)
+			if im then
+				table.insert(list, filename)
 			end
+			im = nil
 		end
 		return list
 	else
 	--Windows
-		local i, list, popen = 0, {}, io.popen 
 		--Open directory look for files, loop through all files 
-		for filename in popen('dir "'..RASTERS..'" /b'):lines() do
-			for j, extension in ipairs(rtypes) do
-				if string.find(filename, extension, -4) ~= nil then
-					i = i + 1
-					list[i] = filename  
-				end
+		for filename in io.popen('dir "'..RASTERS..'" /b'):lines() do
+			local im = imagesize.imgsize(RASTERS .. filename)
+			if im then
+				table.insert(list, file)
 			end
+			im = nil
 		end
 		return list
 	end
