@@ -586,6 +586,8 @@ function realterrain.show_rc_form(pname)
 	for k,v in next, images do
 		f_images = f_images .. v .. ","
 	end
+	local modes = {}
+	modes["normal"]="1"; modes["slope"]="2"
 	--print("IMAGES in DEM folder: "..f_images)
     --form header
 	local f_header = 			"size[14,10]" ..
@@ -633,10 +635,12 @@ function realterrain.show_rc_form(pname)
 									realterrain.get_setting("fileroads") .."]"..--]]
 								"button_exit[10,3;2,1;exit;Biomes]"
 	--Action buttons
-	local f_footer = 			"label[3,8.5;Delete the map, reset]"..
-								"button_exit[3,9;2,1;exit;Delete]"..
-                                "label[7,8.5;Apply changes only]"..
-								"button_exit[7,9;2,1;exit;Apply]"
+	local f_footer = 			"label[2,8.5;Reset the map]"..
+								"button_exit[2,9;2,1;exit;Delete]"..
+                                "label[6,8.5;Apply changes]"..
+								"button_exit[6,9;2,1;exit;Apply]"..
+								"label[9,8.5;Raster Mode]"..
+								"dropdown[9,9;2,1;output;normal,slope;"..modes[realterrain.settings.output].."]"
     
     minetest.show_formspec(pname, "realterrain:rc_form", 
                         f_header ..
