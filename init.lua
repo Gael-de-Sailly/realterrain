@@ -133,7 +133,7 @@ for k, colorcode in next, colors do
 		'realterrain:'..colorcode, {
 			description = "Raster Output: "..colorcode,
 			tiles = { colorcode..'.png' },
-			light_source = 3,
+			light_source = 9,
 			groups = {oddly_breakable_by_hand=1, gis=1},
 			--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
 				local meta = minetest.get_meta(pos)
@@ -290,11 +290,25 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
 	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
 	local data = vm:get_data()
+	local heightmap = {}
+	--build a "heightmap" for each raster layer plus one pixel around the edges for window calcs
+	for z=z0-1,z1+1 do
+		if not heightmap[z] then heightmap[z] = {} end
+		for x=x0-1,x1+1 do
+			local elev, biome, water, road = realterrain.get_pixel(x,z)
+			heightmap[z][x] = {elev=elev, biome=biome, water=water, road=road }
+		end
+	end
+	--print(dump(heightmap))
 	for z = z0, z1 do
 	for x = x0, x1 do
 		--normal mapgen for gameplay and exploration -- not raster analysis output
 		if realterrain.settings.output == "normal" then
-			local elev, biome, water, road = realterrain.get_pixel(x, z) -- elevation in meters from DEM and water true/false
+			local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
+			local biome = heightmap[z][x].biome
+			local water = heightmap[z][x].water
+			local road = heightmap[z][x].road
+			
 			--print("elev: "..elev..", biome: "..biome..", water: "..water..", road: "..road)
 			
 			local ground, tree, tprob, shrub, sprob
@@ -424,14 +438,14 @@ minetest.register_on_generated(function(minp, maxp, seed)
 			
 			local vi = area:index(x, y0, z) -- voxelmanip index
 			for y = y0, y1 do
-				local elev = realterrain.get_pixel(x,z)
+				local elev = heightmap[z][x].elev
 					if y == elev then
 					local neighbors = {}
 					neighbors["e"] = y
 					local edge_case = false
 					for dir, offset in next, neighborhood do
 						--get elev for all surrounding nodes
-						elev = realterrain.get_pixel(x+offset.x, z+offset.z)
+						elev = heightmap[z+offset.z][x+offset.x].elev
 						if elev then
 							neighbors[dir] = elev
 						else --edge case, need to abandon this pixel for slope
@@ -442,7 +456,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						local slope = realterrain.get_slope(neighbors)
 						--print("slope: "..slope)
 						--set the node to the symbology node for this slope
-						local color = math.floor( (slope / 16) + 0.5) -- contrast stretch?
+						local color = math.floor( (slope / 16) + 0.5) --@todo contrast stretch isn't possible in an infinite world
 						if color == 0 then color = '00' else color = string.format('%x', color * 17) end
 						color = color.."0000"
 						--print(slope..":"..color)
@@ -466,7 +480,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	end
 	
 	local chugent = math.ceil((os.clock() - t0) * 1000)
-	--print ("[DEM] "..chugent.." ms  mapchunk ("..cx0..", "..math.floor((y0 + 32) / 80)..", "..cz0..")")
+	print ("[DEM] "..chugent.." ms  mapchunk ("..cx0..", "..math.floor((y0 + 32) / 80)..", "..cz0..")")
 end)
 
 --for now we are going to assume 32 bit signed elevation pixels
@@ -625,14 +639,6 @@ function realterrain.show_rc_form(pname)
                                 "label[6,5.5;Road File]"..
 								"dropdown[6,6;4,1;fileroads;"..f_images..";"..
 									realterrain.get_image_id(images, realterrain.get_setting("fileroads")) .."]"..
-								--[["field[6,2;4,1;filedem;Elevation File;" ..
-                                    realterrain.get_setting("filedem") .."]" ..
-								"field[6,3;4,1;filebiome;Biome File;" ..
-                                    realterrain.get_setting("filebiome") .."]" ..
-								"field[6,4;4,1;filewater;Water File;" ..
-                                    realterrain.get_setting("filewater") .."]"..
-								"field[6,5;4,1;fileroads;Roads File;" ..
-									realterrain.get_setting("fileroads") .."]"..--]]
 								"button_exit[10,3;2,1;exit;Biomes]"
 	--Action buttons
 	local f_footer = 			"label[2,8.5;Reset the map]"..
