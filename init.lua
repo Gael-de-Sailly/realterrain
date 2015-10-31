@@ -1,6 +1,7 @@
 MODPATH = minetest.get_modpath("realterrain")
 WORLDPATH = minetest.get_worldpath()
 RASTERS = MODPATH .. "/rasters/"
+SCHEMS = MODPATH .. "/schems/"
 local realterrain = {}
 realterrain.settings = {}
 
@@ -171,6 +172,7 @@ function realterrain.init()
 	cids[7]  = {ground=minetest.get_content_id(realterrain.settings.b7ground), shrub=minetest.get_content_id(realterrain.settings.b7shrub)}
 	cids[8]  = {ground=minetest.get_content_id(realterrain.settings.b8ground), shrub=minetest.get_content_id(realterrain.settings.b8shrub)}
 	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground), shrub=minetest.get_content_id(realterrain.settings.b9shrub)}
+	
 end
 --called at each form submission
 function realterrain.save_settings()
@@ -249,10 +251,56 @@ function realterrain.list_images()
 	end
 end
 
-function realterrain.get_image_id(images_table, filename)
+function realterrain.list_schems()
+	local list = {}
+	if package.config:sub(1,1) == "/" then
+	--Unix
+		--Loop through all files
+		for file in io.popen('find "'..SCHEMS..'" -type f'):lines() do                         
+			local filename = string.sub(file, #SCHEMS + 1)
+			if string.find(file, ".mts", -4) ~= nil then
+				table.insert(list, string.sub(filename, 1, -5))
+			end
+		end
+		return list
+	else
+	--Windows
+		--Open directory look for files, loop through all files 
+		for filename in io.popen('dir "'..SCHEMS..'" /b'):lines() do
+			if string.find(file, ".mts", -4) ~= nil then
+				table.insert(list, string.sub(file, 1, -5))
+			end
+		end
+		return list
+	end
+end
+
+function realterrain.list_nodes()
+	local list = {}
+	--generate a list of all registered nodes that are simple blocks
+	for k,v in next, minetest.registered_nodes do
+		if v.drawtype == "normal" then
+			table.insert(list, k)
+		end
+	end
+	return list
+end
+
+function realterrain.list_plants()
+	local list = {}
+	--generate a list of all registered nodes that are simple blocks
+	for k,v in next, minetest.registered_nodes do
+		if v.drawtype == "plantlike" then
+			table.insert(list, k)
+		end
+	end
+	return list
+end
+
+function realterrain.get_idx(haystack, needle)
 	--returns the image id or if the image is not found it returns zero
-	for k,v in next, images_table do
-		if v == filename then
+	for k,v in next, haystack do
+		if v == needle then
 			return k
 		end		
 	end
@@ -622,16 +670,16 @@ function realterrain.show_rc_form(pname)
                                     realterrain.esc(realterrain.get_setting("zoffset")).."]" ..
 								"label[6,1;Elevation File]"..
 								"dropdown[6,1.5;4,1;filedem;"..f_images..";"..
-                                    realterrain.get_image_id(images, realterrain.get_setting("filedem")) .."]" ..
+                                    realterrain.get_idx(images, realterrain.get_setting("filedem")) .."]" ..
 								"label[6,2.5;Biome File]"..
 								"dropdown[6,3;4,1;filebiome;"..f_images..";"..
-                                    realterrain.get_image_id(images, realterrain.get_setting("filebiome")) .."]" ..
+                                    realterrain.get_idx(images, realterrain.get_setting("filebiome")) .."]" ..
 								"label[6,4;Water File]"..
 								"dropdown[6,4.5;4,1;filewater;"..f_images..";"..
-                                    realterrain.get_image_id(images, realterrain.get_setting("filewater")) .."]"..
+                                    realterrain.get_idx(images, realterrain.get_setting("filewater")) .."]"..
                                 "label[6,5.5;Road File]"..
 								"dropdown[6,6;4,1;fileroads;"..f_images..";"..
-									realterrain.get_image_id(images, realterrain.get_setting("fileroads")) .."]"..
+									realterrain.get_idx(images, realterrain.get_setting("fileroads")) .."]"..
 								"button_exit[10,3;2,1;exit;Biomes]"
 	--Action buttons
 	local f_footer = 			"label[2,8.5;Reset the map]"..
@@ -650,6 +698,22 @@ function realterrain.show_rc_form(pname)
 end
 
 function realterrain.show_biome_form(pname)
+	local schems = realterrain.list_schems()
+	local f_schems = ""
+	for k,v in next, schems do
+		f_schems = f_schems .. v .. ","
+	end
+	local nodes = realterrain.list_nodes()
+	local f_nodes = ""
+	for k,v in next, nodes do
+		f_nodes = f_nodes .. v .. ","
+	end
+	local plants = realterrain.list_plants()
+	local f_plants = ""
+	for k,v in next, plants do
+		f_plants = f_plants .. v .. ","
+	end
+	
 	local col= {0.01,0.7,1.7,4.7,7.5,8.6,11.4,13}
 	local row = {0.7,1.7,2.7,3.7,4.7,5.7,6.7,7.7,8.7,9.7}
 	local f_header = 	"size[14,10]" ..
@@ -662,14 +726,14 @@ function realterrain.show_biome_form(pname)
 		local h = (i +1) * 0.7
 		f_body = f_body ..
 			"label["..col[1]..","..h ..";"..i.."]"..
-			"field["..col[3]..","..h ..";3,1;b"..i.."ground;;"..
-				realterrain.esc(realterrain.get_setting("b"..i.."ground")).."]" ..
-			"field["..col[4]..","..h ..";3,1;b"..i.."tree;;"..
-				realterrain.esc(realterrain.get_setting("b"..i.."tree")).."]" ..
+			"dropdown["..(col[3]-0.3)..","..(h-0.3)..";3,1;b"..i.."ground;"..f_nodes..";"..
+				realterrain.get_idx(nodes, realterrain.get_setting("b"..i.."ground")) .."]" ..
+			"dropdown["..(col[4]-0.3)..","..(h-0.3) ..";3,1;b"..i.."tree;"..f_schems..";"..
+				realterrain.get_idx(schems, realterrain.get_setting("b"..i.."tree")) .."]" ..
 			"field["..col[5]..","..h ..";1,1;b"..i.."tprob;;"..
 				realterrain.esc(realterrain.get_setting("b"..i.."tprob")).."]" ..
-			"field["..col[6]..","..h ..";3,1;b"..i.."shrub;;"..
-				realterrain.esc(realterrain.get_setting("b"..i.."shrub")).."]"..
+			"dropdown["..(col[6]-0.3)..","..(h-0.3) ..";3,1;b"..i.."shrub;"..f_plants..";"..
+				realterrain.get_idx(plants, realterrain.get_setting("b"..i.."shrub")) .."]" ..
 			"field["..col[7]..","..h ..";1,1;b"..i.."sprob;;"..
 				realterrain.esc(realterrain.get_setting("b"..i.."sprob")).."]"
 	end
