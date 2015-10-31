@@ -1,4 +1,4 @@
-# realterrain v.0.0.4
+# realterrain v.0.0.5
 A Minetest mod that brings real world Terrain into the game (using freely available DEM tiles). Any image can actually be used.
 
 use any image any bit-depth (suggested to convert to greyscale first):
@@ -22,15 +22,22 @@ Settings tool (Realterrain Remote)
 
 Biomes tool:
 
-![screenshot_20151025_140019](https://cloud.githubusercontent.com/assets/12679496/10717816/c79ba880-7b20-11e5-87d0-0771f0478421.png)
+![screenshot_20151031_093508](https://cloud.githubusercontent.com/assets/12679496/10864655/bf992306-7fb2-11e5-80b8-236d0440f72b.png)
 
 Trees and shrubs:
 
 ![screenshot_20151025_140009](https://cloud.githubusercontent.com/assets/12679496/10717817/c79e4608-7b20-11e5-97e5-63c6116f480a.png)
 
+Slope analysis:
+
+![screenshot_20151031_115437](https://cloud.githubusercontent.com/assets/12679496/10865362/512e2128-7fc6-11e5-9c40-e214fa738e40.png)
+
+Aspect analysis:
+
+![screenshot_20151031_114215](https://cloud.githubusercontent.com/assets/12679496/10865364/58dbd988-7fc6-11e5-8a7e-75abc31f378d.png)
+
 ### Dependencies:
-- Luarocks
-- Luarocks magick package
+- You must have imageMagick and MagickWand installed on your system
 - Mod security disabled
 
 ### Instructions
@@ -39,6 +46,7 @@ Trees and shrubs:
 - use the Realterrain Remote to change the settings, or
 - edit the mod defaults section
 - create greyscale images for heightmap, biomes, rivers and roads if desired (heightmap is required) these should be the same length and width
+- after you change settings exit the world and delete the map.sqlite in the world folder (the Delete button is experimental)
 - enjoy!
 
 ### Upgrading:
@@ -50,8 +58,17 @@ Trees and shrubs:
 - allow DEMs to tile according to standard naming conventions, or explicitly
 - allow output of heightmap and land cover to image files
 - admin priv for using the settings tool
+- add more raster analysis modes
+- allow raster symbology to be customized in-game
 
 ### Changelog
+#### 0.0.5
+- improved raster modes symbology and added "aspect"
+- made the biome form fully clickable (image buttons and dropdowns)
+- added a static water node
+- removed dependency on luarocks
+- biome cover image pixel values are used directly, not in brightness ranges (8-bit assumed)
+
 #### 0.0.4
 - select layer files in game from a dropdown
 - vertical, east, and north offsets
