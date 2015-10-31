@@ -279,7 +279,7 @@ function realterrain.list_nodes()
 	local list = {}
 	--generate a list of all registered nodes that are simple blocks
 	for k,v in next, minetest.registered_nodes do
-		if v.drawtype == "normal" then
+		if v.drawtype == "normal" and string.sub(k, 1, 12) ~= "realterrain:" then
 			table.insert(list, k)
 		end
 	end
@@ -290,7 +290,7 @@ function realterrain.list_plants()
 	local list = {}
 	--generate a list of all registered nodes that are simple blocks
 	for k,v in next, minetest.registered_nodes do
-		if v.drawtype == "plantlike" then
+		if v.drawtype == "plantlike" and string.sub(k, 1, 8) ~= "vessels:"  then
 			table.insert(list, k)
 		end
 	end
@@ -576,7 +576,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if string.sub(formname, 1, 12) == "realterrain:" then
 		local wait = os.clock()
 		while os.clock() - wait < 0.05 do end --popups don't work without this
-		--print("fields submitted: "..dump(fields))
+		print("fields submitted: "..dump(fields))
 		local pname = player:get_player_name()
 		
 		-- always save any form fields
@@ -618,7 +618,20 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				realterrain.init()
 				realterrain.show_rc_form(pname)
 				return true
+			elseif fields.ground then
+				local setting = "b"..fields.ground.."ground"
+				realterrain.show_item_images(pname, realterrain.list_nodes(), setting)
+			elseif fields.shrub then
+				local setting = "b"..fields.shrub.."shrub"
+				realterrain.show_item_images(pname, realterrain.list_plants(), setting)
 			end
+			return true
+		end
+		
+		--item image selection form
+		if formname == "realterrain:image_items" then
+			realterrain.show_biome_form(pname)
+			return true
 		end
 		return true
 	end
@@ -703,16 +716,6 @@ function realterrain.show_biome_form(pname)
 	for k,v in next, schems do
 		f_schems = f_schems .. v .. ","
 	end
-	local nodes = realterrain.list_nodes()
-	local f_nodes = ""
-	for k,v in next, nodes do
-		f_nodes = f_nodes .. v .. ","
-	end
-	local plants = realterrain.list_plants()
-	local f_plants = ""
-	for k,v in next, plants do
-		f_plants = f_plants .. v .. ","
-	end
 	
 	local col= {0.01,0.7,1.7,4.7,7.5,8.6,11.4,13}
 	local row = {0.7,1.7,2.7,3.7,4.7,5.7,6.7,7.7,8.7,9.7}
@@ -726,14 +729,12 @@ function realterrain.show_biome_form(pname)
 		local h = (i +1) * 0.7
 		f_body = f_body ..
 			"label["..col[1]..","..h ..";"..i.."]"..
-			"dropdown["..(col[3]-0.3)..","..(h-0.3)..";3,1;b"..i.."ground;"..f_nodes..";"..
-				realterrain.get_idx(nodes, realterrain.get_setting("b"..i.."ground")) .."]" ..
+			"item_image_button["..(col[3])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."ground")..";ground;"..i.."]"..
 			"dropdown["..(col[4]-0.3)..","..(h-0.3) ..";3,1;b"..i.."tree;"..f_schems..";"..
 				realterrain.get_idx(schems, realterrain.get_setting("b"..i.."tree")) .."]" ..
 			"field["..col[5]..","..h ..";1,1;b"..i.."tprob;;"..
 				realterrain.esc(realterrain.get_setting("b"..i.."tprob")).."]" ..
-			"dropdown["..(col[6]-0.3)..","..(h-0.3) ..";3,1;b"..i.."shrub;"..f_plants..";"..
-				realterrain.get_idx(plants, realterrain.get_setting("b"..i.."shrub")) .."]" ..
+			"item_image_button["..(col[6])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."shrub")..";shrub;"..i.."]"..
 			"field["..col[7]..","..h ..";1,1;b"..i.."sprob;;"..
 				realterrain.esc(realterrain.get_setting("b"..i.."sprob")).."]"
 	end
@@ -742,6 +743,30 @@ function realterrain.show_biome_form(pname)
                                     f_header .. f_body
 	)
 	return true
+end
+
+function realterrain.show_item_images(pname, items, setting)
+	local f_images = ""
+	local i = 1
+	local j = 1
+	for k,v in next, items do
+		f_images = f_images .. "item_image_button["..i..","..j..";1,1;"..items[k]..";"..setting..";"..items[k].."]"
+		if i < 12 then
+			i = i + 1
+		else
+			i = 1
+			j = j + 1
+		end
+		
+	end
+	local f_body = "size[14,10]" ..
+					"button_exit[13,0.01;1,1;exit;Cancel]"
+					
+	minetest.show_formspec(pname,   "realterrain:image_items",
+                                    f_body..f_images
+	)
+	return true
+	
 end
 
 -- this is the form-error popup
