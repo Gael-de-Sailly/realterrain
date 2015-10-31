@@ -108,24 +108,12 @@ neighborhood.g = {x=-1,y= 0,z=-1} -- SW
 neighborhood.h = {x= 0,y= 0,z=-1} -- S
 neighborhood.i = {x= 1,y= 0,z=-1} -- SE
 
-local colors = {}
-for r=0, 15 do
-	if r == 0 then r = '00' else r = string.format('%x', r * 17) end
-	table.insert(colors, r..'00'..'00')
-end
-for g=1, 15 do
-	g = string.format('%x', g * 17)
-	table.insert(colors, '00'..g..'00')
-end
-for b=1, 15 do
-	b = string.format('%x', b * 17)
-	table.insert(colors, '00'..'00'..b)
-end
-for k, colorcode in next, colors do
+local slopecolors = {"00f700", "5af700", "8cf700", "b5f700", "def700", "f7de00", "ffb500", "ff8400","ff4a00", "f70000"}
+for k, colorcode in next, slopecolors do
 	minetest.register_node(
-		'realterrain:'..colorcode, {
-			description = "Raster Output: "..colorcode,
-			tiles = { colorcode..'.png' },
+		'realterrain:slope'..k, {
+			description = "Slope: "..k,
+			tiles = { colorcode..'.bmp' },
 			light_source = 9,
 			groups = {oddly_breakable_by_hand=1},
 			--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
@@ -134,6 +122,22 @@ for k, colorcode in next, colors do
 				meta:set_int("placed", os.clock()*1000);
 			end,--]]
 	})	
+end
+--register the aspect symbology nodes
+local aspectcolors = {"ff0000","ffa600","ffff00","00ff00","00ffff","00a6ff","0000ff","ff00ff"}
+for k,colorcode in next, aspectcolors do
+	minetest.register_node(
+		'realterrain:aspect'..k, {
+			description = "Aspect: "..k,
+			tiles = { colorcode..'.bmp' },
+			light_source = 9,
+			groups = {oddly_breakable_by_hand=1},
+			--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
+				local meta = minetest.get_meta(pos)
+				meta:set_string("infotext", "Gis:"..colorcode);
+				meta:set_int("placed", os.clock()*1000);
+			end,--]]
+	})
 end
 
 minetest.register_node(
@@ -152,7 +156,7 @@ minetest.register_node(
 local cids = {}
 function realterrain.init()
 	--content ids
-	cids.grass = minetest.get_content_id("default:dirt_with_grass")
+	cids.grass  = minetest.get_content_id("default:dirt_with_grass")
 	cids.gravel = minetest.get_content_id("default:gravel")
 	cids.stone  = minetest.get_content_id("default:stone")
 	cids.sand   = minetest.get_content_id("default:sand")
@@ -173,6 +177,20 @@ function realterrain.init()
 	cids[8]  = {ground=minetest.get_content_id(realterrain.settings.b8ground), shrub=minetest.get_content_id(realterrain.settings.b8shrub)}
 	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground), shrub=minetest.get_content_id(realterrain.settings.b9shrub)}
 	
+	--register cids for SLOPE mode
+	if realterrain.settings.output == "slope" then
+		--cids for symbology nodetypes
+		for k, code in next, slopecolors do
+			cids["slope"..k] = minetest.get_content_id("realterrain:".."slope"..k)
+		end
+	end
+	--register cids for ASPECT mode
+	if realterrain.settings.output == "aspect" then
+		--cids for symbology nodetypes
+		for k, code in next, aspectcolors do
+			cids["aspect"..k] = minetest.get_content_id("realterrain:".."aspect"..k)
+		end
+	end
 end
 --called at each form submission
 function realterrain.save_settings()
@@ -341,14 +359,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local z0 = minp.z
 	local treemap = {}
 	
-	--register cids for SLOPE mode
-	if realterrain.settings.output == "slope" then
-		--cids for symbology nodetypes
-		for k, colorcode in next, colors do
-			cids[colorcode] = minetest.get_content_id("realterrain:"..colorcode)
-		end
-	end
-	
 	local sidelen = x1 - x0 + 1
 	local ystridevm = sidelen + 32
 
@@ -392,7 +402,16 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						cid = realterrain.slope({x=x,y=y,z=z}, heightmap, cids)
 					end
 				--other raster modes
+				elseif realterrain.settings.output == "aspect" then
+					--@todo need to fill in exposed blocks below the surface too
+					local height = realterrain.fill_below({x=x,y=y,z=z}, heightmap)
+					
+					if y <= heightmap[z][x].elev and y >= heightmap[z][x].elev - height then
+						cid = realterrain.aspect({x=x,y=y,z=z}, heightmap, cids)
+					end
+				--other raster modes
 				end
+				
 				if cid then
 					data[vi] = cid
 				end
@@ -494,10 +513,54 @@ function realterrain.slope(pos, heightmap, cids)
 			local slope = realterrain.get_slope(neighbors)
 			--print("slope: "..slope)
 			--set the node to the symbology node for this slope
-			local color = math.floor( (slope / 16) + 0.5) --@todo contrast stretch isn't possible in an infinite world
-			if color == 0 then color = '00' else color = string.format('%x', color * 17) end
-			color = color.."0000"
+			if slope < 1 then color = "slope1"
+			elseif slope < 2 then color = "slope2"
+			elseif slope < 5 then color = "slope3"
+			elseif slope < 10 then color = "slope4"
+			elseif slope < 15 then color = "slope5"
+			elseif slope < 20 then color = "slope6"
+			elseif slope < 30 then color = "slope7"
+			elseif slope < 45 then color = "slope8"
+			elseif slope < 60 then color = "slope9"
+			elseif slope >= 75 then color = "slope10" end
 			--print(slope..":"..color)
+			return cids[color]
+		end
+	--end
+	--return false
+end
+function realterrain.aspect(pos, heightmap, cids)
+	local elev = heightmap[pos.z][pos.x].elev
+	--if pos.y == elev then
+		local neighbors = {}
+		neighbors["e"] = elev
+		local edge_case = false
+		for dir, offset in next, neighborhood do
+			--get elev for all surrounding nodes
+			elev = heightmap[pos.z+offset.z][pos.x+offset.x].elev
+			if elev then
+				neighbors[dir] = elev
+			else --edge case, need to abandon this pixel for aspect
+				edge_case = true
+			end
+		end
+		if not edge_case then 
+			local aspect = realterrain.get_aspect(neighbors)
+			--print("aspect "..aspect)
+			--set the node to the symbology node for this aspect
+			local slice = 22.5
+			local color
+			
+			if aspect > 360 - slice or aspect <= slice then color = "aspect1"
+			elseif aspect <= slice * 3 then color = "aspect2"
+			elseif aspect <= slice * 5 then color = "aspect3"
+			elseif aspect <= slice * 7 then color = "aspect4"
+			elseif aspect <= slice * 9 then color = "aspect5"
+			elseif aspect <= slice * 11 then color = "aspect6"
+			elseif aspect <= slice * 13 then color = "aspect7"
+			elseif aspect <= slice * 15 then color = "aspect8" end
+			
+			--print(aspect..":"..color)
 			return cids[color]
 		end
 	--end
@@ -560,6 +623,31 @@ function realterrain.get_slope(n, rad)
 	return math.floor(degrees + 0.5)
 end
 
+function realterrain.get_aspect(n, rad)
+	local rise_xrun = ((n.c + 2 * n.f + n.i) - (n.a + 2 * n.d + n.g)) / 8
+	local rise_zrun = ((n.g + 2 * n.h + n.i) - (n.a + 2 * n.b + n.c)) / 8
+	local aspect
+	if rise_xrun ~= 0 then 
+		aspect = math.atan2(rise_zrun, - rise_xrun) * 180 / math.pi 
+		if aspect < 0 then aspect = 2 * math.pi + aspect end
+	else 
+		if rise_zrun > 0 then aspect = math.pi / 2 
+		elseif rise_zrun < 0 then aspect = 2 * math.pi - (math.pi/2)
+		else aspect = 0 -- @todo not sure if this is actually 0
+		end
+	end
+	if rad then return aspect 
+	else	
+		local cell
+		if aspect < 0 then cell = 90.0 - aspect
+		elseif aspect > 90.0 then
+			cell = 360.0 - aspect + 90.0
+		else
+			cell = 90.0 - aspect
+		end
+		return math.floor(cell + 0.5)
+	end
+end
 -- the controller for changing map settings
 minetest.register_tool("realterrain:remote" , {
 	description = "Realterrain Settings",
@@ -576,7 +664,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if string.sub(formname, 1, 12) == "realterrain:" then
 		local wait = os.clock()
 		while os.clock() - wait < 0.05 do end --popups don't work without this
-		print("fields submitted: "..dump(fields))
+		--print("fields submitted: "..dump(fields))
 		local pname = player:get_player_name()
 		
 		-- always save any form fields
@@ -655,7 +743,7 @@ function realterrain.show_rc_form(pname)
 		f_images = f_images .. v .. ","
 	end
 	local modes = {}
-	modes["normal"]="1"; modes["slope"]="2"
+	modes["normal"]="1"; modes["slope"]="2"; modes["aspect"]="3"
 	--print("IMAGES in DEM folder: "..f_images)
     --form header
 	local f_header = 			"size[14,10]" ..
@@ -700,7 +788,7 @@ function realterrain.show_rc_form(pname)
                                 "label[6,8.5;Apply changes]"..
 								"button_exit[6,9;2,1;exit;Apply]"..
 								"label[9,8.5;Raster Mode]"..
-								"dropdown[9,9;2,1;output;normal,slope;"..modes[realterrain.settings.output].."]"
+								"dropdown[9,9;2,1;output;normal,slope,aspect;"..modes[realterrain.settings.output].."]"
     
     minetest.show_formspec(pname, "realterrain:rc_form", 
                         f_header ..
@@ -717,25 +805,25 @@ function realterrain.show_biome_form(pname)
 		f_schems = f_schems .. v .. ","
 	end
 	
-	local col= {0.01,0.7,1.7,4.7,7.5,8.6,11.4,13}
+	local col= {0.01,1.5,4,6,8,9,11,13}
 	local row = {0.7,1.7,2.7,3.7,4.7,5.7,6.7,7.7,8.7,9.7}
 	local f_header = 	"size[14,10]" ..
-						"button_exit["..col[8]..",0.01;1,1;exit;Apply]"..
-						"label["..col[1]..",0.01;Biome]".."label["..col[3]..",0.01;Ground Node]"..
-						"label["..col[4]..",0.01;Tree MTS]".."label["..col[5]..",0.01;Prob]".."label["..col[6]..",0.01;Shrub Node]"..
-						"label["..col[7]..",0.01;Prob]"
+						"button_exit["..col[7]..",0.01;2,1;exit;Apply]"..
+						"label["..col[1]..",0.01;Biome]".."label["..col[2]..",0.01;Ground]"..
+						"label["..col[3]..",0.01;Tree]".."label["..col[4]..",0.01;Prob]"..
+						"label["..col[5]..",0.01;Shrub]".."label["..col[6]..",0.01;Prob]"
 	local f_body = ""
 	for i=0,9,1 do
 		local h = (i +1) * 0.7
 		f_body = f_body ..
 			"label["..col[1]..","..h ..";"..i.."]"..
-			"item_image_button["..(col[3])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."ground")..";ground;"..i.."]"..
-			"dropdown["..(col[4]-0.3)..","..(h-0.3) ..";3,1;b"..i.."tree;"..f_schems..";"..
+			"item_image_button["..(col[2])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."ground")..";ground;"..i.."]"..
+			"dropdown["..col[3]..","..(h-0.3) ..";2,1;b"..i.."tree;"..f_schems..";"..
 				realterrain.get_idx(schems, realterrain.get_setting("b"..i.."tree")) .."]" ..
-			"field["..col[5]..","..h ..";1,1;b"..i.."tprob;;"..
+			"field["..(col[4]+0.2)..","..h ..";1,1;b"..i.."tprob;;"..
 				realterrain.esc(realterrain.get_setting("b"..i.."tprob")).."]" ..
-			"item_image_button["..(col[6])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."shrub")..";shrub;"..i.."]"..
-			"field["..col[7]..","..h ..";1,1;b"..i.."sprob;;"..
+			"item_image_button["..(col[5])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."shrub")..";shrub;"..i.."]"..
+			"field["..col[6]..","..h ..";1,1;b"..i.."sprob;;"..
 				realterrain.esc(realterrain.get_setting("b"..i.."sprob")).."]"
 	end
 					
@@ -760,7 +848,7 @@ function realterrain.show_item_images(pname, items, setting)
 		
 	end
 	local f_body = "size[14,10]" ..
-					"button_exit[13,0.01;1,1;exit;Cancel]"
+					"button_exit[12,0.01;2,1;exit;Cancel]"
 					
 	minetest.show_formspec(pname,   "realterrain:image_items",
                                     f_body..f_images
