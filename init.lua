@@ -34,75 +34,67 @@ realterrain.settings.filewater = 'water.tif'
 realterrain.settings.fileroads = 'roads.tif'
 realterrain.settings.filebiome = 'biomes.tif'
 
-realterrain.settings.b01cut = 10
-realterrain.settings.b01ground = "default:dirt_with_grass"
-realterrain.settings.b01tree = "tree"
-realterrain.settings.b01tprob = 0.3
-realterrain.settings.b01shrub = "default:grass_1"
-realterrain.settings.b01sprob = 5
+--default biome (no biome)
+realterrain.settings.b0ground = "default:dirt_with_grass"
+realterrain.settings.b0tree = "tree"
+realterrain.settings.b0tprob = 0.3
+realterrain.settings.b0shrub = "default:grass_1"
+realterrain.settings.b0sprob = 5
 
-realterrain.settings.b02cut = 20
-realterrain.settings.b02ground = "default:dirt_with_dry_grass"
-realterrain.settings.b02tree = "tree"
-realterrain.settings.b02tprob = 0.3
-realterrain.settings.b02shrub = "default:dry_gass_1"
-realterrain.settings.b02sprob = 5
+realterrain.settings.b1ground = "default:dirt_with_grass"
+realterrain.settings.b1tree = "tree"
+realterrain.settings.b1tprob = 0.3
+realterrain.settings.b1shrub = "default:grass_1"
+realterrain.settings.b1sprob = 5
 
-realterrain.settings.b03cut = 30
-realterrain.settings.b03ground = "default:sand"
-realterrain.settings.b03tree = "cactus"
-realterrain.settings.b03tprob = 0.3
-realterrain.settings.b03shrub = "default:dry_grass_1"
-realterrain.settings.b03sprob = 5
+realterrain.settings.b2ground = "default:dirt_with_dry_grass"
+realterrain.settings.b2tree = "tree"
+realterrain.settings.b2tprob = 0.3
+realterrain.settings.b2shrub = "default:dry_gass_1"
+realterrain.settings.b2sprob = 5
 
-realterrain.settings.b04cut = 40
-realterrain.settings.b04ground = "default:gravel"
-realterrain.settings.b04tree = "cactus"
-realterrain.settings.b04tprob = 0.3
-realterrain.settings.b04shrub = "default:dry_shrub"
-realterrain.settings.b04sprob = 5
+realterrain.settings.b3ground = "default:sand"
+realterrain.settings.b3tree = "cactus"
+realterrain.settings.b3tprob = 0.3
+realterrain.settings.b3shrub = "default:dry_grass_1"
+realterrain.settings.b3sprob = 5
 
-realterrain.settings.b05cut = 50
-realterrain.settings.b05ground = "default:clay"
-realterrain.settings.b05tree = ""
-realterrain.settings.b05tprob = 0.3
-realterrain.settings.b05shrub = "default:dry_shrub"
-realterrain.settings.b05sprob = 5
+realterrain.settings.b4ground = "default:gravel"
+realterrain.settings.b4tree = "cactus"
+realterrain.settings.b4tprob = 0.3
+realterrain.settings.b4shrub = "default:dry_shrub"
+realterrain.settings.b4sprob = 5
 
-realterrain.settings.b06cut = 60
-realterrain.settings.b06ground = "default:stone"
-realterrain.settings.b06tree = ""
-realterrain.settings.b06tprob = 0.3
-realterrain.settings.b06shrub = "default:junglegrass"
-realterrain.settings.b06sprob = 5
+realterrain.settings.b5ground = "default:clay"
+realterrain.settings.b5tree = ""
+realterrain.settings.b5tprob = 0.3
+realterrain.settings.b5shrub = "default:dry_shrub"
+realterrain.settings.b5sprob = 5
 
-realterrain.settings.b07cut = 70
-realterrain.settings.b07ground = "default:stone_with_iron"
-realterrain.settings.b07tree = "jungletree"
-realterrain.settings.b07tprob = 0.3
-realterrain.settings.b07shrub = "default:junglegrass"
-realterrain.settings.b07sprob = 5
+realterrain.settings.b6ground = "default:stone"
+realterrain.settings.b6tree = ""
+realterrain.settings.b6tprob = 0.3
+realterrain.settings.b6shrub = "default:junglegrass"
+realterrain.settings.b6sprob = 5
 
-realterrain.settings.b08cut = 80
-realterrain.settings.b08ground = "default:stone_with_coal"
-realterrain.settings.b08tree = ""
-realterrain.settings.b08tprob = 0.3
-realterrain.settings.b08shrub = "default:junglegrass"
-realterrain.settings.b08sprob = 5
+realterrain.settings.b7ground = "default:stone_with_iron"
+realterrain.settings.b7tree = "jungletree"
+realterrain.settings.b7tprob = 0.3
+realterrain.settings.b7shrub = "default:junglegrass"
+realterrain.settings.b7sprob = 5
 
-realterrain.settings.b09cut = 90
-realterrain.settings.b09ground = "default:stone_with_copper"
-realterrain.settings.b09tree = "jungletree"
-realterrain.settings.b09tprob = 0.3
-realterrain.settings.b09shrub = "default:junglegrass"
-realterrain.settings.b09sprob = 5
+realterrain.settings.b8cut = 80
+realterrain.settings.b8ground = "default:stone_with_coal"
+realterrain.settings.b8tree = ""
+realterrain.settings.b8tprob = 0.3
+realterrain.settings.b8shrub = "default:junglegrass"
+realterrain.settings.b8sprob = 5
 
-realterrain.settings.b10cut = 100
-realterrain.settings.b10ground = "default:dirt_with_snow"
-realterrain.settings.b10tree = "snowtree"
-realterrain.settings.b10tprob = 0.3
-realterrain.settings.b10shrub = "default:dry_grass_1"
-realterrain.settings.b10sprob = 5
+realterrain.settings.b9ground = "default:stone_with_copper"
+realterrain.settings.b9tree = "jungletree"
+realterrain.settings.b9tprob = 0.3
+realterrain.settings.b9shrub = "default:junglegrass"
+realterrain.settings.b9sprob = 5
 
 local neighborhood = {}
 neighborhood.a = {x= 1,y= 0,z= 1} -- NW
@@ -134,7 +126,7 @@ for k, colorcode in next, colors do
 			description = "Raster Output: "..colorcode,
 			tiles = { colorcode..'.png' },
 			light_source = 9,
-			groups = {oddly_breakable_by_hand=1, gis=1},
+			groups = {oddly_breakable_by_hand=1},
 			--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
 				local meta = minetest.get_meta(pos)
 				meta:set_string("infotext", "Gis:"..colorcode);
@@ -143,6 +135,43 @@ for k, colorcode in next, colors do
 	})	
 end
 
+minetest.register_node(
+	'realterrain:water_static', {
+		description = "Water that Stays Put",
+		tiles = { 'water_static.png' },
+		light_source = 9,
+		groups = {oddly_breakable_by_hand=1},
+		--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
+			local meta = minetest.get_meta(pos)
+			meta:set_string("infotext", "Gis:"..colorcode);
+			meta:set_int("placed", os.clock()*1000);
+		end,--]]
+})
+-- a mod-wide table to hold cids and an init function to run after all mods have loaded.
+local cids = {}
+function realterrain.init()
+	--content ids
+	cids.grass = minetest.get_content_id("default:dirt_with_grass")
+	cids.gravel = minetest.get_content_id("default:gravel")
+	cids.stone  = minetest.get_content_id("default:stone")
+	cids.sand   = minetest.get_content_id("default:sand")
+	cids.water  = minetest.get_content_id("realterrain:water_static")
+	cids.dirt   = minetest.get_content_id("default:dirt")
+	cids.coal   = minetest.get_content_id("default:stone_with_coal")
+	cids.cobble = minetest.get_content_id("default:cobble")
+	
+	--biome specific cids
+	cids[0]  = {ground=minetest.get_content_id(realterrain.settings.b0ground), shrub=minetest.get_content_id(realterrain.settings.b0shrub)}
+	cids[1]  = {ground=minetest.get_content_id(realterrain.settings.b1ground), shrub=minetest.get_content_id(realterrain.settings.b1shrub)}
+	cids[2]  = {ground=minetest.get_content_id(realterrain.settings.b2ground), shrub=minetest.get_content_id(realterrain.settings.b2shrub)}
+	cids[3]  = {ground=minetest.get_content_id(realterrain.settings.b3ground), shrub=minetest.get_content_id(realterrain.settings.b3shrub)}
+	cids[4]  = {ground=minetest.get_content_id(realterrain.settings.b4ground), shrub=minetest.get_content_id(realterrain.settings.b4shrub)}
+	cids[5]  = {ground=minetest.get_content_id(realterrain.settings.b5ground), shrub=minetest.get_content_id(realterrain.settings.b5shrub)}
+	cids[6]  = {ground=minetest.get_content_id(realterrain.settings.b6ground), shrub=minetest.get_content_id(realterrain.settings.b6shrub)}
+	cids[7]  = {ground=minetest.get_content_id(realterrain.settings.b7ground), shrub=minetest.get_content_id(realterrain.settings.b7shrub)}
+	cids[8]  = {ground=minetest.get_content_id(realterrain.settings.b8ground), shrub=minetest.get_content_id(realterrain.settings.b8shrub)}
+	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground), shrub=minetest.get_content_id(realterrain.settings.b9shrub)}
+end
 --called at each form submission
 function realterrain.save_settings()
 	local file = io.open(WORLDPATH.."/realterrain_settings", "w")
@@ -198,7 +227,7 @@ function realterrain.list_images()
 	--Unix
 		--Loop through all files
 		for file in io.popen('find "'..RASTERS..'" -type f'):lines() do                         
-			filename = string.sub(file, #RASTERS + 1)
+			local filename = string.sub(file, #RASTERS + 1)
 			local im = imagesize.imgsize(RASTERS .. filename)
 			if im then
 				table.insert(list, filename)
@@ -248,8 +277,13 @@ minetest.register_on_mapgen_init(function(mgparams)
 end)
 
 -- On generated function
-
+local firstrun = true
 minetest.register_on_generated(function(minp, maxp, seed)
+	if firstrun then
+		realterrain.init()
+		firstrun = false
+	end
+	
 	local t0 = os.clock()
 	local x1 = maxp.x
 	local y1 = maxp.y
@@ -259,27 +293,13 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local z0 = minp.z
 	local treemap = {}
 	
-	--content ids
-	local c_grass  = minetest.get_content_id("default:dirt_with_grass")
-	local c_gravel = minetest.get_content_id("default:gravel")
-	local c_stone  = minetest.get_content_id("default:stone")
-	local c_sand   = minetest.get_content_id("default:sand")
-	local c_water  = minetest.get_content_id("default:water_source")
-	local c_dirt   = minetest.get_content_id("default:dirt")
-	local c_coal   = minetest.get_content_id("default:stone_with_coal")
-	local c_cobble = minetest.get_content_id("default:cobble")
-	--biome specific cids
-	local cids = {}
-	cids[1]  = {ground=minetest.get_content_id(realterrain.settings.b01ground), shrub=minetest.get_content_id(realterrain.settings.b01shrub)}
-	cids[2]  = {ground=minetest.get_content_id(realterrain.settings.b02ground), shrub=minetest.get_content_id(realterrain.settings.b02shrub)}
-	cids[3]  = {ground=minetest.get_content_id(realterrain.settings.b03ground), shrub=minetest.get_content_id(realterrain.settings.b03shrub)}
-	cids[4]  = {ground=minetest.get_content_id(realterrain.settings.b04ground), shrub=minetest.get_content_id(realterrain.settings.b04shrub)}
-	cids[5]  = {ground=minetest.get_content_id(realterrain.settings.b05ground), shrub=minetest.get_content_id(realterrain.settings.b05shrub)}
-	cids[6]  = {ground=minetest.get_content_id(realterrain.settings.b06ground), shrub=minetest.get_content_id(realterrain.settings.b06shrub)}
-	cids[7]  = {ground=minetest.get_content_id(realterrain.settings.b07ground), shrub=minetest.get_content_id(realterrain.settings.b07shrub)}
-	cids[8]  = {ground=minetest.get_content_id(realterrain.settings.b08ground), shrub=minetest.get_content_id(realterrain.settings.b08shrub)}
-	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b09ground), shrub=minetest.get_content_id(realterrain.settings.b09shrub)}
-	cids[10] = {ground=minetest.get_content_id(realterrain.settings.b10ground), shrub=minetest.get_content_id(realterrain.settings.b10shrub)}
+	--register cids for SLOPE mode
+	if realterrain.settings.output == "slope" then
+		--cids for symbology nodetypes
+		for k, colorcode in next, colors do
+			cids[colorcode] = minetest.get_content_id("realterrain:"..colorcode)
+		end
+	end
 	
 	local sidelen = x1 - x0 + 1
 	local ystridevm = sidelen + 32
@@ -293,182 +313,46 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local heightmap = {}
 	--build a "heightmap" for each raster layer plus one pixel around the edges for window calcs
 	for z=z0-1,z1+1 do
-		if not heightmap[z] then heightmap[z] = {} end
+		if not heightmap[z] then
+			heightmap[z] = {}
+		end
 		for x=x0-1,x1+1 do
 			local elev, biome, water, road = realterrain.get_pixel(x,z)
 			heightmap[z][x] = {elev=elev, biome=biome, water=water, road=road }
 		end
 	end
+	
+	
+	
 	--print(dump(heightmap))
 	for z = z0, z1 do
-	for x = x0, x1 do
-		--normal mapgen for gameplay and exploration -- not raster analysis output
-		if realterrain.settings.output == "normal" then
-			local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
-			local biome = heightmap[z][x].biome
-			local water = heightmap[z][x].water
-			local road = heightmap[z][x].road
-			
-			--print("elev: "..elev..", biome: "..biome..", water: "..water..", road: "..road)
-			
-			local ground, tree, tprob, shrub, sprob
-			if biome < tonumber(realterrain.get_setting("b01cut")) then
-				ground = cids[1].ground
-				tree = realterrain.get_setting("b01tree")
-				tprob = tonumber(realterrain.get_setting("b01tprob"))
-				shrub = cids[1].shrub
-				sprob = tonumber(realterrain.get_setting("b01sprob"))
-			elseif biome < tonumber(realterrain.get_setting("b02cut")) then
-				ground = cids[2].ground
-				tree = realterrain.get_setting("b02tree")
-				tprob = tonumber(realterrain.get_setting("b02tprob"))
-				shrub = cids[2].shrub
-				sprob = tonumber(realterrain.get_setting("b02sprob"))
-			elseif biome < tonumber(realterrain.get_setting("b03cut")) then
-				ground = cids[3].ground
-				tree = realterrain.get_setting("b03tree")
-				tprob = tonumber(realterrain.get_setting("b03tprob"))
-				shrub = cids[3].shrub
-				sprob = tonumber(realterrain.get_setting("b03sprob"))
-			elseif biome < tonumber(realterrain.get_setting("b04cut")) then
-				ground = cids[4].ground
-				tree = realterrain.get_setting("b04tree")
-				tprob = tonumber(realterrain.get_setting("b04tprob"))
-				shrub = cids[4].shrub
-				sprob = tonumber(realterrain.get_setting("b04sprob"))
-			elseif biome < tonumber(realterrain.get_setting("b05cut")) then
-				ground = cids[5].ground
-				tree = realterrain.get_setting("b05tree")
-				tprob = tonumber(realterrain.get_setting("b05tprob"))
-				shrub = cids[5].shrub
-				sprob = tonumber(realterrain.get_setting("b05sprob"))
-			elseif biome < tonumber(realterrain.get_setting("b06cut")) then
-				ground = cids[6].ground
-				tree = realterrain.get_setting("b06tree")
-				tprob = tonumber(realterrain.get_setting("b06tprob"))
-				shrub = cids[6].shrub
-				sprob = tonumber(realterrain.get_setting("b06sprob"))
-			elseif biome < tonumber(realterrain.get_setting("b07cut")) then
-				ground = cids[7].ground
-				tree = realterrain.get_setting("b07tree")
-				tprob = tonumber(realterrain.get_setting("b07tprob"))
-				shrub = cids[7].shrub
-				sprob = tonumber(realterrain.get_setting("b07sprob"))
-			elseif biome < tonumber(realterrain.get_setting("b08cut")) then
-				ground = cids[8].ground
-				tree = realterrain.get_setting("b08tree")
-				tprob = tonumber(realterrain.get_setting("b08tprob"))
-				shrub = cids[8].shrub
-				sprob = tonumber(realterrain.get_setting("b08sprob"))
-			elseif biome < tonumber(realterrain.get_setting("b09cut")) then
-				ground = cids[9].ground
-				tree = realterrain.get_setting("b09tree")
-				tprob = tonumber(realterrain.get_setting("b09tprob"))
-				shrub = cids[9].shrub
-				sprob = tonumber(realterrain.get_setting("b09sprob"))
-			elseif biome < tonumber(realterrain.get_setting("b10cut")) then
-				ground = cids[10].ground
-				tree = realterrain.get_setting("b10tree")
-				tprob = tonumber(realterrain.get_setting("b10tprob"))
-				shrub = cids[10].shrub
-				sprob = tonumber(realterrain.get_setting("b10sprob"))
-			end
-			
+		for x = x0, x1 do
 			local vi = area:index(x, y0, z) -- voxelmanip index
 			for y = y0, y1 do
-				--underground layers
-				if y < elev then 
-					--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
-					if y < elev - (30 + math.random(1,5)) then
-						data[vi] = c_stone
-					elseif y < elev - (25 + math.random(1,5)) then
-						data[vi] = c_gravel
-					elseif y < elev - (20 + math.random(1,5)) then
-						data[vi] = c_sand
-					elseif y < elev - (15 + math.random(1,5)) then
-						data[vi] = c_coal
-					elseif y < elev - (10 + math.random(1,5)) then
-						data[vi] = c_stone
-					elseif y < elev - (5 + math.random(1,5)) then
-						data[vi] = c_sand
-					else
-						data[vi] = ground
+				
+				--print("elev: "..heightmap[z][x].elev..", biome: "..heightmap[z][x].biome..", water: "..heightmap[z][x].water..", road: "..heightmap[z][x].road)
+				local cid
+				--normal mapgen for gameplay and exploration -- not raster analysis output
+				if realterrain.settings.output == "normal" then
+					cid, treemap = realterrain.normal({x=x,y=y,z=z}, heightmap, cids, treemap) 
+				--if raster output then display only that
+				elseif realterrain.settings.output == "slope" then
+					--@todo need to fill in exposed blocks below the surface too
+					local height = realterrain.fill_below({x=x,y=y,z=z}, heightmap)
+					
+					if y <= heightmap[z][x].elev and y >= heightmap[z][x].elev - height then
+						cid = realterrain.slope({x=x,y=y,z=z}, heightmap, cids)
 					end
-				--the surface layer, determined by the different cover files
-				elseif y == elev then
-					--roads
-					if road > 0 then
-						data[vi] = c_cobble
-					 --rivers and lakes
-					elseif water > 0 then
-						data[vi] = c_water
-					--biome cover
-					else
-						--sand for lake bottoms
-						if y < tonumber(realterrain.settings.waterlevel) then
-							data[vi] = c_sand
-						--alpine level
-						elseif y > tonumber(realterrain.settings.alpinelevel) + math.random(1,5) then 
-							data[vi] = c_gravel
-						--default
-						else
-							data[vi] = ground
-						end
-					end
-				--shrubs and trees one block above the ground
-				elseif y == elev + 1 and water == 0 and road == 0 then
-					if shrub and math.random(0,100) <= sprob then
-						data[vi] = shrub
-					end
-					if tree and y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5) and math.random(0,100) <= tprob then
-						table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree})
-					end
-				elseif y <= tonumber(realterrain.settings.waterlevel) then
-					data[vi] = c_water
+				--other raster modes
 				end
-				vi = vi + ystridevm
-			end
-		--if raster output then display only that
-		elseif realterrain.settings.output == "slope" then
-			--cids for symbology nodetypes
-			local cids = {}
-			for k, colorcode in next, colors do
-				cids[colorcode] = minetest.get_content_id("realterrain:"..colorcode)
-			end
-			
-			local vi = area:index(x, y0, z) -- voxelmanip index
-			for y = y0, y1 do
-				local elev = heightmap[z][x].elev
-					if y == elev then
-					local neighbors = {}
-					neighbors["e"] = y
-					local edge_case = false
-					for dir, offset in next, neighborhood do
-						--get elev for all surrounding nodes
-						elev = heightmap[z+offset.z][x+offset.x].elev
-						if elev then
-							neighbors[dir] = elev
-						else --edge case, need to abandon this pixel for slope
-							edge_case = true
-						end
-					end
-					if not edge_case then 
-						local slope = realterrain.get_slope(neighbors)
-						--print("slope: "..slope)
-						--set the node to the symbology node for this slope
-						local color = math.floor( (slope / 16) + 0.5) --@todo contrast stretch isn't possible in an infinite world
-						if color == 0 then color = '00' else color = string.format('%x', color * 17) end
-						color = color.."0000"
-						--print(slope..":"..color)
-						data[vi] = cids[color]
-					end
+				if cid then
+					data[vi] = cid
 				end
 				vi = vi + ystridevm
 			end
 		end
 	end
-	end
-	
+	--print(dump(data))
 	vm:set_data(data)
 	vm:calc_lighting()
 	vm:write_to_map(data)
@@ -482,7 +366,95 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local chugent = math.ceil((os.clock() - t0) * 1000)
 	print ("[DEM] "..chugent.." ms  mapchunk ("..cx0..", "..math.floor((y0 + 32) / 80)..", "..cz0..")")
 end)
-
+function realterrain.normal(pos, heightmap, cids, treemap)
+	--print("heightmap.elev: "..heightmap[pos.z][pos.x].elev..", pos.y: "..pos.y)
+	local cid
+	--underground layers
+	if pos.y < heightmap[pos.z][pos.x].elev then 
+		--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
+		if pos.y < heightmap[pos.z][pos.x].elev - (30 + math.random(1,5)) then
+			cid =  cids.stone
+		elseif pos.y < heightmap[pos.z][pos.x].elev - (25 + math.random(1,5)) then
+			cid =  cids.gravel
+		elseif pos.y < heightmap[pos.z][pos.x].elev - (20 + math.random(1,5)) then
+			cid =  cids.sand
+		elseif pos.y < heightmap[pos.z][pos.x].elev - (15 + math.random(1,5)) then
+			cid =  cids.coal
+		elseif pos.y < heightmap[pos.z][pos.x].elev - (10 + math.random(1,5)) then
+			cid =  cids.stone
+		elseif pos.y < heightmap[pos.z][pos.x].elev - (5 + math.random(1,5)) then
+			cid =  cids.sand
+		else
+			cid =  cids[heightmap[pos.z][pos.x].biome].ground
+		end
+	--the surface layer, determined by the different cover files
+	elseif pos.y == heightmap[pos.z][pos.x].elev then
+		--roads
+		if heightmap[pos.z][pos.x].road > 0 then
+			cid =  cids.cobble
+		 --rivers and lakes
+		elseif heightmap[pos.z][pos.x].water > 0 then
+			cid =  cids.water
+		--biome cover
+		else
+			--sand for lake bottoms
+			if pos.y < tonumber(realterrain.settings.waterlevel) then
+				cid =  cids.sand
+			--alpine level
+			elseif pos.y > tonumber(realterrain.settings.alpinelevel) + math.random(1,5) then 
+				cid =  cids.gravel
+			--default
+			else
+				cid =  cids[heightmap[pos.z][pos.x].biome].ground
+			end
+		end
+	--shrubs and trees one block above the ground
+	elseif pos.y == heightmap[pos.z][pos.x].elev + 1 and heightmap[pos.z][pos.x].water == 0 and heightmap[pos.z][pos.x].road == 0 then
+		--print("vegetation: ")
+		if realterrain.get_setting("b"..heightmap[pos.z][pos.x].biome.."shrub") ~= ''
+			and math.random(0,100) <= tonumber(realterrain.get_setting("b"..heightmap[pos.z][pos.x].biome.."sprob")) then
+			--print("shrub: "..shrub)
+			cid =  cids[heightmap[pos.z][pos.x].biome].shrub
+		end
+		if realterrain.get_setting("b"..heightmap[pos.z][pos.x].biome.."tree") ~= ''
+			and pos.y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5)
+			and math.random(0,100) <= tonumber(realterrain.get_setting("b"..heightmap[pos.z][pos.x].biome.."tprob")) then
+			--print("tree: "..tree)
+			table.insert(treemap, {pos=pos, type=realterrain.get_setting("b"..heightmap[pos.z][pos.x].biome.."tree")})
+		end
+	elseif pos.y <= tonumber(realterrain.settings.waterlevel) then
+		cid =  cids.water
+	end
+	return cid, treemap
+end
+function realterrain.slope(pos, heightmap, cids)
+	local elev = heightmap[pos.z][pos.x].elev
+	--if pos.y == elev then
+		local neighbors = {}
+		neighbors["e"] = elev
+		local edge_case = false
+		for dir, offset in next, neighborhood do
+			--get elev for all surrounding nodes
+			elev = heightmap[pos.z+offset.z][pos.x+offset.x].elev
+			if elev then
+				neighbors[dir] = elev
+			else --edge case, need to abandon this pixel for slope
+				edge_case = true
+			end
+		end
+		if not edge_case then 
+			local slope = realterrain.get_slope(neighbors)
+			--print("slope: "..slope)
+			--set the node to the symbology node for this slope
+			local color = math.floor( (slope / 16) + 0.5) --@todo contrast stretch isn't possible in an infinite world
+			if color == 0 then color = '00' else color = string.format('%x', color * 17) end
+			color = color.."0000"
+			--print(slope..":"..color)
+			return cids[color]
+		end
+	--end
+	--return false
+end
 --for now we are going to assume 32 bit signed elevation pixels
 --and a header offset of
 
@@ -498,9 +470,9 @@ function realterrain.get_pixel(x,z)
     
     e = dem:get_pixel(col, row)
     --print("raw e: "..e)
-	if biomeimage then b = 100 * biomeimage:get_pixel(col, row) end--use breakpoints for different biomes
-	if waterimage then w = math.ceil(waterimage:get_pixel(col, row)) end --@todo use float for water depth?
-	if roadimage  then r = math.ceil(roadimage:get_pixel(col, row)) end --@todo use breakpoints for building height?
+	if biomeimage then b = math.floor(biomeimage:get_pixel(col, row) * (2^8 )) end --assume an 8-bit biome file
+	if waterimage then w = math.ceil(waterimage:get_pixel(col, row) ) end --any non-zero value
+	if roadimage  then r = math.ceil(roadimage:get_pixel(col, row) ) end --any non-zero value
 	
     --adjust for bit depth and vscale
     e = math.floor(e * (2^tonumber(realterrain.settings.bits))) --@todo change when magick autodetects bit depth
@@ -508,6 +480,36 @@ function realterrain.get_pixel(x,z)
     
 	--print("elev: "..e..", biome: "..b..", water: "..w..", road: "..r)
     return e, b, w, r
+end
+
+--this funcion gets the hieght needed to fill below a node for surface-only modes
+function realterrain.fill_below(pos, heightmap)
+	local neighbors = {}
+	local height = 0
+	local elev = heightmap[pos.z][pos.x].elev
+	for dir, offset in next, neighborhood do
+		--get elev for all surrounding nodes
+		if dir == "b" or dir == "d" or dir == "f" or dir == "h" then
+			local nelev = heightmap[pos.z+offset.z][pos.x+offset.x].elev
+			-- if the neighboring height is more than one down, check if it is the furthest down
+			if elev > ( nelev + 1) and height < (elev-nelev+1) then
+				height = elev - nelev + 1
+			end
+		end
+	end
+	--print(height)
+	return height
+end
+
+function realterrain.get_slope(n, rad)
+	--print(dump(n))
+	local x_cellsize, z_cellsize = 1, 1
+	local rise_xrun = ((n.c + 2 * n.f + n.i) - (n.a + 2 * n.d + n.g)) / (8 * x_cellsize)
+	local rise_zrun = ((n.g + 2 * n.h + n.i) - (n.a + 2 * n.b + n.c)) / (8 * z_cellsize)
+	local rise_xzrun = math.sqrt( rise_xrun ^ 2 + rise_zrun ^ 2 )
+	if rad then return rise_xzrun end
+	local degrees = math.atan(rise_xzrun) * 180 / math.pi
+	return math.floor(degrees + 0.5)
 end
 
 -- the controller for changing map settings
@@ -520,16 +522,6 @@ minetest.register_tool("realterrain:remote" , {
 		realterrain.show_rc_form(pname)
 	end,
 })
-
-function realterrain.get_slope(n, rad)
-	local x_cellsize, z_cellsize = 1, 1
-	local rise_xrun = ((n.c + 2 * n.f + n.i) - (n.a + 2 * n.d + n.g)) / (8 * x_cellsize)
-	local rise_zrun = ((n.g + 2 * n.h + n.i) - (n.a + 2 * n.b + n.c)) / (8 * z_cellsize)
-	local rise_xzrun = math.sqrt( rise_xrun ^ 2 + rise_zrun ^ 2 )
-	if rad then return rise_xzrun end
-	local degrees = math.atan(rise_xzrun) * 180 / math.pi
-	return math.floor(degrees + 0.5)
-end
 
 -- Processing the form from the RC
 minetest.register_on_player_receive_fields(function(player, formname, fields)
@@ -575,6 +567,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		--biome config form
 		if formname == "realterrain:biome_config" then
 			if fields.exit == "Apply" then
+				realterrain.init()
 				realterrain.show_rc_form(pname)
 				return true
 			end
@@ -661,28 +654,24 @@ function realterrain.show_biome_form(pname)
 	local row = {0.7,1.7,2.7,3.7,4.7,5.7,6.7,7.7,8.7,9.7}
 	local f_header = 	"size[14,10]" ..
 						"button_exit["..col[8]..",0.01;1,1;exit;Apply]"..
-						"label["..col[1]..",0.01;B]".."label["..col[2]..",0.01;Cutoff]".."label["..col[3]..",0.01;Ground Node]"..
+						"label["..col[1]..",0.01;Biome]".."label["..col[3]..",0.01;Ground Node]"..
 						"label["..col[4]..",0.01;Tree MTS]".."label["..col[5]..",0.01;Prob]".."label["..col[6]..",0.01;Shrub Node]"..
 						"label["..col[7]..",0.01;Prob]"
 	local f_body = ""
-	for i=1,10,1 do
-		local r = i
-		if r < 10 then r = 0 .. r end
-		local h = i * 0.7
+	for i=0,9,1 do
+		local h = (i +1) * 0.7
 		f_body = f_body ..
-			"label["..col[1]..","..h ..";"..r.."]"..
-			"field["..col[2]..","..h ..";1,1;b"..r.."cut;;"..
-				realterrain.esc(realterrain.get_setting("b"..r.."cut")).."]" ..
-			"field["..col[3]..","..h ..";3,1;b"..r.."ground;;"..
-				realterrain.esc(realterrain.get_setting("b"..r.."ground")).."]" ..
-			"field["..col[4]..","..h ..";3,1;b"..r.."tree;;"..
-				realterrain.esc(realterrain.get_setting("b"..r.."tree")).."]" ..
-			"field["..col[5]..","..h ..";1,1;b"..r.."tprob;;"..
-				realterrain.esc(realterrain.get_setting("b"..r.."tprob")).."]" ..
-			"field["..col[6]..","..h ..";3,1;b"..r.."shrub;;"..
-				realterrain.esc(realterrain.get_setting("b"..r.."shrub")).."]"..
-			"field["..col[7]..","..h ..";1,1;b"..r.."sprob;;"..
-				realterrain.esc(realterrain.get_setting("b"..r.."sprob")).."]"
+			"label["..col[1]..","..h ..";"..i.."]"..
+			"field["..col[3]..","..h ..";3,1;b"..i.."ground;;"..
+				realterrain.esc(realterrain.get_setting("b"..i.."ground")).."]" ..
+			"field["..col[4]..","..h ..";3,1;b"..i.."tree;;"..
+				realterrain.esc(realterrain.get_setting("b"..i.."tree")).."]" ..
+			"field["..col[5]..","..h ..";1,1;b"..i.."tprob;;"..
+				realterrain.esc(realterrain.get_setting("b"..i.."tprob")).."]" ..
+			"field["..col[6]..","..h ..";3,1;b"..i.."shrub;;"..
+				realterrain.esc(realterrain.get_setting("b"..i.."shrub")).."]"..
+			"field["..col[7]..","..h ..";1,1;b"..i.."sprob;;"..
+				realterrain.esc(realterrain.get_setting("b"..i.."sprob")).."]"
 	end
 					
 	minetest.show_formspec(pname,   "realterrain:biome_config",
