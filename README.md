@@ -45,7 +45,7 @@ Aspect analysis:
 - launch the game with mod enabled, default settings should work
 - use the Realterrain Remote to change the settings, or
 - edit the mod defaults section
-- create greyscale images for heightmap, biomes, rivers and roads if desired (heightmap is required) these should be the same length and width
+- create greyscale images for heightmap, biomes, rivers and roads if desired (heightmap is required) these should be the same length and width. Biomes image should be 8-bit and use pixel values from 0-9 to match the biome numbers, which makes it hard to paint them visually (working on this issue), roads and rivers can be any non-zero value. 
 - after you change settings exit the world and delete the map.sqlite in the world folder (the Delete button is experimental)
 - enjoy!
 

@@ -20,7 +20,7 @@ package.path = (MODPATH.."/magick/?.lua;"..MODPATH.."/magick/?/init.lua;"..packa
 local magick = ie.require "magick"
 
 --defaults
-realterrain.settings.output = "normal" --try "slope"
+realterrain.settings.output = "normal"
 realterrain.settings.bits = 8 --@todo remove this setting when magick autodetects bitdepth
 realterrain.settings.yscale = 1
 realterrain.settings.xscale = 1
@@ -152,46 +152,7 @@ minetest.register_node(
 			meta:set_int("placed", os.clock()*1000);
 		end,--]]
 })
--- a mod-wide table to hold cids and an init function to run after all mods have loaded.
-local cids = {}
-function realterrain.init()
-	--content ids
-	cids.grass  = minetest.get_content_id("default:dirt_with_grass")
-	cids.gravel = minetest.get_content_id("default:gravel")
-	cids.stone  = minetest.get_content_id("default:stone")
-	cids.sand   = minetest.get_content_id("default:sand")
-	cids.water  = minetest.get_content_id("realterrain:water_static")
-	cids.dirt   = minetest.get_content_id("default:dirt")
-	cids.coal   = minetest.get_content_id("default:stone_with_coal")
-	cids.cobble = minetest.get_content_id("default:cobble")
-	
-	--biome specific cids
-	cids[0]  = {ground=minetest.get_content_id(realterrain.settings.b0ground), shrub=minetest.get_content_id(realterrain.settings.b0shrub)}
-	cids[1]  = {ground=minetest.get_content_id(realterrain.settings.b1ground), shrub=minetest.get_content_id(realterrain.settings.b1shrub)}
-	cids[2]  = {ground=minetest.get_content_id(realterrain.settings.b2ground), shrub=minetest.get_content_id(realterrain.settings.b2shrub)}
-	cids[3]  = {ground=minetest.get_content_id(realterrain.settings.b3ground), shrub=minetest.get_content_id(realterrain.settings.b3shrub)}
-	cids[4]  = {ground=minetest.get_content_id(realterrain.settings.b4ground), shrub=minetest.get_content_id(realterrain.settings.b4shrub)}
-	cids[5]  = {ground=minetest.get_content_id(realterrain.settings.b5ground), shrub=minetest.get_content_id(realterrain.settings.b5shrub)}
-	cids[6]  = {ground=minetest.get_content_id(realterrain.settings.b6ground), shrub=minetest.get_content_id(realterrain.settings.b6shrub)}
-	cids[7]  = {ground=minetest.get_content_id(realterrain.settings.b7ground), shrub=minetest.get_content_id(realterrain.settings.b7shrub)}
-	cids[8]  = {ground=minetest.get_content_id(realterrain.settings.b8ground), shrub=minetest.get_content_id(realterrain.settings.b8shrub)}
-	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground), shrub=minetest.get_content_id(realterrain.settings.b9shrub)}
-	
-	--register cids for SLOPE mode
-	if realterrain.settings.output == "slope" then
-		--cids for symbology nodetypes
-		for k, code in next, slopecolors do
-			cids["slope"..k] = minetest.get_content_id("realterrain:".."slope"..k)
-		end
-	end
-	--register cids for ASPECT mode
-	if realterrain.settings.output == "aspect" then
-		--cids for symbology nodetypes
-		for k, code in next, aspectcolors do
-			cids["aspect"..k] = minetest.get_content_id("realterrain:".."aspect"..k)
-		end
-	end
-end
+
 --called at each form submission
 function realterrain.save_settings()
 	local file = io.open(WORLDPATH.."/realterrain_settings", "w")
@@ -343,13 +304,7 @@ minetest.register_on_mapgen_init(function(mgparams)
 end)
 
 -- On generated function
-local firstrun = true
 minetest.register_on_generated(function(minp, maxp, seed)
-	if firstrun then
-		realterrain.init()
-		firstrun = false
-	end
-	
 	local t0 = os.clock()
 	local x1 = maxp.x
 	local y1 = maxp.y
@@ -358,7 +313,45 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local y0 = minp.y
 	local z0 = minp.z
 	local treemap = {}
+	local fillmap = {}
 	
+	local mode = realterrain.settings.output
+	--content ids
+	local c_grass  = minetest.get_content_id("default:dirt_with_grass")
+	local c_gravel = minetest.get_content_id("default:gravel")
+	local c_stone  = minetest.get_content_id("default:stone")
+	local c_sand   = minetest.get_content_id("default:sand")
+	local c_water  = minetest.get_content_id("default:water_source")
+	local c_dirt   = minetest.get_content_id("default:dirt")
+	local c_coal   = minetest.get_content_id("default:stone_with_coal")
+	local c_cobble = minetest.get_content_id("default:cobble")
+	--biome specific cids
+	local cids = {}
+	cids[0] = {ground=minetest.get_content_id(realterrain.settings.b0ground), shrub=minetest.get_content_id(realterrain.settings.b0shrub)}
+	cids[1]  = {ground=minetest.get_content_id(realterrain.settings.b1ground), shrub=minetest.get_content_id(realterrain.settings.b1shrub)}
+	cids[2]  = {ground=minetest.get_content_id(realterrain.settings.b2ground), shrub=minetest.get_content_id(realterrain.settings.b2shrub)}
+	cids[3]  = {ground=minetest.get_content_id(realterrain.settings.b3ground), shrub=minetest.get_content_id(realterrain.settings.b3shrub)}
+	cids[4]  = {ground=minetest.get_content_id(realterrain.settings.b4ground), shrub=minetest.get_content_id(realterrain.settings.b4shrub)}
+	cids[5]  = {ground=minetest.get_content_id(realterrain.settings.b5ground), shrub=minetest.get_content_id(realterrain.settings.b5shrub)}
+	cids[6]  = {ground=minetest.get_content_id(realterrain.settings.b6ground), shrub=minetest.get_content_id(realterrain.settings.b6shrub)}
+	cids[7]  = {ground=minetest.get_content_id(realterrain.settings.b7ground), shrub=minetest.get_content_id(realterrain.settings.b7shrub)}
+	cids[8]  = {ground=minetest.get_content_id(realterrain.settings.b8ground), shrub=minetest.get_content_id(realterrain.settings.b8shrub)}
+	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground), shrub=minetest.get_content_id(realterrain.settings.b9shrub)}
+	
+	--register cids for SLOPE mode
+	if mode == "slope" then
+		--cids for symbology nodetypes
+		for k, code in next, slopecolors do
+			cids["slope"..k] = minetest.get_content_id("realterrain:".."slope"..k)
+		end
+	end
+	--register cids for ASPECT mode
+	if mode == "aspect" then
+		--cids for symbology nodetypes
+		for k, code in next, aspectcolors do
+			cids["aspect"..k] = minetest.get_content_id("realterrain:".."aspect"..k)
+		end
+	end
 	local sidelen = x1 - x0 + 1
 	local ystridevm = sidelen + 32
 
@@ -371,55 +364,141 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local heightmap = {}
 	--build a "heightmap" for each raster layer plus one pixel around the edges for window calcs
 	for z=z0-1,z1+1 do
-		if not heightmap[z] then
-			heightmap[z] = {}
-		end
+		if not heightmap[z] then heightmap[z] = {} end
 		for x=x0-1,x1+1 do
 			local elev, biome, water, road = realterrain.get_pixel(x,z)
 			heightmap[z][x] = {elev=elev, biome=biome, water=water, road=road }
 		end
 	end
-	
-	
-	
 	--print(dump(heightmap))
 	for z = z0, z1 do
-		for x = x0, x1 do
+	for x = x0, x1 do
+		--normal mapgen for gameplay and exploration -- not raster analysis output
+		if mode == "normal" or mode == "surface" then
+			local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
+			local biome = heightmap[z][x].biome
+			local water = heightmap[z][x].water
+			local road = heightmap[z][x].road
+			
+			--print("elev: "..elev..", biome: "..biome..", water: "..water..", road: "..road)
+			
+			local ground, tree, tprob, shrub, sprob
+			ground = cids[biome].ground
+			tree = realterrain.get_setting("b"..biome.."tree")
+			tprob = tonumber(realterrain.get_setting("b"..biome.."tprob"))
+			shrub = cids[biome].shrub
+			sprob = tonumber(realterrain.get_setting("b"..biome.."sprob"))
+			
 			local vi = area:index(x, y0, z) -- voxelmanip index
 			for y = y0, y1 do
-				
-				--print("elev: "..heightmap[z][x].elev..", biome: "..heightmap[z][x].biome..", water: "..heightmap[z][x].water..", road: "..heightmap[z][x].road)
-				local cid
-				--normal mapgen for gameplay and exploration -- not raster analysis output
-				if realterrain.settings.output == "normal" then
-					cid, treemap = realterrain.normal({x=x,y=y,z=z}, heightmap, cids, treemap) 
-				--if raster output then display only that
-				elseif realterrain.settings.output == "slope" then
-					--@todo need to fill in exposed blocks below the surface too
-					local height = realterrain.fill_below({x=x,y=y,z=z}, heightmap)
-					
-					if y <= heightmap[z][x].elev and y >= heightmap[z][x].elev - height then
-						cid = realterrain.slope({x=x,y=y,z=z}, heightmap, cids)
+				--underground layers
+				if y < elev and mode == "normal" then 
+					--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
+					if y < elev - (30 + math.random(1,5)) then
+						data[vi] = c_stone
+					elseif y < elev - (25 + math.random(1,5)) then
+						data[vi] = c_gravel
+					elseif y < elev - (20 + math.random(1,5)) then
+						data[vi] = c_sand
+					elseif y < elev - (15 + math.random(1,5)) then
+						data[vi] = c_coal
+					elseif y < elev - (10 + math.random(1,5)) then
+						data[vi] = c_stone
+					elseif y < elev - (5 + math.random(1,5)) then
+						data[vi] = c_sand
+					else
+						data[vi] = ground
 					end
-				--other raster modes
-				elseif realterrain.settings.output == "aspect" then
-					--@todo need to fill in exposed blocks below the surface too
-					local height = realterrain.fill_below({x=x,y=y,z=z}, heightmap)
-					
-					if y <= heightmap[z][x].elev and y >= heightmap[z][x].elev - height then
-						cid = realterrain.aspect({x=x,y=y,z=z}, heightmap, cids)
+				--the surface layer, determined by the different cover files
+				elseif y == elev then
+					--roads
+					if road > 0 then
+						data[vi] = c_cobble
+					 --rivers and lakes
+					elseif water > 0 then
+						data[vi] = c_water
+					--biome cover
+					else
+						--sand for lake bottoms
+						if y < tonumber(realterrain.settings.waterlevel) then
+							data[vi] = c_sand
+						--alpine level
+						elseif y > tonumber(realterrain.settings.alpinelevel) + math.random(1,5) then 
+							data[vi] = c_gravel
+						--default
+						else
+							data[vi] = ground
+						end
 					end
-				--other raster modes
-				end
-				
-				if cid then
-					data[vi] = cid
+				--shrubs and trees one block above the ground
+				elseif y == elev + 1 and water == 0 and road == 0 then
+					if shrub and math.random(0,100) <= sprob then
+						data[vi] = shrub
+					end
+					if tree and y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5) and math.random(0,100) <= tprob then
+						table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree})
+					end
+				elseif y <= tonumber(realterrain.settings.waterlevel) then
+					data[vi] = c_water
 				end
 				vi = vi + ystridevm
-			end
-		end
+			end --end y iteration
+		--if raster output then display only that
+		elseif mode == "slope" or mode == "aspect" then
+			local vi = area:index(x, y0, z) -- voxelmanip index
+			for y = y0, y1 do
+				local elev = heightmap[z][x].elev
+				if y == elev then
+					local neighbors = {}
+					neighbors["e"] = y
+					local edge_case = false
+					for dir, offset in next, neighborhood do
+						--get elev for all surrounding nodes
+						elev = heightmap[z+offset.z][x+offset.x].elev
+						if elev then
+							neighbors[dir] = elev
+						else --edge case, need to abandon this pixel for slope
+							edge_case = true
+						end
+					end
+					if not edge_case then
+						local color
+						if mode == "slope" then
+							local slope = realterrain.get_slope(neighbors)
+							if slope < 1 then color = "slope1"
+							elseif slope < 2 then color = "slope2"
+							elseif slope < 5 then color = "slope3"
+							elseif slope < 10 then color = "slope4"
+							elseif slope < 15 then color = "slope5"
+							elseif slope < 20 then color = "slope6"
+							elseif slope < 30 then color = "slope7"
+							elseif slope < 45 then color = "slope8"
+							elseif slope < 60 then color = "slope9"
+							elseif slope >= 60 then color = "slope10" end
+							--print("slope: "..slope)
+							data[vi] = cids[color]
+						elseif mode == "aspect" then
+							local aspect = realterrain.get_aspect(neighbors)
+							local slice = 22.5
+							if aspect > 360 - slice or aspect <= slice then color = "aspect1"
+							elseif aspect <= slice * 3 then color = "aspect2"
+							elseif aspect <= slice * 5 then color = "aspect3"
+							elseif aspect <= slice * 7 then color = "aspect4"
+							elseif aspect <= slice * 9 then color = "aspect5"
+							elseif aspect <= slice * 11 then color = "aspect6"
+							elseif aspect <= slice * 13 then color = "aspect7"
+							elseif aspect <= slice * 15 then color = "aspect8" end
+							--print(aspect..":"..color)
+							data[vi] = cids[color]
+						end
+					end
+				end
+				vi = vi + ystridevm
+			end -- end y iteration
+		end --end mode options
 	end
-	--print(dump(data))
+	end
+	
 	vm:set_data(data)
 	vm:calc_lighting()
 	vm:write_to_map(data)
@@ -429,147 +508,15 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	for k,v in next, treemap do
 		minetest.place_schematic({x=v.pos.x-3,y=v.pos.y,z=v.pos.z-3}, MODPATH.."/schems/"..v.type..".mts", (math.floor(math.random(0,3)) * 90), nil, false)
 	end
-	
+
 	local chugent = math.ceil((os.clock() - t0) * 1000)
 	print ("[DEM] "..chugent.." ms  mapchunk ("..cx0..", "..math.floor((y0 + 32) / 80)..", "..cz0..")")
 end)
-function realterrain.normal(pos, heightmap, cids, treemap)
-	--print("heightmap.elev: "..heightmap[pos.z][pos.x].elev..", pos.y: "..pos.y)
-	local cid
-	--underground layers
-	if pos.y < heightmap[pos.z][pos.x].elev then 
-		--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
-		if pos.y < heightmap[pos.z][pos.x].elev - (30 + math.random(1,5)) then
-			cid =  cids.stone
-		elseif pos.y < heightmap[pos.z][pos.x].elev - (25 + math.random(1,5)) then
-			cid =  cids.gravel
-		elseif pos.y < heightmap[pos.z][pos.x].elev - (20 + math.random(1,5)) then
-			cid =  cids.sand
-		elseif pos.y < heightmap[pos.z][pos.x].elev - (15 + math.random(1,5)) then
-			cid =  cids.coal
-		elseif pos.y < heightmap[pos.z][pos.x].elev - (10 + math.random(1,5)) then
-			cid =  cids.stone
-		elseif pos.y < heightmap[pos.z][pos.x].elev - (5 + math.random(1,5)) then
-			cid =  cids.sand
-		else
-			cid =  cids[heightmap[pos.z][pos.x].biome].ground
-		end
-	--the surface layer, determined by the different cover files
-	elseif pos.y == heightmap[pos.z][pos.x].elev then
-		--roads
-		if heightmap[pos.z][pos.x].road > 0 then
-			cid =  cids.cobble
-		 --rivers and lakes
-		elseif heightmap[pos.z][pos.x].water > 0 then
-			cid =  cids.water
-		--biome cover
-		else
-			--sand for lake bottoms
-			if pos.y < tonumber(realterrain.settings.waterlevel) then
-				cid =  cids.sand
-			--alpine level
-			elseif pos.y > tonumber(realterrain.settings.alpinelevel) + math.random(1,5) then 
-				cid =  cids.gravel
-			--default
-			else
-				cid =  cids[heightmap[pos.z][pos.x].biome].ground
-			end
-		end
-	--shrubs and trees one block above the ground
-	elseif pos.y == heightmap[pos.z][pos.x].elev + 1 and heightmap[pos.z][pos.x].water == 0 and heightmap[pos.z][pos.x].road == 0 then
-		--print("vegetation: ")
-		if realterrain.get_setting("b"..heightmap[pos.z][pos.x].biome.."shrub") ~= ''
-			and math.random(0,100) <= tonumber(realterrain.get_setting("b"..heightmap[pos.z][pos.x].biome.."sprob")) then
-			--print("shrub: "..shrub)
-			cid =  cids[heightmap[pos.z][pos.x].biome].shrub
-		end
-		if realterrain.get_setting("b"..heightmap[pos.z][pos.x].biome.."tree") ~= ''
-			and pos.y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5)
-			and math.random(0,100) <= tonumber(realterrain.get_setting("b"..heightmap[pos.z][pos.x].biome.."tprob")) then
-			--print("tree: "..tree)
-			table.insert(treemap, {pos=pos, type=realterrain.get_setting("b"..heightmap[pos.z][pos.x].biome.."tree")})
-		end
-	elseif pos.y <= tonumber(realterrain.settings.waterlevel) then
-		cid =  cids.water
-	end
-	return cid, treemap
-end
-function realterrain.slope(pos, heightmap, cids)
-	local elev = heightmap[pos.z][pos.x].elev
-	--if pos.y == elev then
-		local neighbors = {}
-		neighbors["e"] = elev
-		local edge_case = false
-		for dir, offset in next, neighborhood do
-			--get elev for all surrounding nodes
-			elev = heightmap[pos.z+offset.z][pos.x+offset.x].elev
-			if elev then
-				neighbors[dir] = elev
-			else --edge case, need to abandon this pixel for slope
-				edge_case = true
-			end
-		end
-		if not edge_case then 
-			local slope = realterrain.get_slope(neighbors)
-			--print("slope: "..slope)
-			--set the node to the symbology node for this slope
-			if slope < 1 then color = "slope1"
-			elseif slope < 2 then color = "slope2"
-			elseif slope < 5 then color = "slope3"
-			elseif slope < 10 then color = "slope4"
-			elseif slope < 15 then color = "slope5"
-			elseif slope < 20 then color = "slope6"
-			elseif slope < 30 then color = "slope7"
-			elseif slope < 45 then color = "slope8"
-			elseif slope < 60 then color = "slope9"
-			elseif slope >= 75 then color = "slope10" end
-			--print(slope..":"..color)
-			return cids[color]
-		end
-	--end
-	--return false
-end
-function realterrain.aspect(pos, heightmap, cids)
-	local elev = heightmap[pos.z][pos.x].elev
-	--if pos.y == elev then
-		local neighbors = {}
-		neighbors["e"] = elev
-		local edge_case = false
-		for dir, offset in next, neighborhood do
-			--get elev for all surrounding nodes
-			elev = heightmap[pos.z+offset.z][pos.x+offset.x].elev
-			if elev then
-				neighbors[dir] = elev
-			else --edge case, need to abandon this pixel for aspect
-				edge_case = true
-			end
-		end
-		if not edge_case then 
-			local aspect = realterrain.get_aspect(neighbors)
-			--print("aspect "..aspect)
-			--set the node to the symbology node for this aspect
-			local slice = 22.5
-			local color
-			
-			if aspect > 360 - slice or aspect <= slice then color = "aspect1"
-			elseif aspect <= slice * 3 then color = "aspect2"
-			elseif aspect <= slice * 5 then color = "aspect3"
-			elseif aspect <= slice * 7 then color = "aspect4"
-			elseif aspect <= slice * 9 then color = "aspect5"
-			elseif aspect <= slice * 11 then color = "aspect6"
-			elseif aspect <= slice * 13 then color = "aspect7"
-			elseif aspect <= slice * 15 then color = "aspect8" end
-			
-			--print(aspect..":"..color)
-			return cids[color]
-		end
-	--end
-	--return false
-end
+
 --for now we are going to assume 32 bit signed elevation pixels
 --and a header offset of
 
-function realterrain.get_pixel(x,z)
+function realterrain.get_pixel(x,z, elev_only)
 	local e, b, w, r = 0,0,0,0
     local row,col = 0 - z + tonumber(realterrain.settings.zoffset), 0 + x - tonumber(realterrain.settings.xoffset)
 	--adjust for x and z scales
@@ -580,28 +527,32 @@ function realterrain.get_pixel(x,z)
     if ((col < 0) or (col > width) or (row < 0) or (row > length)) then return 0,0,0,0 end
     
     e = dem:get_pixel(col, row)
-    --print("raw e: "..e)
-	if biomeimage then b = math.floor(biomeimage:get_pixel(col, row) * (2^8 )) end --assume an 8-bit biome file
-	if waterimage then w = math.ceil(waterimage:get_pixel(col, row) ) end --any non-zero value
-	if roadimage  then r = math.ceil(roadimage:get_pixel(col, row) ) end --any non-zero value
-	
-    --adjust for bit depth and vscale
+	--print("raw e: "..e)
+	--adjust for bit depth and vscale
     e = math.floor(e * (2^tonumber(realterrain.settings.bits))) --@todo change when magick autodetects bit depth
     e = math.floor((e / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
+	
+    if elev_only then
+		return e
+	else
+		if biomeimage then b = math.floor(biomeimage:get_pixel(col, row) * (2^8 )) end --assume an 8-bit biome file
+		if waterimage then w = math.ceil(waterimage:get_pixel(col, row) ) end --any non-zero value
+		if roadimage  then r = math.ceil(roadimage:get_pixel(col, row) ) end --any non-zero value
+	end
+    
     
 	--print("elev: "..e..", biome: "..b..", water: "..w..", road: "..r)
     return e, b, w, r
 end
 
 --this funcion gets the hieght needed to fill below a node for surface-only modes
-function realterrain.fill_below(pos, heightmap)
-	local neighbors = {}
+function realterrain.fill_below(x,z,heightmap)
 	local height = 0
-	local elev = heightmap[pos.z][pos.x].elev
+	local elev = heightmap[z][x].elev
 	for dir, offset in next, neighborhood do
 		--get elev for all surrounding nodes
 		if dir == "b" or dir == "d" or dir == "f" or dir == "h" then
-			local nelev = heightmap[pos.z+offset.z][pos.x+offset.x].elev
+			local nelev = heightmap[z+offset.z][x+offset.x].elev
 			-- if the neighboring height is more than one down, check if it is the furthest down
 			if elev > ( nelev + 1) and height < (elev-nelev+1) then
 				height = elev - nelev + 1
@@ -743,7 +694,7 @@ function realterrain.show_rc_form(pname)
 		f_images = f_images .. v .. ","
 	end
 	local modes = {}
-	modes["normal"]="1"; modes["slope"]="2"; modes["aspect"]="3"
+	modes["normal"]="1"; modes["surface"] = "2"; modes["slope"]="3"; modes["aspect"]="4";
 	--print("IMAGES in DEM folder: "..f_images)
     --form header
 	local f_header = 			"size[14,10]" ..
@@ -788,7 +739,7 @@ function realterrain.show_rc_form(pname)
                                 "label[6,8.5;Apply changes]"..
 								"button_exit[6,9;2,1;exit;Apply]"..
 								"label[9,8.5;Raster Mode]"..
-								"dropdown[9,9;2,1;output;normal,slope,aspect;"..modes[realterrain.settings.output].."]"
+								"dropdown[9,9;2,1;output;normal,surface,slope,aspect;"..modes[realterrain.settings.output].."]"
     
     minetest.show_formspec(pname, "realterrain:rc_form", 
                         f_header ..
