@@ -4,7 +4,7 @@ RASTERS = MODPATH .. "/rasters/"
 SCHEMS = MODPATH .. "/schems/"
 local realterrain = {}
 realterrain.settings = {}
-
+local magick, imlib2
 local ie = minetest.request_insecure_environment()
 
 --[[ie.require "luarocks.loader"
@@ -12,12 +12,17 @@ local magick = ie.require "magick"--]]
 
 package.path = (MODPATH.."/lua-imagesize-1.2/?.lua;"..package.path)
 local imagesize = ie.require "imagesize"
+--[[
+package.path = (MODPATH.."/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
+local python = ie.require "python"
+]]
 
-package.path = (MODPATH.."/lunatic-python-1.0/?.lua;"..package.path)
-local python = ie.require "imagesize"
-
+--ONLY RUN ONE OF MAGICK OR IMLIB2 AT ANY TIME
 package.path = (MODPATH.."/magick/?.lua;"..MODPATH.."/magick/?/init.lua;"..package.path)
-local magick = ie.require "magick"
+local magick = ie.require "magick"--]]
+
+--[[package.path = (MODPATH.."/lua-imlib2/?.lua;"..package.path)
+local imlib2 = ie.require "imlib2"--]]
 
 --defaults
 realterrain.settings.output = "normal"
@@ -285,16 +290,27 @@ function realterrain.get_idx(haystack, needle)
 	end
 	return 0
 end
+local imageload
+if magick then imageload = magick.load_image
+elseif imlib2 then imageload = imlib2.image.load
+end
 
 --@todo fail if there is no DEM?
-local dem = magick.load_image(RASTERS..realterrain.settings.filedem)
-local width = dem:get_width()
-local length = dem:get_height()
---print("width: "..width..", height: "..length)
+local dem = imageload(RASTERS..realterrain.settings.filedem)
+--local dem = magick.load_image(RASTERS..realterrain.settings.filedem)
+local width, height
+--print("here")
+if dem then 
+	width = dem:get_width()
+	length = dem:get_height()
+	--local depth = dem:get_option("ImageProperty", "depth")-- @todo need to find correct syntax for this
+	--print("depth: "..depth)
+	--print("width: "..width..", height: "..length)
+else error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder") end
 local biomeimage, waterimage, roadimage
-biomeimage = magick.load_image(RASTERS..realterrain.settings.filebiome)
-waterimage = magick.load_image(RASTERS..realterrain.settings.filewater)
-roadimage  = magick.load_image(RASTERS..realterrain.settings.fileroads)
+biomeimage = imageload(RASTERS..realterrain.settings.filebiome)
+waterimage = imageload(RASTERS..realterrain.settings.filewater)
+roadimage  = imageload(RASTERS..realterrain.settings.fileroads)
 --@todo throw warning if image sizes do not match the dem size
 
 -- Set mapgen parameters
@@ -321,7 +337,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_gravel = minetest.get_content_id("default:gravel")
 	local c_stone  = minetest.get_content_id("default:stone")
 	local c_sand   = minetest.get_content_id("default:sand")
-	local c_water  = minetest.get_content_id("default:water_source")
+	local c_water  = minetest.get_content_id("realterrain:water_static")
 	local c_dirt   = minetest.get_content_id("default:dirt")
 	local c_coal   = minetest.get_content_id("default:stone_with_coal")
 	local c_cobble = minetest.get_content_id("default:cobble")
@@ -526,18 +542,42 @@ function realterrain.get_pixel(x,z, elev_only)
     --off the dem return zero for all values
     if ((col < 0) or (col > width) or (row < 0) or (row > length)) then return 0,0,0,0 end
     
-    e = dem:get_pixel(col, row)
+	if magick then
+		e = math.floor(dem:get_pixel(col, row) * (2^tonumber(realterrain.settings.bits))) --@todo change when magick autodetects bit depth
+	elseif imlib2 then
+		e = dem:get_pixel(col, row).red
+	end
 	--print("raw e: "..e)
-	--adjust for bit depth and vscale
-    e = math.floor(e * (2^tonumber(realterrain.settings.bits))) --@todo change when magick autodetects bit depth
+	--adjust for offset and scale
     e = math.floor((e / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
 	
     if elev_only then
 		return e
 	else
-		if biomeimage then b = math.floor(biomeimage:get_pixel(col, row) * (2^8 )) end --assume an 8-bit biome file
-		if waterimage then w = math.ceil(waterimage:get_pixel(col, row) ) end --any non-zero value
-		if roadimage  then r = math.ceil(roadimage:get_pixel(col, row) ) end --any non-zero value
+		if biomeimage then
+			if magick then
+				 --assume an 8-bit biome file
+				b = math.floor(biomeimage:get_pixel(col, row) * (2^8 ))
+			elseif imlib2 then
+				b = biomeimage:get_pixel(col, row).red
+			end
+		end
+		if waterimage then
+			if magick then
+				 --any non-zero
+				w = math.ceil(waterimage:get_pixel(col, row) * (2^8 ))
+			elseif imlib2 then
+				w = waterimage:get_pixel(col, row).red
+			end
+		end
+		if roadimage then
+			if magick then
+				 --any non-zero
+				w = math.ceil(roadimage:get_pixel(col, row) * (2^8 ))
+			elseif imlib2 then
+				w = roadimage:get_pixel(col, row).red
+			end
+		end
 	end
     
     
