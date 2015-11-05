@@ -303,7 +303,7 @@ local width, height
 if dem then 
 	width = dem:get_width()
 	length = dem:get_height()
-	--local depth = dem:get_option("ImageProperty", "depth")-- @todo need to find correct syntax for this
+	--local depth = dem:get_depth()-- @todo need to find correct syntax for this
 	--print("depth: "..depth)
 	--print("width: "..width..", height: "..length)
 else error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder") end
@@ -355,7 +355,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground), shrub=minetest.get_content_id(realterrain.settings.b9shrub)}
 	
 	--register cids for SLOPE mode
-	if mode == "slope" then
+	if mode == "slope" or mode == "curvature" then
 		--cids for symbology nodetypes
 		for k, code in next, slopecolors do
 			cids["slope"..k] = minetest.get_content_id("realterrain:".."slope"..k)
@@ -460,7 +460,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				vi = vi + ystridevm
 			end --end y iteration
 		--if raster output then display only that
-		elseif mode == "slope" or mode == "aspect" then
+		elseif mode == "slope" or mode == "aspect" or mode == "curvature" then
 			local vi = area:index(x, y0, z) -- voxelmanip index
 			for y = y0, y1 do
 				local elev = heightmap[z][x].elev
@@ -505,6 +505,20 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							elseif aspect <= slice * 13 then color = "aspect7"
 							elseif aspect <= slice * 15 then color = "aspect8" end
 							--print(aspect..":"..color)
+							data[vi] = cids[color]
+						elseif mode == "curvature" then
+							local curve = realterrain.get_curvature(neighbors)
+							--print("raw curvature: "..curve)
+							if curve < -4 then color = "slope1"
+							elseif curve < -3 then color = "slope2"
+							elseif curve < -2 then color = "slope3"
+							elseif curve < -1 then color = "slope4"
+							elseif curve < 0 then color = "slope5"
+							elseif curve > 4 then color = "slope10"
+							elseif curve > 3 then color = "slope9"
+							elseif curve > 2 then color = "slope8"
+							elseif curve > 1 then color = "slope7"
+							elseif curve >= 0 then color = "slope6" end
 							data[vi] = cids[color]
 						end
 					end
@@ -639,6 +653,23 @@ function realterrain.get_aspect(n, rad)
 		return math.floor(cell + 0.5)
 	end
 end
+
+function realterrain.get_curvature(n)
+	local curve
+	--[[local A,B,C,D,E,F,G,H,I --terms for polynomial
+	A = ((n.a + n.c + n.g + n.i) / 4  - (n.b + n.d + n.f + n.h) / 2 + n.e) -- / L^4 (cell size)
+	B = ((n.a + n.c - n.g - n.i) /4 - (n.b - n.h) /2) -- / L^3
+	C = ((-n.a + n.c - n.g + n.i) /4 + (n.d - n.f) /2) -- / L^3--]]
+	local D = ((n.d + n.f) /2 - n.e) -- / L^2
+	local E = ((n.b + n.h) /2 - n.e) -- / L^2
+	--[[F = (-n.a + n.c + n.g - n.i) -- / 4L^2
+	G = (-n.d + n.f) -- / 2^L
+	H = (n.b - n.h) -- / 2^L
+	I = n.e--]]
+	curve = -2*(D + E) -- * 100
+	return curve
+end
+
 -- the controller for changing map settings
 minetest.register_tool("realterrain:remote" , {
 	description = "Realterrain Settings",
@@ -734,7 +765,8 @@ function realterrain.show_rc_form(pname)
 		f_images = f_images .. v .. ","
 	end
 	local modes = {}
-	modes["normal"]="1"; modes["surface"] = "2"; modes["slope"]="3"; modes["aspect"]="4";
+	modes["normal"]="1"; modes["surface"] = "2"; modes["slope"]="3";
+	modes["aspect"]="4"; modes["curvature"]="5";
 	--print("IMAGES in DEM folder: "..f_images)
     --form header
 	local f_header = 			"size[14,10]" ..
@@ -779,7 +811,7 @@ function realterrain.show_rc_form(pname)
                                 "label[6,8.5;Apply changes]"..
 								"button_exit[6,9;2,1;exit;Apply]"..
 								"label[9,8.5;Raster Mode]"..
-								"dropdown[9,9;2,1;output;normal,surface,slope,aspect;"..modes[realterrain.settings.output].."]"
+								"dropdown[9,9;2,1;output;normal,surface,slope,aspect,curvature;"..modes[realterrain.settings.output].."]"
     
     minetest.show_formspec(pname, "realterrain:rc_form", 
                         f_header ..
