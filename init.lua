@@ -39,6 +39,8 @@ realterrain.settings.filedem   = 'dem.tif'
 realterrain.settings.filewater = 'water.tif'
 realterrain.settings.fileroads = 'roads.tif'
 realterrain.settings.filebiome = 'biomes.tif'
+realterrain.settings.filedist = 'water.tif'
+realterrain.settings.dist_lim = 30
 
 --default biome (no biome)
 realterrain.settings.b0ground = "default:dirt_with_grass"
@@ -311,6 +313,7 @@ local biomeimage, waterimage, roadimage
 biomeimage = imageload(RASTERS..realterrain.settings.filebiome)
 waterimage = imageload(RASTERS..realterrain.settings.filewater)
 roadimage  = imageload(RASTERS..realterrain.settings.fileroads)
+distimage  = imageload(RASTERS..realterrain.settings.filedist)
 --@todo throw warning if image sizes do not match the dem size
 
 -- Set mapgen parameters
@@ -355,7 +358,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground), shrub=minetest.get_content_id(realterrain.settings.b9shrub)}
 	
 	--register cids for SLOPE mode
-	if mode == "slope" or mode == "curvature" then
+	if mode == "slope" or mode == "curvature" or mode == "distance" then
 		--cids for symbology nodetypes
 		for k, code in next, slopecolors do
 			cids["slope"..k] = minetest.get_content_id("realterrain:".."slope"..k)
@@ -471,7 +474,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					vi = vi + ystridevm
 				end --end y iteration
 			--if raster output then display only that
-			elseif mode == "slope" or mode == "aspect" or mode == "curvature" then
+			elseif mode == "slope" or mode == "aspect" or mode == "curvature" or mode == "distance" then
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					local elev
@@ -535,6 +538,21 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								elseif curve > 1 then color = "slope7"
 								elseif curve >= 0 then color = "slope6" end
 								data[vi] = cids[color]
+							elseif mode == "distance" then
+								local distance = realterrain.get_distance(x,y,z)
+								--print("distance: "..distance)
+								if distance < 5 then color = "slope1"
+								elseif distance < 10 then color = "slope2"
+								elseif distance < 15 then color = "slope3"
+								elseif distance < 20 then color = "slope4"
+								elseif distance < 25 then color = "slope5"
+								elseif distance < 30 then color = "slope6"
+								elseif distance < 35 then color = "slope7"
+								elseif distance < 40 then color = "slope8"
+								elseif distance < 42 then color = "slope9"
+								elseif distance >= 42 then color = "slope10" end
+								--print("distance: "..distance)
+								data[vi] = cids[color]							
 							end
 							local height = realterrain.fill_below(x,z,heightmap)
 							if height > 0 then
@@ -609,7 +627,7 @@ function realterrain.get_pixel(x,z, elev_only)
 		if waterimage then
 			if magick then
 				 --any non-zero
-				w = math.ceil(waterimage:get_pixel(col, row) * (2^8 ))
+				w = math.ceil(waterimage:get_pixel(col, row) --[[* (2^8 )]])
 			elseif imlib2 then
 				w = waterimage:get_pixel(col, row).red
 			end
@@ -617,9 +635,9 @@ function realterrain.get_pixel(x,z, elev_only)
 		if roadimage then
 			if magick then
 				 --any non-zero
-				w = math.ceil(roadimage:get_pixel(col, row) * (2^8 ))
+				r = math.ceil(roadimage:get_pixel(col, row) --[[* (2^8 )]])
 			elseif imlib2 then
-				w = roadimage:get_pixel(col, row).red
+				r = roadimage:get_pixel(col, row).red
 			end
 		end
 	end
@@ -701,6 +719,47 @@ function realterrain.get_curvature(n)
 	I = n.e--]]
 	curve = -2*(D + E) -- * 100
 	return curve
+end
+
+function realterrain.get_distance(x,y,z)
+	local limit = realterrain.settings.dist_lim
+    --off the dem return false
+    --if ((col < 0) or (col > width) or (row < 0) or (row > length)) then return false end
+
+	local results = {}
+	--buid a square around the search pixel
+	for i=x-limit, x+limit, 1 do
+		for j=z-limit, z+limit, 1 do
+			local value
+			local row = 0 - j + tonumber(realterrain.settings.zoffset)
+			local col = 0 + i - tonumber(realterrain.settings.xoffset)
+			--adjust for x and z scales
+			row = math.floor(row / tonumber(realterrain.settings.zscale))
+			col = math.floor(col / tonumber(realterrain.settings.xscale))
+			
+			if magick then
+				--any non-zero
+				value = math.ceil(distimage:get_pixel(col, row) --[[* (2^8 )]])
+			elseif imlib2 then
+				value = distimage:get_pixel(col, row).red
+			end
+			if value > 0 then
+				table.insert(results, {x=i-x, z=j-z})
+			end
+		end
+	end
+	
+	local shortest = math.sqrt((limit^2) + (limit^2))
+    for k,v in next, results do
+		local distance = math.sqrt((v.x^2)+(v.z^2))
+		--print("candidate: "..distance)
+		if distance < shortest then
+			shortest = distance
+			--print("shorter found: "..shortest)
+		end
+	end
+	--print("distance: "..shortest)
+	return shortest
 end
 
 -- the controller for changing map settings
@@ -799,7 +858,7 @@ function realterrain.show_rc_form(pname)
 	end
 	local modes = {}
 	modes["normal"]="1"; modes["surface"] = "2"; modes["slope"]="3";
-	modes["aspect"]="4"; modes["curvature"]="5";
+	modes["aspect"]="4"; modes["curvature"]="5"; modes["distance"]="6";
 	--print("IMAGES in DEM folder: "..f_images)
     --form header
 	local f_header = 			"size[14,10]" ..
@@ -837,14 +896,17 @@ function realterrain.show_rc_form(pname)
                                 "label[6,5.5;Road File]"..
 								"dropdown[6,6;4,1;fileroads;"..f_images..";"..
 									realterrain.get_idx(images, realterrain.get_setting("fileroads")) .."]"..
+								"label[6,7;Distance File]"..
+								"dropdown[6,7.5;4,1;filedist;"..f_images..";"..
+									realterrain.get_idx(images, realterrain.get_setting("filedist")) .."]"..
 								"button_exit[10,3;2,1;exit;Biomes]"
 	--Action buttons
-	local f_footer = 			"label[2,8.5;Reset the map]"..
-								"button_exit[2,9;2,1;exit;Delete]"..
+	local f_footer = 			--[["label[2,8.5;Reset the map]"..
+								"button_exit[2,9;2,1;exit;Delete]"..]]
                                 "label[6,8.5;Apply changes]"..
 								"button_exit[6,9;2,1;exit;Apply]"..
 								"label[9,8.5;Raster Mode]"..
-								"dropdown[9,9;2,1;output;normal,surface,slope,aspect,curvature;"..modes[realterrain.settings.output].."]"
+								"dropdown[9,9;2,1;output;normal,surface,slope,aspect,curvature,distance;"..modes[realterrain.settings.output].."]"
     
     minetest.show_formspec(pname, "realterrain:rc_form", 
                         f_header ..
