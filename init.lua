@@ -383,149 +383,173 @@ minetest.register_on_generated(function(minp, maxp, seed)
 		if not heightmap[z] then heightmap[z] = {} end
 		for x=x0-1,x1+1 do
 			local elev, biome, water, road = realterrain.get_pixel(x,z)
-			heightmap[z][x] = {elev=elev, biome=biome, water=water, road=road }
+			if elev then 
+				heightmap[z][x] = {elev=elev, biome=biome, water=water, road=road }
+			end
 		end
 	end
 	--print(dump(heightmap))
 	for z = z0, z1 do
 	for x = x0, x1 do
-		--normal mapgen for gameplay and exploration -- not raster analysis output
-		if mode == "normal" or mode == "surface" then
-			local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
-			local biome = heightmap[z][x].biome
-			local water = heightmap[z][x].water
-			local road = heightmap[z][x].road
-			
-			--print("elev: "..elev..", biome: "..biome..", water: "..water..", road: "..road)
-			
-			local ground, tree, tprob, shrub, sprob
-			ground = cids[biome].ground
-			tree = realterrain.get_setting("b"..biome.."tree")
-			tprob = tonumber(realterrain.get_setting("b"..biome.."tprob"))
-			shrub = cids[biome].shrub
-			sprob = tonumber(realterrain.get_setting("b"..biome.."sprob"))
-			
-			local vi = area:index(x, y0, z) -- voxelmanip index
-			for y = y0, y1 do
-				--underground layers
-				if y < elev and mode == "normal" then 
-					--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
-					if y < elev - (30 + math.random(1,5)) then
-						data[vi] = c_stone
-					elseif y < elev - (25 + math.random(1,5)) then
-						data[vi] = c_gravel
-					elseif y < elev - (20 + math.random(1,5)) then
-						data[vi] = c_sand
-					elseif y < elev - (15 + math.random(1,5)) then
-						data[vi] = c_coal
-					elseif y < elev - (10 + math.random(1,5)) then
-						data[vi] = c_stone
-					elseif y < elev - (5 + math.random(1,5)) then
-						data[vi] = c_sand
-					else
-						data[vi] = ground
-					end
-				--the surface layer, determined by the different cover files
-				elseif y == elev then
-					--roads
-					if road > 0 then
-						data[vi] = c_cobble
-					 --rivers and lakes
-					elseif water > 0 then
-						data[vi] = c_water
-					--biome cover
-					else
-						--sand for lake bottoms
-						if y < tonumber(realterrain.settings.waterlevel) then
-							data[vi] = c_sand
-						--alpine level
-						elseif y > tonumber(realterrain.settings.alpinelevel) + math.random(1,5) then 
+		if heightmap[z] and heightmap[z][x] then
+			--normal mapgen for gameplay and exploration -- not raster analysis output
+			if mode == "normal" or mode == "surface" then
+				local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
+				local biome = heightmap[z][x].biome
+				local water = heightmap[z][x].water
+				local road = heightmap[z][x].road
+				
+				--print("elev: "..elev..", biome: "..biome..", water: "..water..", road: "..road)
+				
+				local ground, tree, tprob, shrub, sprob
+				ground = cids[biome].ground
+				tree = realterrain.get_setting("b"..biome.."tree")
+				tprob = tonumber(realterrain.get_setting("b"..biome.."tprob"))
+				shrub = cids[biome].shrub
+				sprob = tonumber(realterrain.get_setting("b"..biome.."sprob"))
+				
+				local vi = area:index(x, y0, z) -- voxelmanip index
+				for y = y0, y1 do
+					--underground layers
+					if y < elev and mode == "normal" then 
+						--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
+						if y < elev - (30 + math.random(1,5)) then
+							data[vi] = c_stone
+						elseif y < elev - (25 + math.random(1,5)) then
 							data[vi] = c_gravel
-						--default
+						elseif y < elev - (20 + math.random(1,5)) then
+							data[vi] = c_sand
+						elseif y < elev - (15 + math.random(1,5)) then
+							data[vi] = c_coal
+						elseif y < elev - (10 + math.random(1,5)) then
+							data[vi] = c_stone
+						elseif y < elev - (5 + math.random(1,5)) then
+							data[vi] = c_sand
 						else
 							data[vi] = ground
 						end
+					--the surface layer, determined by the different cover files
+					elseif y == elev then
+						--roads
+						if road > 0 then
+							data[vi] = c_cobble
+						 --rivers and lakes
+						elseif water > 0 then
+							data[vi] = c_water
+						--biome cover
+						else
+							--sand for lake bottoms
+							if y < tonumber(realterrain.settings.waterlevel) then
+								data[vi] = c_sand
+							--alpine level
+							elseif y > tonumber(realterrain.settings.alpinelevel) + math.random(1,5) then 
+								data[vi] = c_gravel
+							--default
+							else
+								data[vi] = ground
+							end
+						end
+						if mode == "surface" then
+							local height = realterrain.fill_below(x,z,heightmap)
+							if height > 0 then
+								for i=1, height, 1 do
+									data[vi-(i*ystridevm)] = data[vi]
+								end
+							end
+						end
+					--shrubs and trees one block above the ground
+					elseif y == elev + 1 and water == 0 and road == 0 then
+						if shrub and math.random(0,100) <= sprob then
+							data[vi] = shrub
+						end
+						if tree and y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5) and math.random(0,100) <= tprob then
+							table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree})
+						end
+					elseif y <= tonumber(realterrain.settings.waterlevel) then
+						data[vi] = c_water
 					end
-				--shrubs and trees one block above the ground
-				elseif y == elev + 1 and water == 0 and road == 0 then
-					if shrub and math.random(0,100) <= sprob then
-						data[vi] = shrub
-					end
-					if tree and y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5) and math.random(0,100) <= tprob then
-						table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree})
-					end
-				elseif y <= tonumber(realterrain.settings.waterlevel) then
-					data[vi] = c_water
-				end
-				vi = vi + ystridevm
-			end --end y iteration
-		--if raster output then display only that
-		elseif mode == "slope" or mode == "aspect" or mode == "curvature" then
-			local vi = area:index(x, y0, z) -- voxelmanip index
-			for y = y0, y1 do
-				local elev = heightmap[z][x].elev
-				if y == elev then
-					local neighbors = {}
-					neighbors["e"] = y
-					local edge_case = false
-					for dir, offset in next, neighborhood do
-						--get elev for all surrounding nodes
-						elev = heightmap[z+offset.z][x+offset.x].elev
-						if elev then
-							neighbors[dir] = elev
-						else --edge case, need to abandon this pixel for slope
-							edge_case = true
+					vi = vi + ystridevm
+				end --end y iteration
+			--if raster output then display only that
+			elseif mode == "slope" or mode == "aspect" or mode == "curvature" then
+				local vi = area:index(x, y0, z) -- voxelmanip index
+				for y = y0, y1 do
+					local elev
+					elev = heightmap[z][x].elev
+					if y == elev then
+						local neighbors = {}
+						neighbors["e"] = y
+						local edge_case = false
+						for dir, offset in next, neighborhood do
+							--get elev for all surrounding nodes
+							local nelev
+							if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x]then
+								nelev = heightmap[z+offset.z][x+offset.x].elev
+							end
+							if nelev then
+								neighbors[dir] = nelev
+							else --edge case, need to abandon this pixel for slope
+								edge_case = true
+							end
+						end
+						if not edge_case then
+							local color
+							if mode == "slope" then
+								local slope = realterrain.get_slope(neighbors)
+								if slope < 1 then color = "slope1"
+								elseif slope < 2 then color = "slope2"
+								elseif slope < 5 then color = "slope3"
+								elseif slope < 10 then color = "slope4"
+								elseif slope < 15 then color = "slope5"
+								elseif slope < 20 then color = "slope6"
+								elseif slope < 30 then color = "slope7"
+								elseif slope < 45 then color = "slope8"
+								elseif slope < 60 then color = "slope9"
+								elseif slope >= 60 then color = "slope10" end
+								--print("slope: "..slope)
+								data[vi] = cids[color]							
+							elseif mode == "aspect" then
+								local aspect = realterrain.get_aspect(neighbors)
+								local slice = 22.5
+								if aspect > 360 - slice or aspect <= slice then color = "aspect1"
+								elseif aspect <= slice * 3 then color = "aspect2"
+								elseif aspect <= slice * 5 then color = "aspect3"
+								elseif aspect <= slice * 7 then color = "aspect4"
+								elseif aspect <= slice * 9 then color = "aspect5"
+								elseif aspect <= slice * 11 then color = "aspect6"
+								elseif aspect <= slice * 13 then color = "aspect7"
+								elseif aspect <= slice * 15 then color = "aspect8" end
+								--print(aspect..":"..color)
+								data[vi] = cids[color]
+							elseif mode == "curvature" then
+								local curve = realterrain.get_curvature(neighbors)
+								--print("raw curvature: "..curve)
+								if curve < -4 then color = "slope1"
+								elseif curve < -3 then color = "slope2"
+								elseif curve < -2 then color = "slope3"
+								elseif curve < -1 then color = "slope4"
+								elseif curve < 0 then color = "slope5"
+								elseif curve > 4 then color = "slope10"
+								elseif curve > 3 then color = "slope9"
+								elseif curve > 2 then color = "slope8"
+								elseif curve > 1 then color = "slope7"
+								elseif curve >= 0 then color = "slope6" end
+								data[vi] = cids[color]
+							end
+							local height = realterrain.fill_below(x,z,heightmap)
+							if height > 0 then
+								for i=1, height, 1 do
+									data[vi-(i*ystridevm)] = cids[color]
+								end
+								
+								--table.insert(fillmap, {x=x, y=y, z=z, height=height, nodename=color})
+							end
 						end
 					end
-					if not edge_case then
-						local color
-						if mode == "slope" then
-							local slope = realterrain.get_slope(neighbors)
-							if slope < 1 then color = "slope1"
-							elseif slope < 2 then color = "slope2"
-							elseif slope < 5 then color = "slope3"
-							elseif slope < 10 then color = "slope4"
-							elseif slope < 15 then color = "slope5"
-							elseif slope < 20 then color = "slope6"
-							elseif slope < 30 then color = "slope7"
-							elseif slope < 45 then color = "slope8"
-							elseif slope < 60 then color = "slope9"
-							elseif slope >= 60 then color = "slope10" end
-							--print("slope: "..slope)
-							data[vi] = cids[color]
-						elseif mode == "aspect" then
-							local aspect = realterrain.get_aspect(neighbors)
-							local slice = 22.5
-							if aspect > 360 - slice or aspect <= slice then color = "aspect1"
-							elseif aspect <= slice * 3 then color = "aspect2"
-							elseif aspect <= slice * 5 then color = "aspect3"
-							elseif aspect <= slice * 7 then color = "aspect4"
-							elseif aspect <= slice * 9 then color = "aspect5"
-							elseif aspect <= slice * 11 then color = "aspect6"
-							elseif aspect <= slice * 13 then color = "aspect7"
-							elseif aspect <= slice * 15 then color = "aspect8" end
-							--print(aspect..":"..color)
-							data[vi] = cids[color]
-						elseif mode == "curvature" then
-							local curve = realterrain.get_curvature(neighbors)
-							--print("raw curvature: "..curve)
-							if curve < -4 then color = "slope1"
-							elseif curve < -3 then color = "slope2"
-							elseif curve < -2 then color = "slope3"
-							elseif curve < -1 then color = "slope4"
-							elseif curve < 0 then color = "slope5"
-							elseif curve > 4 then color = "slope10"
-							elseif curve > 3 then color = "slope9"
-							elseif curve > 2 then color = "slope8"
-							elseif curve > 1 then color = "slope7"
-							elseif curve >= 0 then color = "slope6" end
-							data[vi] = cids[color]
-						end
-					end
-				end
-				vi = vi + ystridevm
-			end -- end y iteration
-		end --end mode options
+					vi = vi + ystridevm
+				end -- end y iteration
+			end --end mode options
+		end --end if pixel is in heightmap
 	end
 	end
 	
@@ -538,7 +562,13 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	for k,v in next, treemap do
 		minetest.place_schematic({x=v.pos.x-3,y=v.pos.y,z=v.pos.z-3}, MODPATH.."/schems/"..v.type..".mts", (math.floor(math.random(0,3)) * 90), nil, false)
 	end
-
+	--fill all fills
+	--[[for k,v in next, fillmap do
+		for i=1,v.height, 1 do
+			minetest.set_node({x=v.x, y=v.y-i, z=v.z}, {name="realterrain:"..v.nodename})
+		end
+	end]]
+	
 	local chugent = math.ceil((os.clock() - t0) * 1000)
 	print ("[DEM] "..chugent.." ms  mapchunk ("..cx0..", "..math.floor((y0 + 32) / 80)..", "..cz0..")")
 end)
@@ -553,8 +583,8 @@ function realterrain.get_pixel(x,z, elev_only)
     row = math.floor(row / tonumber(realterrain.settings.zscale))
     col = math.floor(col / tonumber(realterrain.settings.xscale))
     
-    --off the dem return zero for all values
-    if ((col < 0) or (col > width) or (row < 0) or (row > length)) then return 0,0,0,0 end
+    --off the dem return false
+    if ((col < 0) or (col > width) or (row < 0) or (row > length)) then return false end
     
 	if magick then
 		e = math.floor(dem:get_pixel(col, row) * (2^tonumber(realterrain.settings.bits))) --@todo change when magick autodetects bit depth
@@ -606,10 +636,13 @@ function realterrain.fill_below(x,z,heightmap)
 	for dir, offset in next, neighborhood do
 		--get elev for all surrounding nodes
 		if dir == "b" or dir == "d" or dir == "f" or dir == "h" then
-			local nelev = heightmap[z+offset.z][x+offset.x].elev
-			-- if the neighboring height is more than one down, check if it is the furthest down
-			if elev > ( nelev + 1) and height < (elev-nelev+1) then
-				height = elev - nelev + 1
+			
+			if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x] then
+				local nelev = heightmap[z+offset.z][x+offset.x].elev
+				-- if the neighboring height is more than one down, check if it is the furthest down
+				if elev > ( nelev + 1) and height < (elev-nelev+1) then
+					height = elev - nelev + 1
+				end
 			end
 		end
 	end
