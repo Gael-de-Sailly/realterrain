@@ -12,10 +12,11 @@ local magick = ie.require "magick"--]]
 
 package.path = (MODPATH.."/lua-imagesize-1.2/?.lua;"..package.path)
 local imagesize = ie.require "imagesize"
---[[
-package.path = (MODPATH.."/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
-local python = ie.require "python"
-]]
+
+--[[package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*")--]] --may need to explicitly state this
+--[[package.path = (MODPATH.."/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
+local py = ie.require("python", "*")
+py.execute("import grass.script as gscript")--]]
 
 --ONLY RUN ONE OF MAGICK OR IMLIB2 AT ANY TIME
 package.path = (MODPATH.."/magick/?.lua;"..MODPATH.."/magick/?/init.lua;"..package.path)
