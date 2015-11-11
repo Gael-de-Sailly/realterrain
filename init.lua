@@ -16,7 +16,8 @@ local imagesize = ie.require "imagesize"
 --[[package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*")--]] --may need to explicitly state this
 --[[package.path = (MODPATH.."/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
 local py = ie.require("python", "*")
-py.execute("import grass.script as gscript")--]]
+py.execute("import grass.script as gscript")
+py.execute("from osgeo import gdal")--]]
 
 --ONLY RUN ONE OF MAGICK OR IMLIB2 AT ANY TIME
 package.path = (MODPATH.."/magick/?.lua;"..MODPATH.."/magick/?/init.lua;"..package.path)
@@ -35,63 +36,75 @@ realterrain.settings.yoffset = 0
 realterrain.settings.xoffset = 0
 realterrain.settings.zoffset = 0
 realterrain.settings.waterlevel = 0
-realterrain.settings.alpinelevel = 200
-realterrain.settings.filedem   = 'dem.tif'
-realterrain.settings.filewater = 'water.tif'
-realterrain.settings.fileroads = 'roads.tif'
-realterrain.settings.filebiome = 'biomes.tif'
-realterrain.settings.filedist = 'water.tif'
+realterrain.settings.alpinelevel = 1000
+realterrain.settings.filedem   = 'demo/dem.tif'
+realterrain.settings.filewater = 'demo/water.tif'
+realterrain.settings.fileroads = 'demo/roads.tif'
+realterrain.settings.filebiome = 'demo/biomes.tif'
+realterrain.settings.filedist = ''
 realterrain.settings.dist_lim = 30
+realterrain.settings.max_biome = 9
+realterrain.settings.max_water = 9
+realterrain.settings.max_road = 9
 
 --default biome (no biome)
+realterrain.settings.b0val = 0
 realterrain.settings.b0ground = "default:dirt_with_grass"
 realterrain.settings.b0tree = "tree"
 realterrain.settings.b0tprob = 0.3
 realterrain.settings.b0shrub = "default:grass_1"
 realterrain.settings.b0sprob = 5
 
+realterrain.settings.b1val = 10
 realterrain.settings.b1ground = "default:dirt_with_grass"
 realterrain.settings.b1tree = "tree"
 realterrain.settings.b1tprob = 0.3
 realterrain.settings.b1shrub = "default:grass_1"
 realterrain.settings.b1sprob = 5
 
+realterrain.settings.b2val = 20
 realterrain.settings.b2ground = "default:dirt_with_dry_grass"
 realterrain.settings.b2tree = "tree"
 realterrain.settings.b2tprob = 0.3
-realterrain.settings.b2shrub = "default:dry_gass_1"
+realterrain.settings.b2shrub = "default:dry_grass_1"
 realterrain.settings.b2sprob = 5
 
+realterrain.settings.b3val = 30
 realterrain.settings.b3ground = "default:sand"
 realterrain.settings.b3tree = "cactus"
 realterrain.settings.b3tprob = 0.3
 realterrain.settings.b3shrub = "default:dry_grass_1"
 realterrain.settings.b3sprob = 5
 
+realterrain.settings.b4val = 40
 realterrain.settings.b4ground = "default:gravel"
 realterrain.settings.b4tree = "cactus"
 realterrain.settings.b4tprob = 0.3
 realterrain.settings.b4shrub = "default:dry_shrub"
 realterrain.settings.b4sprob = 5
 
+realterrain.settings.b5val = 50
 realterrain.settings.b5ground = "default:clay"
 realterrain.settings.b5tree = ""
 realterrain.settings.b5tprob = 0.3
 realterrain.settings.b5shrub = "default:dry_shrub"
 realterrain.settings.b5sprob = 5
 
+realterrain.settings.b6val = 60
 realterrain.settings.b6ground = "default:stone"
 realterrain.settings.b6tree = ""
 realterrain.settings.b6tprob = 0.3
 realterrain.settings.b6shrub = "default:junglegrass"
 realterrain.settings.b6sprob = 5
 
+realterrain.settings.b7val = 70
 realterrain.settings.b7ground = "default:stone_with_iron"
 realterrain.settings.b7tree = "jungletree"
 realterrain.settings.b7tprob = 0.3
 realterrain.settings.b7shrub = "default:junglegrass"
 realterrain.settings.b7sprob = 5
 
+realterrain.settings.b8val = 80
 realterrain.settings.b8cut = 80
 realterrain.settings.b8ground = "default:stone_with_coal"
 realterrain.settings.b8tree = ""
@@ -99,6 +112,7 @@ realterrain.settings.b8tprob = 0.3
 realterrain.settings.b8shrub = "default:junglegrass"
 realterrain.settings.b8sprob = 5
 
+realterrain.settings.b9val = 90
 realterrain.settings.b9ground = "default:stone_with_copper"
 realterrain.settings.b9tree = "jungletree"
 realterrain.settings.b9tprob = 0.3
@@ -230,7 +244,7 @@ function realterrain.list_images()
 		for filename in io.popen('dir "'..RASTERS..'" /b'):lines() do
 			local im = imagesize.imgsize(RASTERS .. filename)
 			if im then
-				table.insert(list, file)
+				table.insert(list, filename)
 			end
 			im = nil
 		end
@@ -254,8 +268,8 @@ function realterrain.list_schems()
 	--Windows
 		--Open directory look for files, loop through all files 
 		for filename in io.popen('dir "'..SCHEMS..'" /b'):lines() do
-			if string.find(file, ".mts", -4) ~= nil then
-				table.insert(list, string.sub(file, 1, -5))
+			if string.find(filename, ".mts", -4) ~= nil then
+				table.insert(list, string.sub(filename, 1, -5))
 			end
 		end
 		return list
@@ -400,6 +414,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 			if mode == "normal" or mode == "surface" then
 				local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
 				local biome = heightmap[z][x].biome
+				if biome > realterrain.settings.max_biome then biome = 0 end
 				local water = heightmap[z][x].water
 				local road = heightmap[z][x].road
 				
@@ -463,10 +478,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 					--shrubs and trees one block above the ground
 					elseif y == elev + 1 and water == 0 and road == 0 then
-						if shrub and math.random(0,100) <= sprob then
+						if sprob > 0 and shrub and math.random(0,100) <= sprob then
 							data[vi] = shrub
 						end
-						if tree and y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5) and math.random(0,100) <= tprob then
+						if tprob > 0 and tree and y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5) and math.random(0,100) <= tprob then
 							table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree})
 						end
 					elseif y <= tonumber(realterrain.settings.waterlevel) then
@@ -818,7 +833,6 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		--biome config form
 		if formname == "realterrain:biome_config" then
 			if fields.exit == "Apply" then
-				realterrain.init()
 				realterrain.show_rc_form(pname)
 				return true
 			elseif fields.ground then
@@ -924,25 +938,27 @@ function realterrain.show_biome_form(pname)
 		f_schems = f_schems .. v .. ","
 	end
 	
-	local col= {0.01,1.5,4,6,8,9,11,13}
-	local row = {0.7,1.7,2.7,3.7,4.7,5.7,6.7,7.7,8.7,9.7}
+	local col= {0.01,1.2,2,3,5,6,7,11}
 	local f_header = 	"size[14,10]" ..
-						"button_exit["..col[7]..",0.01;2,1;exit;Apply]"..
-						"label["..col[1]..",0.01;Biome]".."label["..col[2]..",0.01;Ground]"..
-						"label["..col[3]..",0.01;Tree]".."label["..col[4]..",0.01;Prob]"..
-						"label["..col[5]..",0.01;Shrub]".."label["..col[6]..",0.01;Prob]"
+						"button_exit["..col[8]..",0.01;2,1;exit;Apply]"..
+						"label["..col[1]..",0.01;Biome]".."label["..(col[2]-0.2)..",0.01;Value]"..
+						"label["..col[3]..",0.01;Ground]"..
+						"label["..col[4]..",0.01;Tree]".."label["..col[5]..",0.01;Prob]"..
+						"label["..col[6]..",0.01;Shrub]".."label["..col[7]..",0.01;Prob]"
 	local f_body = ""
 	for i=0,9,1 do
 		local h = (i +1) * 0.7
 		f_body = f_body ..
 			"label["..col[1]..","..h ..";"..i.."]"..
-			"item_image_button["..(col[2])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."ground")..";ground;"..i.."]"..
-			"dropdown["..col[3]..","..(h-0.3) ..";2,1;b"..i.."tree;"..f_schems..";"..
+			"field["..(col[2])..","..(h)..";1,1;b"..i.."val;;"..
+				realterrain.esc(realterrain.get_setting("b"..i.."val")).."]" ..
+			"item_image_button["..(col[3])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."ground")..";ground;"..i.."]"..
+			"dropdown["..col[4]..","..(h-0.3) ..";2,1;b"..i.."tree;"..f_schems..";"..
 				realterrain.get_idx(schems, realterrain.get_setting("b"..i.."tree")) .."]" ..
-			"field["..(col[4]+0.2)..","..h ..";1,1;b"..i.."tprob;;"..
+			"field["..(col[5]+0.2)..","..h ..";1,1;b"..i.."tprob;;"..
 				realterrain.esc(realterrain.get_setting("b"..i.."tprob")).."]" ..
-			"item_image_button["..(col[5])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."shrub")..";shrub;"..i.."]"..
-			"field["..col[6]..","..h ..";1,1;b"..i.."sprob;;"..
+			"item_image_button["..(col[6])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."shrub")..";shrub;"..i.."]"..
+			"field["..col[7]..","..h ..";1,1;b"..i.."sprob;;"..
 				realterrain.esc(realterrain.get_setting("b"..i.."sprob")).."]"
 	end
 					

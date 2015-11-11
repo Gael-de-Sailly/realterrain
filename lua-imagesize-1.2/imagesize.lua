@@ -37,7 +37,7 @@ function M.imgsize (filename, options)
     options = options or DEFAULT_OPTIONS
 
     local filetype = type(filename)
-    local file, closefile, origoffset
+    local file, closefile, origoffset, err --err added by realterrain maintainers
     if filetype == "string" or filetype == "number" then
         file, err = io.open(filename, "rb")
         if not file then
