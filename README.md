@@ -50,7 +50,7 @@ The biome file is assumed to be 8-bit. pixel values that equate to 1 (or 10-19) 
 A color image can be used for elevation and landcover but only the red channel is used.
 Read the defaults to see what the other biomes equate to in the USGS system, or redefine them in the in-game biome settings tool.
 Using a graphics editor that doesn't do anti-aliasing and preserves exact red channel values is recommended.
-- OR download DEM and USGS landcover/landuse tiles for same the same extent
+- OR download DEM and USGS landcover/landuse tiles for same the same extent. Note, for true 16-bit DEMs you must use magick, not imlib2
 - after you change settings exit the world and delete the map.sqlite in the world folder
 - relaunch the map and enjoy!
 
