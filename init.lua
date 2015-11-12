@@ -161,8 +161,11 @@ minetest.register_node(
 	'realterrain:water_static', {
 		description = "Water that Stays Put",
 		tiles = { 'water_static.png' },
-		light_source = 9,
+		--light_source = 9,
 		groups = {oddly_breakable_by_hand=1},
+		sunlight_propagates = true,
+		--drawtype = "glasslike_framed_optional",
+		post_effect_color = { r=0, g=0, b=128, a=128 },
 		--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
 			local meta = minetest.get_meta(pos)
 			meta:set_string("infotext", "Gis:"..colorcode);
@@ -473,9 +476,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						else
 							data[vi] = ground
 						end
-					--the surface layer, determined by the different cover files
-					elseif y == elev then
-						--sand for lake bottoms
+					--the surface layer, determined by biome value
+					elseif y == elev and (biome ~= 5 or mode == "surface") then
+						--sand for lake bottoms 
 						if y < tonumber(realterrain.settings.waterlevel) then
 							data[vi] = c_sand
 						--alpine level
@@ -609,7 +612,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	vm:write_to_map(data)
 	vm:update_liquids()
 	
-	--place all the trees
+	--place all the trees (schems assumed to be 7x7 bases with tree in center)
 	for k,v in next, treemap do
 		minetest.place_schematic({x=v.pos.x-3,y=v.pos.y,z=v.pos.z-3}, MODPATH.."/schems/"..v.type..".mts", (math.floor(math.random(0,3)) * 90), nil, false)
 	end
