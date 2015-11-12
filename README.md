@@ -16,7 +16,7 @@ Rock strata:
 
 Settings tool (Realterrain Remote)
 
-![screenshot_20151025_071817](https://cloud.githubusercontent.com/assets/12679496/10716053/98fdf0ec-7ae8-11e5-8da7-470b839fdf40.png)
+![screenshot_20151111_171901](https://cloud.githubusercontent.com/assets/12679496/11108071/9a0804ec-8898-11e5-8341-ad211e94f6fc.png)
 
 Biomes tool:
 
@@ -43,9 +43,16 @@ Aspect analysis:
 - launch the game with mod enabled, default settings should work
 - use the Realterrain Remote to change the settings, or
 - edit the mod defaults section (better to use the remote)
-- create greyscale images for heightmap and biomes heightmap is required) these should be the same length and width. The Biomes layer uses USGS landcover classifications and collapses tier two or three to tier one, which means that values from 10-19 are equivalent to 1, 20-29 are equivalent to 2, etc upt to 99. the biome file is assumed to be 8-bit. pixel values that equate to 1 (or 10-19) will paint as roads, and pixel values that equate to biome 5 () will paint as water. A color image can be used for elevation and landcover but only the red channel is used. Read the defaults to see what the other biomes equate to in the USGS system, or redefine them in the in-game biome settings tool.
-- after you change settings exit the world and delete the map.sqlite in the world folder (the Delete button is experimental)
-- enjoy!
+- create greyscale images for heightmap and biomes (only heightmap is required) these should be the same length and width.
+The Biomes layer uses USGS landcover classifications and collapses tier two or three to tier one,
+which means that values from 10-19 are equivalent to 1, 20-29 are equivalent to 2, etc upt to 99.
+The biome file is assumed to be 8-bit. pixel values that equate to 1 (or 10-19) will paint as roads, and pixel values that equate to biome 5 () will paint as water.
+A color image can be used for elevation and landcover but only the red channel is used.
+Read the defaults to see what the other biomes equate to in the USGS system, or redefine them in the in-game biome settings tool.
+Using a graphics editor that doesn't do anti-aliasing and preserves exact red channel values is recommended.
+- OR download DEM and USGS landcover/landuse tiles for same the same extent
+- after you change settings exit the world and delete the map.sqlite in the world folder
+- relaunch the map and enjoy!
 
 ### Upgrading:
 - delete the realterrain.settings file in the world folder, or just create a new world
