@@ -46,10 +46,16 @@ realterrain.settings.dist_lim = 30
 
 --default biome (no biome)
 realterrain.settings.b0ground = "default:dirt_with_grass"
+realterrain.settings.b0ground2 = "default:dirt_with_dry_grass"
+realterrain.settings.b0gprob = 10
 realterrain.settings.b0tree = "tree"
 realterrain.settings.b0tprob = 0.1
+realterrain.settings.b0tree2 = "jungletree"
+realterrain.settings.b0tprob2 = 30
 realterrain.settings.b0shrub = "default:grass_1"
 realterrain.settings.b0sprob = 3
+realterrain.settings.b0shrub2 = "default:dry_shrub"
+realterrain.settings.b0sprob2 = 50
 
 --USGS tier 1 landcover: 1 - URBAN or BUILT-UP
 realterrain.settings.b1ground = "default:cobble"
@@ -380,7 +386,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_cobble = minetest.get_content_id("default:cobble")
 	--biome specific cids
 	local cids = {}
-	cids[0] = {ground=minetest.get_content_id(realterrain.settings.b0ground), shrub=minetest.get_content_id(realterrain.settings.b0shrub)}
+	cids[0] = {ground=minetest.get_content_id(realterrain.settings.b0ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b0ground2),
+			   shrub=minetest.get_content_id(realterrain.settings.b0shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b0shrub2)}
 	cids[1]  = {ground=minetest.get_content_id(realterrain.settings.b1ground), shrub=minetest.get_content_id(realterrain.settings.b1shrub)}
 	cids[2]  = {ground=minetest.get_content_id(realterrain.settings.b2ground), shrub=minetest.get_content_id(realterrain.settings.b2shrub)}
 	cids[3]  = {ground=minetest.get_content_id(realterrain.settings.b3ground), shrub=minetest.get_content_id(realterrain.settings.b3shrub)}
@@ -446,13 +455,19 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				
 				--print("elev: "..elev..", biome: "..biome..", water: "..water..", road: "..road)
 				
-				local ground, tree, tprob, shrub, sprob
+				local ground, ground2, gprob, tree, tprob, tree2, tprob2, shrub, sprob, shrub2, sprob2
 				
 				ground = cids[biome].ground
+				ground2 = cids[biome].ground2
+				gprob = tonumber(realterrain.get_setting("b"..biome.."gprob"))
 				tree = realterrain.get_setting("b"..biome.."tree")
 				tprob = tonumber(realterrain.get_setting("b"..biome.."tprob"))
+				tree2 = realterrain.get_setting("b"..biome.."tree2")
+				tprob2 = tonumber(realterrain.get_setting("b"..biome.."tprob2"))
 				shrub = cids[biome].shrub
 				sprob = tonumber(realterrain.get_setting("b"..biome.."sprob"))
+				shrub2 =cids[biome].shrub2
+				sprob2 = tonumber(realterrain.get_setting("b"..biome.."sprob2")) 
 				--[[if tree then print("biome: "..biome..", ground: "..ground..", tree: "..tree..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
 				else print("biome: "..biome..", ground: "..ground..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
 				end]]
@@ -486,7 +501,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							data[vi] = c_gravel
 						--default
 						else
-							data[vi] = ground
+							--print("ground2: "..ground2..", gprob: "..gprob)
+							if gprob and gprob > 0 and ground2 and math.random(0,100) <= gprob then
+								data[vi] = ground2
+							else
+								data[vi] = ground
+							end
 						end
 						if mode == "surface" then
 							local height = realterrain.fill_below(x,z,heightmap)
@@ -499,10 +519,18 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					--shrubs and trees one block above the ground
 					elseif y == elev + 1 then
 						if sprob > 0 and shrub and math.random(0,100) <= sprob then
-							data[vi] = shrub
+							if sprob2 and sprob2 > 0 and shrub2 and math.random(0,100) <= sprob2 then
+								data[vi] = shrub2
+							else
+								data[vi] = shrub
+							end
 						end
 						if tprob > 0 and tree and y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5) and math.random(0,100) <= tprob then
-							table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree})
+							if tprob2 and tprob2 > 0 and tree2 and math.random(0,100) <= tprob2 then
+								table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree2})
+							else
+								table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree})
+							end
 						end
 					elseif y <= tonumber(realterrain.settings.waterlevel) then
 						data[vi] = c_water --normal minetest water source
