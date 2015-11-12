@@ -43,81 +43,76 @@ realterrain.settings.fileroads = 'demo/roads.tif'
 realterrain.settings.filebiome = 'demo/biomes.tif'
 realterrain.settings.filedist = ''
 realterrain.settings.dist_lim = 30
-realterrain.settings.max_biome = 9
-realterrain.settings.max_water = 9
-realterrain.settings.max_road = 9
 
 --default biome (no biome)
-realterrain.settings.b0val = 0
 realterrain.settings.b0ground = "default:dirt_with_grass"
 realterrain.settings.b0tree = "tree"
-realterrain.settings.b0tprob = 0.3
+realterrain.settings.b0tprob = 0.1
 realterrain.settings.b0shrub = "default:grass_1"
-realterrain.settings.b0sprob = 5
+realterrain.settings.b0sprob = 3
 
-realterrain.settings.b1val = 10
-realterrain.settings.b1ground = "default:dirt_with_grass"
-realterrain.settings.b1tree = "tree"
-realterrain.settings.b1tprob = 0.3
-realterrain.settings.b1shrub = "default:grass_1"
-realterrain.settings.b1sprob = 5
+--USGS tier 1 landcover: 1 - URBAN or BUILT-UP
+realterrain.settings.b1ground = "default:cobble"
+realterrain.settings.b1tree = ""
+realterrain.settings.b1tprob = 0
+realterrain.settings.b1shrub = "default:dry_grass_1"
+realterrain.settings.b1sprob = 0
 
-realterrain.settings.b2val = 20
-realterrain.settings.b2ground = "default:dirt_with_dry_grass"
-realterrain.settings.b2tree = "tree"
-realterrain.settings.b2tprob = 0.3
-realterrain.settings.b2shrub = "default:dry_grass_1"
-realterrain.settings.b2sprob = 5
+--USGS tier 1 landcover: 2 - AGRICULTURAL
+realterrain.settings.b2ground = "default:dirt_with_grass"
+realterrain.settings.b2tree = ""
+realterrain.settings.b2tprob = 0
+realterrain.settings.b2shrub = "default:grass_1"
+realterrain.settings.b2sprob = 10
 
-realterrain.settings.b3val = 30
-realterrain.settings.b3ground = "default:sand"
-realterrain.settings.b3tree = "cactus"
-realterrain.settings.b3tprob = 0.3
+--USGS tier 1 landcover: 3 - RANGELAND
+realterrain.settings.b3ground = "default:dirt_with_dry_grass"
+realterrain.settings.b3tree = "tree"
+realterrain.settings.b3tprob = 0.1
 realterrain.settings.b3shrub = "default:dry_grass_1"
 realterrain.settings.b3sprob = 5
 
-realterrain.settings.b4val = 40
-realterrain.settings.b4ground = "default:gravel"
-realterrain.settings.b4tree = "cactus"
-realterrain.settings.b4tprob = 0.3
-realterrain.settings.b4shrub = "default:dry_shrub"
+--USGS tier 1 landcover: 4 - FOREST
+realterrain.settings.b4ground = "default:dirt_with_grass"
+realterrain.settings.b4tree = "jungletree"
+realterrain.settings.b4tprob = 0.5
+realterrain.settings.b4shrub = "default:junglegrass"
 realterrain.settings.b4sprob = 5
 
-realterrain.settings.b5val = 50
-realterrain.settings.b5ground = "default:clay"
+--USGS tier 1 landcover: 5 - WATER
+realterrain.settings.b5ground = "realterrain:water_static"
 realterrain.settings.b5tree = ""
-realterrain.settings.b5tprob = 0.3
-realterrain.settings.b5shrub = "default:dry_shrub"
-realterrain.settings.b5sprob = 5
+realterrain.settings.b5tprob = 0
+realterrain.settings.b5shrub = "default:grass_1"
+realterrain.settings.b5sprob = 0
 
-realterrain.settings.b6val = 60
-realterrain.settings.b6ground = "default:stone"
+--USGS tier 1 landcover: 6 - WETLAND
+realterrain.settings.b6ground = "default:dirt_with_grass" --@todo add a wetland node
 realterrain.settings.b6tree = ""
-realterrain.settings.b6tprob = 0.3
+realterrain.settings.b6tprob = 0
 realterrain.settings.b6shrub = "default:junglegrass"
-realterrain.settings.b6sprob = 5
+realterrain.settings.b6sprob = 10
 
-realterrain.settings.b7val = 70
-realterrain.settings.b7ground = "default:stone_with_iron"
-realterrain.settings.b7tree = "jungletree"
-realterrain.settings.b7tprob = 0.3
-realterrain.settings.b7shrub = "default:junglegrass"
+--USGS tier 1 landcover: 7 - BARREN
+realterrain.settings.b7ground = "default:sand"
+realterrain.settings.b7tree = "cactus"
+realterrain.settings.b7tprob = 0.2
+realterrain.settings.b7shrub = "default:dry_shrub"
 realterrain.settings.b7sprob = 5
 
-realterrain.settings.b8val = 80
-realterrain.settings.b8cut = 80
-realterrain.settings.b8ground = "default:stone_with_coal"
-realterrain.settings.b8tree = ""
-realterrain.settings.b8tprob = 0.3
-realterrain.settings.b8shrub = "default:junglegrass"
-realterrain.settings.b8sprob = 5
+--USGS tier 1 landcover: 8 - TUNDRA
+realterrain.settings.b8ground = "default:gravel"
+realterrain.settings.b8tree = "snowtree"
+realterrain.settings.b8tprob = 0.1
+realterrain.settings.b8shrub = "default:dry_grass_1"
+realterrain.settings.b8sprob = 2
 
-realterrain.settings.b9val = 90
-realterrain.settings.b9ground = "default:stone_with_copper"
-realterrain.settings.b9tree = "jungletree"
-realterrain.settings.b9tprob = 0.3
-realterrain.settings.b9shrub = "default:junglegrass"
-realterrain.settings.b9sprob = 5
+--USGS tier 1 landcover: PERENNIAL SNOW OR ICE
+realterrain.settings.b9ground = "default:dirt_with_snow"
+realterrain.settings.b9tree = ""
+realterrain.settings.b9tprob = 0
+realterrain.settings.b9shrub = "default:dry_grass_1"
+realterrain.settings.b9sprob = 1
 
 local neighborhood = {}
 neighborhood.a = {x= 1,y= 0,z= 1} -- NW
@@ -251,7 +246,6 @@ function realterrain.list_images()
 		return list
 	end
 end
-
 function realterrain.list_schems()
 	local list = {}
 	if package.config:sub(1,1) == "/" then
@@ -316,6 +310,26 @@ end
 local dem = imageload(RASTERS..realterrain.settings.filedem)
 --local dem = magick.load_image(RASTERS..realterrain.settings.filedem)
 local width, height
+--[[function realterrain.get_unique_values(image, bits)
+	if not bits then bits = 8 end
+	local values={}
+	for j=1, length, 1 do
+		for i=1, width, 1 do
+			local value = image:get_pixel(i,j)
+			if magick then
+				value = math.floor(value * (2^bits))
+			elseif imlib2 then
+				value = value.red
+			end
+			if values[value] then
+				values[value] = values[value] + 1
+			else
+				values[value] = 1
+			end
+		end
+	end
+	return values
+end]]
 --print("here")
 if dem then 
 	width = dem:get_width()
@@ -326,9 +340,11 @@ if dem then
 else error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder") end
 local biomeimage, waterimage, roadimage
 biomeimage = imageload(RASTERS..realterrain.settings.filebiome)
-waterimage = imageload(RASTERS..realterrain.settings.filewater)
-roadimage  = imageload(RASTERS..realterrain.settings.fileroads)
+--print(dump(realterrain.get_unique_values(biomeimage)))
+--[[waterimage = imageload(RASTERS..realterrain.settings.filewater)
+roadimage  = imageload(RASTERS..realterrain.settings.fileroads)]]
 distimage  = imageload(RASTERS..realterrain.settings.filedist)
+
 --@todo throw warning if image sizes do not match the dem size
 
 -- Set mapgen parameters
@@ -400,9 +416,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	for z=z0-1,z1+1 do
 		if not heightmap[z] then heightmap[z] = {} end
 		for x=x0-1,x1+1 do
-			local elev, biome, water, road = realterrain.get_pixel(x,z)
+			local elev, biome = realterrain.get_pixel(x,z)
 			if elev then 
-				heightmap[z][x] = {elev=elev, biome=biome, water=water, road=road }
+				heightmap[z][x] = {elev=elev, biome=biome }
 			end
 		end
 	end
@@ -414,19 +430,29 @@ minetest.register_on_generated(function(minp, maxp, seed)
 			if mode == "normal" or mode == "surface" then
 				local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
 				local biome = heightmap[z][x].biome
-				if biome > realterrain.settings.max_biome then biome = 0 end
-				local water = heightmap[z][x].water
-				local road = heightmap[z][x].road
+				--print(biome)
+				if not biome or biome < 1 then
+					biome = 0
+				elseif biome > 99 then
+					biome = math.floor(biome/100) -- USGS tier3 now tier1
+				elseif biome > 9 then
+					biome = math.floor(biome/10) -- USGS tier2 now tier1
+				else
+					biome = math.floor(biome)
+				end
 				
 				--print("elev: "..elev..", biome: "..biome..", water: "..water..", road: "..road)
 				
 				local ground, tree, tprob, shrub, sprob
+				
 				ground = cids[biome].ground
 				tree = realterrain.get_setting("b"..biome.."tree")
 				tprob = tonumber(realterrain.get_setting("b"..biome.."tprob"))
 				shrub = cids[biome].shrub
 				sprob = tonumber(realterrain.get_setting("b"..biome.."sprob"))
-				
+				--[[if tree then print("biome: "..biome..", ground: "..ground..", tree: "..tree..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
+				else print("biome: "..biome..", ground: "..ground..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
+				end]]
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					--underground layers
@@ -449,24 +475,15 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 					--the surface layer, determined by the different cover files
 					elseif y == elev then
-						--roads
-						if road > 0 then
-							data[vi] = c_cobble
-						 --rivers and lakes
-						elseif water > 0 then
-							data[vi] = c_water
-						--biome cover
+						--sand for lake bottoms
+						if y < tonumber(realterrain.settings.waterlevel) then
+							data[vi] = c_sand
+						--alpine level
+						elseif y > tonumber(realterrain.settings.alpinelevel) + math.random(1,5) then 
+							data[vi] = c_gravel
+						--default
 						else
-							--sand for lake bottoms
-							if y < tonumber(realterrain.settings.waterlevel) then
-								data[vi] = c_sand
-							--alpine level
-							elseif y > tonumber(realterrain.settings.alpinelevel) + math.random(1,5) then 
-								data[vi] = c_gravel
-							--default
-							else
-								data[vi] = ground
-							end
+							data[vi] = ground
 						end
 						if mode == "surface" then
 							local height = realterrain.fill_below(x,z,heightmap)
@@ -477,7 +494,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							end
 						end
 					--shrubs and trees one block above the ground
-					elseif y == elev + 1 and water == 0 and road == 0 then
+					elseif y == elev + 1 then
 						if sprob > 0 and shrub and math.random(0,100) <= sprob then
 							data[vi] = shrub
 						end
@@ -611,7 +628,7 @@ end)
 --and a header offset of
 
 function realterrain.get_pixel(x,z, elev_only)
-	local e, b, w, r = 0,0,0,0
+	local e, b = 0,0
     local row,col = 0 - z + tonumber(realterrain.settings.zoffset), 0 + x - tonumber(realterrain.settings.xoffset)
 	--adjust for x and z scales
     row = math.floor(row / tonumber(realterrain.settings.zscale))
@@ -635,32 +652,18 @@ function realterrain.get_pixel(x,z, elev_only)
 		if biomeimage then
 			if magick then
 				 --assume an 8-bit biome file
-				b = math.floor(biomeimage:get_pixel(col, row) * (2^8 ))
+				b = biomeimage:get_pixel(col, row)
+				--print("raw biome: "..b)
+				b = math.floor(b * (2^8 ))
 			elseif imlib2 then
 				b = biomeimage:get_pixel(col, row).red
-			end
-		end
-		if waterimage then
-			if magick then
-				 --any non-zero
-				w = math.ceil(waterimage:get_pixel(col, row) --[[* (2^8 )]])
-			elseif imlib2 then
-				w = waterimage:get_pixel(col, row).red
-			end
-		end
-		if roadimage then
-			if magick then
-				 --any non-zero
-				r = math.ceil(roadimage:get_pixel(col, row) --[[* (2^8 )]])
-			elseif imlib2 then
-				r = roadimage:get_pixel(col, row).red
 			end
 		end
 	end
     
     
-	--print("elev: "..e..", biome: "..b..", water: "..w..", road: "..r)
-    return e, b, w, r
+	--print("elev: "..e..", biome: "..b)
+    return e, b
 end
 
 --this funcion gets the hieght needed to fill below a node for surface-only modes
@@ -905,13 +908,13 @@ function realterrain.show_rc_form(pname)
 								"label[6,2.5;Biome File]"..
 								"dropdown[6,3;4,1;filebiome;"..f_images..";"..
                                     realterrain.get_idx(images, realterrain.get_setting("filebiome")) .."]" ..
-								"label[6,4;Water File]"..
+								--[["label[6,4;Water File]"..
 								"dropdown[6,4.5;4,1;filewater;"..f_images..";"..
                                     realterrain.get_idx(images, realterrain.get_setting("filewater")) .."]"..
                                 "label[6,5.5;Road File]"..
 								"dropdown[6,6;4,1;fileroads;"..f_images..";"..
 									realterrain.get_idx(images, realterrain.get_setting("fileroads")) .."]"..
-								"label[6,7;Distance File]"..
+								"label[6,7;Distance File]"..]]
 								"dropdown[6,7.5;4,1;filedist;"..f_images..";"..
 									realterrain.get_idx(images, realterrain.get_setting("filedist")) .."]"..
 								"button_exit[10,3;2,1;exit;Biomes]"
@@ -941,7 +944,7 @@ function realterrain.show_biome_form(pname)
 	local col= {0.01,1.2,2,3,5,6,7,11}
 	local f_header = 	"size[14,10]" ..
 						"button_exit["..col[8]..",0.01;2,1;exit;Apply]"..
-						"label["..col[1]..",0.01;Biome]".."label["..(col[2]-0.2)..",0.01;Value]"..
+						"label["..col[1]..",0.01;USGS Biome]"..
 						"label["..col[3]..",0.01;Ground]"..
 						"label["..col[4]..",0.01;Tree]".."label["..col[5]..",0.01;Prob]"..
 						"label["..col[6]..",0.01;Shrub]".."label["..col[7]..",0.01;Prob]"
@@ -950,8 +953,6 @@ function realterrain.show_biome_form(pname)
 		local h = (i +1) * 0.7
 		f_body = f_body ..
 			"label["..col[1]..","..h ..";"..i.."]"..
-			"field["..(col[2])..","..(h)..";1,1;b"..i.."val;;"..
-				realterrain.esc(realterrain.get_setting("b"..i.."val")).."]" ..
 			"item_image_button["..(col[3])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."ground")..";ground;"..i.."]"..
 			"dropdown["..col[4]..","..(h-0.3) ..";2,1;b"..i.."tree;"..f_schems..";"..
 				realterrain.get_idx(schems, realterrain.get_setting("b"..i.."tree")) .."]" ..
