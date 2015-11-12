@@ -80,7 +80,7 @@ realterrain.settings.b4shrub = "default:junglegrass"
 realterrain.settings.b4sprob = 5
 
 --USGS tier 1 landcover: 5 - WATER
-realterrain.settings.b5ground = "realterrain:water_static"
+realterrain.settings.b5ground = "realterrain:water_static" --not normal minetest water, too messy
 realterrain.settings.b5tree = ""
 realterrain.settings.b5tprob = 0
 realterrain.settings.b5shrub = "default:grass_1"
@@ -371,7 +371,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_gravel = minetest.get_content_id("default:gravel")
 	local c_stone  = minetest.get_content_id("default:stone")
 	local c_sand   = minetest.get_content_id("default:sand")
-	local c_water  = minetest.get_content_id("realterrain:water_static")
+	local c_water  = minetest.get_content_id("default:water_source")
 	local c_dirt   = minetest.get_content_id("default:dirt")
 	local c_coal   = minetest.get_content_id("default:stone_with_coal")
 	local c_cobble = minetest.get_content_id("default:cobble")
@@ -502,7 +502,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree})
 						end
 					elseif y <= tonumber(realterrain.settings.waterlevel) then
-						data[vi] = c_water
+						data[vi] = c_water --normal minetest water source
 					end
 					vi = vi + ystridevm
 				end --end y iteration
@@ -874,6 +874,9 @@ function realterrain.show_rc_form(pname)
 	for k,v in next, images do
 		f_images = f_images .. v .. ","
 	end
+	local bits = {}
+	bits["8"] = "1"
+	bits["16"] = "2"
 	local modes = {}
 	modes["normal"]="1"; modes["surface"] = "2"; modes["slope"]="3";
 	modes["aspect"]="4"; modes["curvature"]="5"; modes["distance"]="6";
@@ -881,50 +884,60 @@ function realterrain.show_rc_form(pname)
     --form header
 	local f_header = 			"size[14,10]" ..
 								--"tabheader[0,0;tab;1D, 2D, 3D, Import, Manage;"..tab.."]"..
-								"label[0,0;You are at x= "..math.floor(ppos.x)..
+								"label[6,0;You are at x= "..math.floor(ppos.x)..
 								" y= "..math.floor(ppos.y).." z= "..math.floor(ppos.z).." and mostly facing "..dir.."]"
 	--Scale settings
-	local f_scale_settings =    "field[1,1;4,1;bits;Bit Depth;"..
-                                    realterrain.esc(realterrain.get_setting("bits")).."]" ..
-                                "field[1,2;4,1;yscale;Vertical meters per voxel;"..
+	local f_scale_settings =
+                                "field[1,1;4,1;yscale;Vertical meters per voxel;"..
                                     realterrain.esc(realterrain.get_setting("yscale")).."]" ..
-                                "field[1,3;4,1;xscale;East-West voxels per pixel;"..
+                                "field[1,2;4,1;xscale;East-West voxels per pixel;"..
                                     realterrain.esc(realterrain.get_setting("xscale")).."]" ..
-								"field[1,4;4,1;zscale;North-South voxels per pixel;"..
+								"field[1,3;4,1;zscale;North-South voxels per pixel;"..
                                     realterrain.esc(realterrain.get_setting("zscale")).."]" ..
-								"field[1,5;4,1;waterlevel;Water Level;"..
-                                    realterrain.esc(realterrain.get_setting("waterlevel")).."]"..
-                                "field[1,6;4,1;alpinelevel;Alpine Level;"..
-                                    realterrain.esc(realterrain.get_setting("alpinelevel")).."]"..
-								"field[1,7;4,1;yoffset;Vertical Offset;"..
+								"field[1,4;4,1;yoffset;Vertical Offset;"..
                                     realterrain.esc(realterrain.get_setting("yoffset")).."]" ..
-                                "field[1,8;4,1;xoffset;East Offset;"..
+                                "field[1,5;4,1;xoffset;East Offset;"..
                                     realterrain.esc(realterrain.get_setting("xoffset")).."]" ..
-								"field[1,9;4,1;zoffset;North Offset;"..
+								"field[1,6;4,1;zoffset;North Offset;"..
                                     realterrain.esc(realterrain.get_setting("zoffset")).."]" ..
+								
+								"field[1,8;4,1;waterlevel;Water Level;"..
+                                    realterrain.esc(realterrain.get_setting("waterlevel")).."]"..
+                                "field[1,9;4,1;alpinelevel;Alpine Level;"..
+                                    realterrain.esc(realterrain.get_setting("alpinelevel")).."]"..
+								
 								"label[6,1;Elevation File]"..
 								"dropdown[6,1.5;4,1;filedem;"..f_images..";"..
                                     realterrain.get_idx(images, realterrain.get_setting("filedem")) .."]" ..
-								"label[6,2.5;Biome File]"..
+								"label[10,1;DEM bit-depth]"..
+								"dropdown[10.8,1.5;1,1;bits;8,16;"..
+									bits[realterrain.esc(realterrain.get_setting("bits"))].."]" ..
+								"label[6,2.5;Biome File (8 bit)]"..
 								"dropdown[6,3;4,1;filebiome;"..f_images..";"..
                                     realterrain.get_idx(images, realterrain.get_setting("filebiome")) .."]" ..
+								"button_exit[10,2.9;2,1;exit;Biomes]"..
 								--[["label[6,4;Water File]"..
 								"dropdown[6,4.5;4,1;filewater;"..f_images..";"..
                                     realterrain.get_idx(images, realterrain.get_setting("filewater")) .."]"..
                                 "label[6,5.5;Road File]"..
 								"dropdown[6,6;4,1;fileroads;"..f_images..";"..
-									realterrain.get_idx(images, realterrain.get_setting("fileroads")) .."]"..
-								"label[6,7;Distance File]"..]]
+									realterrain.get_idx(images, realterrain.get_setting("fileroads")) .."]"..]]
+								
+								
+								"label[6,5.5;Raster Mode]"..
+								"dropdown[6,6;4,1;output;normal,surface,slope,aspect,curvature,distance;"..
+									modes[realterrain.settings.output].."]"..
+								"label[6,7;Distance File]"..
 								"dropdown[6,7.5;4,1;filedist;"..f_images..";"..
-									realterrain.get_idx(images, realterrain.get_setting("filedist")) .."]"..
-								"button_exit[10,3;2,1;exit;Biomes]"
+									realterrain.get_idx(images, realterrain.get_setting("filedist")) .."]"
+								
 	--Action buttons
-	local f_footer = 			--[["label[2,8.5;Reset the map]"..
-								"button_exit[2,9;2,1;exit;Delete]"..]]
-                                "label[6,8.5;Apply changes]"..
-								"button_exit[6,9;2,1;exit;Apply]"..
-								"label[9,8.5;Raster Mode]"..
-								"dropdown[9,9;2,1;output;normal,surface,slope,aspect,curvature,distance;"..modes[realterrain.settings.output].."]"
+	local f_footer = 			"label[6,9;After applying, exit world and delete map.sqlite]"..
+								"label[6,9.5;in the world folder before restarting the map]"..
+								--"button_exit[2,9;2,1;exit;Delete]"..
+                                --"label[10,8.5;Apply changes]"..
+								"button_exit[12,9;2,1;exit;Apply]"
+								
     
     minetest.show_formspec(pname, "realterrain:rc_form", 
                         f_header ..

@@ -1,4 +1,4 @@
-# realterrain v.0.0.5
+# realterrain v.0.0.6
 A Minetest mod that brings real world Terrain into the game (using freely available DEM tiles). Any image can actually be used.
 
 use any image any bit-depth (suggested to convert to greyscale first):
@@ -9,8 +9,6 @@ Supplied heightmap and landcover files:
 
 ![dem](https://cloud.githubusercontent.com/assets/12679496/10683910/00078544-78fc-11e5-9806-1c0786b3fa4e.png)
 ![biomes](https://cloud.githubusercontent.com/assets/12679496/10683908/fffbac4c-78fb-11e5-8190-4f0c0561b4b1.png)
-![roads](https://cloud.githubusercontent.com/assets/12679496/10683909/fffec6b6-78fb-11e5-9947-37de7a21d770.png)
-![water](https://cloud.githubusercontent.com/assets/12679496/10683911/000b474c-78fc-11e5-93f8-0aeb228446be.png)
 
 Rock strata:
 
@@ -37,15 +35,15 @@ Aspect analysis:
 ![screenshot_20151031_114215](https://cloud.githubusercontent.com/assets/12679496/10865364/58dbd988-7fc6-11e5-8a7e-75abc31f378d.png)
 
 ### Dependencies:
-- You must have imageMagick and MagickWand installed on your system
+- You must have imageMagick and MagickWand , OR imlib2 installed on your system
 - Mod security disabled
 
 ### Instructions
-- install the dependencies and the mod as usual
+- install the dependencies and the mod as usual (luarocks can be activated if needed)
 - launch the game with mod enabled, default settings should work
 - use the Realterrain Remote to change the settings, or
-- edit the mod defaults section
-- create greyscale images for heightmap, biomes, rivers and roads if desired (heightmap is required) these should be the same length and width. Biomes image should be 8-bit and use pixel values from 0-9 to match the biome numbers, which makes it hard to paint them visually (working on this issue), roads and rivers can be any non-zero value. 
+- edit the mod defaults section (better to use the remote)
+- create greyscale images for heightmap and biomes heightmap is required) these should be the same length and width. The Biomes layer uses USGS landcover classifications and collapses tier two or three to tier one, which means that values from 10-19 are equivalent to 1, 20-29 are equivalent to 2, etc upt to 99. the biome file is assumed to be 8-bit. pixel values that equate to 1 (or 10-19) will paint as roads, and pixel values that equate to biome 5 () will paint as water. A color image can be used for elevation and landcover but only the red channel is used. Read the defaults to see what the other biomes equate to in the USGS system, or redefine them in the in-game biome settings tool.
 - after you change settings exit the world and delete the map.sqlite in the world folder (the Delete button is experimental)
 - enjoy!
 
@@ -62,6 +60,12 @@ Aspect analysis:
 - allow raster symbology to be customized in-game
 
 ### Changelog
+#### 0.0.6
+- biome cover uses absolute values AND ranges which equate exactly to USGS tier system (makes hand painting easier too)
+- small bugfixes and windows compatability
+- early stages of integrating python calls for GDAL and GRASS using lunatic-python (commented out - must be built per install)
+- added some more raster modes, raster symbology nicer and fills in below steep areas
+
 #### 0.0.5
 - improved raster modes symbology and added "aspect"
 - made the biome form fully clickable (image buttons and dropdowns)
