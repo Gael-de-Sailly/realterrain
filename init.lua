@@ -45,14 +45,14 @@ realterrain.settings.filedist = ''
 realterrain.settings.dist_lim = 30
 
 --default biome (no biome)
-realterrain.settings.b0ground = "default:dirt_with_grass"
-realterrain.settings.b0ground2 = "default:dirt_with_dry_grass"
+realterrain.settings.b0ground = "default:dirt_with_dry_grass"
+realterrain.settings.b0ground2 = "default:sand"
 realterrain.settings.b0gprob = 10
 realterrain.settings.b0tree = "tree"
 realterrain.settings.b0tprob = 0.1
-realterrain.settings.b0tree2 = "jungletree"
+realterrain.settings.b0tree2 = "cactus"
 realterrain.settings.b0tprob2 = 30
-realterrain.settings.b0shrub = "default:grass_1"
+realterrain.settings.b0shrub = "default:dry_grass_1"
 realterrain.settings.b0sprob = 3
 realterrain.settings.b0shrub2 = "default:dry_shrub"
 realterrain.settings.b0sprob2 = 50
