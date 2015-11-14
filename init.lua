@@ -7,17 +7,19 @@ realterrain.settings = {}
 local magick, imlib2
 local ie = minetest.request_insecure_environment()
 
---[[ie.require "luarocks.loader"
-local magick = ie.require "magick"--]]
+--ie.require "luarocks.loader"
 
 package.path = (MODPATH.."/lua-imagesize-1.2/?.lua;"..package.path)
 local imagesize = ie.require "imagesize"
 
---[[package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*")--]] --may need to explicitly state this
---[[package.path = (MODPATH.."/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
-local py = ie.require("python", "*")
-py.execute("import grass.script as gscript")
-py.execute("from osgeo import gdal")--]]
+package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*") --may not need to explicitly state this
+package.path = (MODPATH.."/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
+local py = ie.require("python", "*")--]]
+--[[py.execute("import grass.script as gscript")
+py.execute("from osgeo import gdal")]]
+
+--package.path = (MODPATH.."/luasocket/?.lua;"..MODPATH.."/luasocket/?/init.lua;"..package.path)
+--local socket = ie.require "socket"
 
 --ONLY RUN ONE OF MAGICK OR IMLIB2 AT ANY TIME
 package.path = (MODPATH.."/magick/?.lua;"..MODPATH.."/magick/?/init.lua;"..package.path)
@@ -28,7 +30,6 @@ local imlib2 = ie.require "imlib2"--]]
 
 --defaults
 realterrain.settings.output = "normal"
-realterrain.settings.bits = 8 --@todo remove this setting when magick autodetects bitdepth
 realterrain.settings.yscale = 1
 realterrain.settings.xscale = 1
 realterrain.settings.zscale = 1
@@ -37,10 +38,12 @@ realterrain.settings.xoffset = 0
 realterrain.settings.zoffset = 0
 realterrain.settings.waterlevel = 0
 realterrain.settings.alpinelevel = 1000
+
 realterrain.settings.filedem   = 'demo/dem.tif'
-realterrain.settings.filewater = 'demo/water.tif'
-realterrain.settings.fileroads = 'demo/roads.tif'
+realterrain.settings.dembits = 8 --@todo remove this setting when magick autodetects bitdepth
 realterrain.settings.filebiome = 'demo/biomes.tif'
+realterrain.settings.biomebits = 8 --@todo remove this setting when magick autodetects bitdepth
+
 realterrain.settings.filedist = ''
 realterrain.settings.dist_lim = 30
 
@@ -310,51 +313,42 @@ function realterrain.get_idx(haystack, needle)
 	end
 	return 0
 end
-local imageload
-if magick then imageload = magick.load_image
-elseif imlib2 then imageload = imlib2.image.load
-end
-
---@todo fail if there is no DEM?
-local dem = imageload(RASTERS..realterrain.settings.filedem)
---local dem = magick.load_image(RASTERS..realterrain.settings.filedem)
-local width, height
---[[function realterrain.get_unique_values(image, bits)
-	if not bits then bits = 8 end
-	local values={}
-	for j=1, length, 1 do
-		for i=1, width, 1 do
-			local value = image:get_pixel(i,j)
-			if magick then
-				value = math.floor(value * (2^bits))
-			elseif imlib2 then
-				value = value.red
-			end
-			if values[value] then
-				values[value] = values[value] + 1
-			else
-				values[value] = 1
-			end
-		end
-	end
-	return values
-end]]
---print("here")
-if dem then 
-	width = dem:get_width()
-	length = dem:get_height()
-	--local depth = dem:get_depth()-- @todo need to find correct syntax for this
-	--print("depth: "..depth)
-	--print("width: "..width..", height: "..length)
-else error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder") end
-local biomeimage, waterimage, roadimage
-biomeimage = imageload(RASTERS..realterrain.settings.filebiome)
---print(dump(realterrain.get_unique_values(biomeimage)))
---[[waterimage = imageload(RASTERS..realterrain.settings.filewater)
-roadimage  = imageload(RASTERS..realterrain.settings.fileroads)]]
-distimage  = imageload(RASTERS..realterrain.settings.filedist)
 
 --@todo throw warning if image sizes do not match the dem size
+local width, height, dem, biomeimage, distimage
+
+if py then
+	py.execute("import Image")
+	py.execute("dem = Image.open('"..RASTERS..realterrain.settings.filedem.."')")
+	py.execute("biome = Image.open('"..RASTERS..realterrain.settings.filebiome.."')")
+	local pybits = py.eval("dem.mode")
+	py.execute("w, l = dem.size")
+	width = tonumber(tostring(py.eval("w")))
+	length = tonumber(tostring(py.eval("l")))
+	print("[PYTHON] mode: "..pybits..", width: "..width..", length: "..length)
+else
+	local imageload
+	if magick then imageload = magick.load_image
+	elseif imlib2 then imageload = imlib2.image.load
+	end
+	
+	--@todo fail if there is no DEM?
+	dem = imageload(RASTERS..realterrain.settings.filedem)
+	--local dem = magick.load_image(RASTERS..realterrain.settings.filedem)
+	
+	if dem then 
+		width = dem:get_width()
+		length = dem:get_height()
+		--local depth = dem:get_depth()-- @todo need to find correct syntax for this
+		--print("depth: "..depth)
+		--print("width: "..width..", height: "..length)
+	else error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder") end
+	biomeimage = imageload(RASTERS..realterrain.settings.filebiome)
+	--print(dump(realterrain.get_unique_values(biomeimage)))
+	--[[waterimage = imageload(RASTERS..realterrain.settings.filewater)
+	roadimage  = imageload(RASTERS..realterrain.settings.fileroads)]]
+	distimage  = imageload(RASTERS..realterrain.settings.filedist)
+end
 
 -- Set mapgen parameters
 
@@ -489,7 +483,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						elseif y < elev - (5 + math.random(1,5)) then
 							data[vi] = c_sand
 						else
-							data[vi] = ground
+							if biome == 5 then
+								data[vi] = ground
+							else
+								data[vi] = c_dirt
+							end
 						end
 					--the surface layer, determined by biome value
 					elseif y == elev and (biome ~= 5 or mode == "surface") then
@@ -668,8 +666,12 @@ function realterrain.get_pixel(x,z, elev_only)
     --off the dem return false
     if ((col < 0) or (col > width) or (row < 0) or (row > length)) then return false end
     
-	if magick then
-		e = math.floor(dem:get_pixel(col, row) * (2^tonumber(realterrain.settings.bits))) --@todo change when magick autodetects bit depth
+	if py then
+		e = py.eval("dem.getpixel(("..col..","..row.."))") --no bit depth conversion required
+		e = tonumber(tostring(e))
+		--print(e)
+	elseif magick then
+		e = math.floor(dem:get_pixel(col, row) * (2^tonumber(realterrain.settings.dembits))) --@todo change when magick autodetects bit depth
 	elseif imlib2 then
 		e = dem:get_pixel(col, row).red
 	end
@@ -679,13 +681,17 @@ function realterrain.get_pixel(x,z, elev_only)
 	
     if elev_only then
 		return e
+	
+
 	else
-		if biomeimage then
+		if py then
+			b = py.eval("biome.getpixel(("..col..","..row.."))") --no bit depth conversion required
+			b = tonumber(tostring(b))
+		elseif biomeimage then
 			if magick then
-				 --assume an 8-bit biome file
 				b = biomeimage:get_pixel(col, row)
 				--print("raw biome: "..b)
-				b = math.floor(b * (2^8 ))
+				b = math.floor(b * (2^tonumber(realterrain.settings.biomebits) ))
 			elseif imlib2 then
 				b = biomeimage:get_pixel(col, row).red
 			end
@@ -941,8 +947,8 @@ function realterrain.show_rc_form(pname)
 								"dropdown[6,1.5;4,1;filedem;"..f_images..";"..
                                     realterrain.get_idx(images, realterrain.get_setting("filedem")) .."]" ..
 								"label[10,1;DEM bit-depth]"..
-								"dropdown[10.8,1.5;1,1;bits;8,16;"..
-									bits[realterrain.esc(realterrain.get_setting("bits"))].."]" ..
+								"dropdown[10.8,1.5;1,1;dembits;8,16;"..
+									bits[realterrain.esc(realterrain.get_setting("dembits"))].."]" ..
 								"label[6,2.5;Biome File (8 bit)]"..
 								"dropdown[6,3;4,1;filebiome;"..f_images..";"..
                                     realterrain.get_idx(images, realterrain.get_setting("filebiome")) .."]" ..
