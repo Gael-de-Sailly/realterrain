@@ -314,13 +314,14 @@ function realterrain.get_idx(haystack, needle)
 	return 0
 end
 
+-- SELECT the mechanism for loading the image which is later uesed by get_pixel()
 --@todo throw warning if image sizes do not match the dem size
 local width, height, dem, biomeimage, distimage
 
 if py then
 	py.execute("import Image")
 	py.execute("dem = Image.open('"..RASTERS..realterrain.settings.filedem.."')")
-	py.execute("biome = Image.open('"..RASTERS..realterrain.settings.filebiome.."')")
+	py.execute("biomeimage = Image.open('"..RASTERS..realterrain.settings.filebiome.."')")
 	local pybits = py.eval("dem.mode")
 	py.execute("w, l = dem.size")
 	width = tonumber(tostring(py.eval("w")))
@@ -652,12 +653,24 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local chugent = math.ceil((os.clock() - t0) * 1000)
 	print ("[DEM] "..chugent.." ms  mapchunk ("..cx0..", "..math.floor((y0 + 32) / 80)..", "..cz0..")")
 end)
+--the raw get pixel method that uses the selected method and accounts for bit depth
+function realterrain.get_raw_pixel(x,z, image)
+	local v
+	if py then --images for py need to be greyscale
+		v = py.eval(image..".getpixel(("..x..","..z.."))") --no bit depth conversion required
+		v = tonumber(tostring(v))
+		--print(e)
+	elseif magick then
+		v = math.floor(dem:get_pixel(col, row) * (2^tonumber(realterrain.settings.dembits))) --@todo change when magick autodetects bit depth
+	elseif imlib2 then
+		v = dem:get_pixel(col, row).red
+	end
+	return v
+end
 
---for now we are going to assume 32 bit signed elevation pixels
---and a header offset of
-
+--the main get pixel method that applies the scale and offsets
 function realterrain.get_pixel(x,z, elev_only)
-	local e, b = 0,0
+	local e, b
     local row,col = 0 - z + tonumber(realterrain.settings.zoffset), 0 + x - tonumber(realterrain.settings.xoffset)
 	--adjust for x and z scales
     row = math.floor(row / tonumber(realterrain.settings.zscale))
@@ -666,36 +679,15 @@ function realterrain.get_pixel(x,z, elev_only)
     --off the dem return false
     if ((col < 0) or (col > width) or (row < 0) or (row > length)) then return false end
     
-	if py then
-		e = py.eval("dem.getpixel(("..col..","..row.."))") --no bit depth conversion required
-		e = tonumber(tostring(e))
-		--print(e)
-	elseif magick then
-		e = math.floor(dem:get_pixel(col, row) * (2^tonumber(realterrain.settings.dembits))) --@todo change when magick autodetects bit depth
-	elseif imlib2 then
-		e = dem:get_pixel(col, row).red
-	end
+	e = realterrain.get_raw_pixel(col,row, "dem") or 0
 	--print("raw e: "..e)
 	--adjust for offset and scale
     e = math.floor((e / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
 	
     if elev_only then
 		return e
-	
-
 	else
-		if py then
-			b = py.eval("biome.getpixel(("..col..","..row.."))") --no bit depth conversion required
-			b = tonumber(tostring(b))
-		elseif biomeimage then
-			if magick then
-				b = biomeimage:get_pixel(col, row)
-				--print("raw biome: "..b)
-				b = math.floor(b * (2^tonumber(realterrain.settings.biomebits) ))
-			elseif imlib2 then
-				b = biomeimage:get_pixel(col, row).red
-			end
-		end
+		b = realterrain.get_raw_pixel(col,row, "biomeimage") or 0
 	end
     
     
@@ -777,6 +769,7 @@ function realterrain.get_curvature(n)
 	return curve
 end
 
+-- this is not tested with offsets and scales but should work
 function realterrain.get_distance(x,y,z)
 	local limit = realterrain.settings.dist_lim
     --off the dem return false
@@ -793,12 +786,7 @@ function realterrain.get_distance(x,y,z)
 			row = math.floor(row / tonumber(realterrain.settings.zscale))
 			col = math.floor(col / tonumber(realterrain.settings.xscale))
 			
-			if magick then
-				--any non-zero
-				value = math.ceil(distimage:get_pixel(col, row) --[[* (2^8 )]])
-			elseif imlib2 then
-				value = distimage:get_pixel(col, row).red
-			end
+			value = realterrain.get_raw_pixel(col,row, "dem")
 			if value > 0 then
 				table.insert(results, {x=i-x, z=j-z})
 			end
