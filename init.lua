@@ -12,7 +12,7 @@ local ie = minetest.request_insecure_environment()
 package.path = (MODPATH.."/lua-imagesize-1.2/?.lua;"..package.path)
 local imagesize = ie.require "imagesize"
 
-package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*") --may not need to explicitly state this
+--[[package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*") --may not need to explicitly state this
 package.path = (MODPATH.."/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
 local py = ie.require("python", "*")--]]
 --[[py.execute("import grass.script as gscript")
@@ -316,12 +316,12 @@ end
 
 -- SELECT the mechanism for loading the image which is later uesed by get_pixel()
 --@todo throw warning if image sizes do not match the dem size
-local width, height, dem, biomeimage, distimage
+local width, height, dem, lclu, distimage
 
 if py then
 	py.execute("import Image")
 	py.execute("dem = Image.open('"..RASTERS..realterrain.settings.filedem.."')")
-	py.execute("biomeimage = Image.open('"..RASTERS..realterrain.settings.filebiome.."')")
+	py.execute("lclu = Image.open('"..RASTERS..realterrain.settings.filebiome.."')")
 	local pybits = py.eval("dem.mode")
 	py.execute("w, l = dem.size")
 	width = tonumber(tostring(py.eval("w")))
@@ -344,8 +344,8 @@ else
 		--print("depth: "..depth)
 		--print("width: "..width..", height: "..length)
 	else error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder") end
-	biomeimage = imageload(RASTERS..realterrain.settings.filebiome)
-	--print(dump(realterrain.get_unique_values(biomeimage)))
+	lclu = imageload(RASTERS..realterrain.settings.filebiome)
+	--print(dump(realterrain.get_unique_values(lclu)))
 	--[[waterimage = imageload(RASTERS..realterrain.settings.filewater)
 	roadimage  = imageload(RASTERS..realterrain.settings.fileroads)]]
 	distimage  = imageload(RASTERS..realterrain.settings.filedist)
@@ -653,17 +653,24 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local chugent = math.ceil((os.clock() - t0) * 1000)
 	print ("[DEM] "..chugent.." ms  mapchunk ("..cx0..", "..math.floor((y0 + 32) / 80)..", "..cz0..")")
 end)
+
 --the raw get pixel method that uses the selected method and accounts for bit depth
-function realterrain.get_raw_pixel(x,z, image)
+function realterrain.get_raw_pixel(x,z, raster) -- "image" is a string for python and an image object for magick / imlib2
 	local v
 	if py then --images for py need to be greyscale
-		v = py.eval(image..".getpixel(("..x..","..z.."))") --no bit depth conversion required
+		v = py.eval(raster..".getpixel(("..x..","..z.."))") --no bit depth conversion required
 		v = tonumber(tostring(v))
 		--print(e)
-	elseif magick then
-		v = math.floor(dem:get_pixel(col, row) * (2^tonumber(realterrain.settings.dembits))) --@todo change when magick autodetects bit depth
-	elseif imlib2 then
-		v = dem:get_pixel(col, row).red
+	else
+		if raster == "dem" then raster = dem
+		elseif raster == "lclu" then raster = lclu
+		elseif raster == "distance" then raster = distimage
+		end
+		if magick then
+			v = math.floor(raster:get_pixel(x, z) * (2^tonumber(realterrain.settings.dembits))) --@todo change when magick autodetects bit depth
+		elseif imlib2 then
+			v = raster:get_pixel(x, z).red
+		end
 	end
 	return v
 end
@@ -687,7 +694,7 @@ function realterrain.get_pixel(x,z, elev_only)
     if elev_only then
 		return e
 	else
-		b = realterrain.get_raw_pixel(col,row, "biomeimage") or 0
+		b = realterrain.get_raw_pixel(col,row, "lclu") or 0
 	end
     
     
