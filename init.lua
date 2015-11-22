@@ -379,6 +379,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local cy0 = math.floor((y0 + 32) / 80)
 	local cz0 = math.floor((z0 + 32) / 80) 
 	
+	local mode = realterrain.settings.output
+	
 	--check to see if the current chunk is above (or below) the elevation range for this footprint
 	if realterrain.surface_cache[cz0] and realterrain.surface_cache[cz0][cx0] then
 		if realterrain.surface_cache[cz0][cx0].offdem then
@@ -452,8 +454,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	--print(dump(heightmap))
 	
 	--turn various content ids into variables for speed
-	local mode = realterrain.settings.output
-	--content ids
 	local c_grass  = minetest.get_content_id("default:dirt_with_grass")
 	local c_gravel = minetest.get_content_id("default:gravel")
 	local c_stone  = minetest.get_content_id("default:stone")
