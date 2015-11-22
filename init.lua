@@ -350,7 +350,11 @@ function realterrain.init()
 	else error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder") end
 	realterrain.cover.image = imageload(RASTERS..realterrain.settings.filebiome)
 	--print(dump(realterrain.get_unique_values(cover)))
-	realterrain.input.image  = imageload(RASTERS..realterrain.settings.fileinput) --@todo should only load if mode == distance
+	
+	-- for various raster modes such as distance, we need to load the input or output files.
+	if realterrain.settings.output == "distance" then
+		realterrain.input.image  = imageload(RASTERS..realterrain.settings.fileinput) 
+	end
 end
 
 
@@ -756,10 +760,12 @@ function realterrain.get_raw_pixel(x,z, raster) -- "image" is a string for pytho
 	elseif raster == "cover" then raster = realterrain.cover.image
 	elseif raster == "input" then raster = realterrain.input.image
 	end
-	if magick then
-		v = math.floor(raster:get_pixel(x, z) * (2^tonumber(realterrain.settings.dembits))) --@todo change when magick autodetects bit depth
-	elseif imlib2 then
-		v = raster:get_pixel(x, z).red
+	if raster then
+		if magick then
+			v = math.floor(raster:get_pixel(x, z) * (2^tonumber(realterrain.settings.dembits))) --@todo change when magick autodetects bit depth
+		elseif imlib2 then
+			v = raster:get_pixel(x, z).red
+		end
 	end
 	return v
 end
