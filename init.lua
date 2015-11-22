@@ -1001,6 +1001,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			realterrain.show_popup(pname, "For distance mode you must have an input file selected")
 			return
 		end
+		--@todo still need to validate the various numerical values for scale and offsets...
 		
 		--check to see if the source rasters were changed, if so re-initialize
 		local old_dem, old_cover, old_input
