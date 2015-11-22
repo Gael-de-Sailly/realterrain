@@ -72,6 +72,8 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact red ch
 - small bugfixes and windows compatability
 - early stages of integrating python calls for GDAL and GRASS using lunatic-python (commented out - must be built per install)
 - added some more raster modes, raster symbology nicer and fills in below steep areas
+- performance improvements where empty mapchunks are not processed
+- experimental code for using imagemagick / graphicsmagick command line interface to reduce dependencies (commented out)
 
 #### 0.0.5
 - improved raster modes symbology and added "aspect"
