@@ -74,6 +74,7 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact red ch
 - added some more raster modes, raster symbology nicer and fills in below steep areas
 - performance improvements where empty mapchunks are not processed
 - experimental code for using imagemagick / graphicsmagick command line interface to reduce dependencies (commented out)
+- some improvements to form validation, in-game raster selection doesn't require a restart
 
 #### 0.0.5
 - improved raster modes symbology and added "aspect"

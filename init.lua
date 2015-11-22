@@ -46,7 +46,7 @@ realterrain.settings.dembits = 8 --@todo remove this setting when magick autodet
 realterrain.settings.filebiome = 'demo/biomes.tif'
 realterrain.settings.biomebits = 8 --@todo remove this setting when magick autodetects bitdepth
 
-realterrain.settings.filedist = ''
+realterrain.settings.fileinput = ''
 realterrain.settings.dist_lim = 30
 
 --default biome (no biome)
@@ -318,49 +318,76 @@ end
 
 -- SELECT the mechanism for loading the image which is later uesed by get_pixel()
 --@todo throw warning if image sizes do not match the dem size
-
-local width, height, dem, lclu, distimage
-
-if py then
+realterrain.dem = {}
+realterrain.cover = {}
+realterrain.input = {}
+function realterrain.init()
+	--[[
 	py.execute("import Image")
 	py.execute("dem = Image.open('"..RASTERS..realterrain.settings.filedem.."')")
-	py.execute("lclu = Image.open('"..RASTERS..realterrain.settings.filebiome.."')")
+	py.execute("cover = Image.open('"..RASTERS..realterrain.settings.filebiome.."')")
 	local pybits = py.eval("dem.mode")
 	py.execute("w, l = dem.size")
-	width = tonumber(tostring(py.eval("w")))
-	length = tonumber(tostring(py.eval("l")))
+	realterrain.dem.width = tonumber(tostring(py.eval("w")))
+	realterrain.dem.length = tonumber(tostring(py.eval("l")))
 	print("[PYTHON] mode: "..pybits..", width: "..width..", length: "..length)
-else
+	--]]
 	local imageload
 	if magick then imageload = magick.load_image
 	elseif imlib2 then imageload = imlib2.image.load
 	end
 	
 	--@todo fail if there is no DEM?
-	dem = imageload(RASTERS..realterrain.settings.filedem)
+	realterrain.dem.image = imageload(RASTERS..realterrain.settings.filedem)
 	--local dem = magick.load_image(RASTERS..realterrain.settings.filedem)
 	
-	if dem then 
-		width = dem:get_width()
-		length = dem:get_height()
+	if realterrain.dem.image then 
+		realterrain.dem.width = realterrain.dem.image:get_width()
+		realterrain.dem.length = realterrain.dem.image:get_height()
 		--local depth = dem:get_depth()-- @todo need to find correct syntax for this
 		--print("depth: "..depth)
 		--print("width: "..width..", height: "..length)
 	else error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder") end
-	lclu = imageload(RASTERS..realterrain.settings.filebiome)
-	--print(dump(realterrain.get_unique_values(lclu)))
-	distimage  = imageload(RASTERS..realterrain.settings.filedist) --@todo should only load if mode == distance
+	realterrain.cover.image = imageload(RASTERS..realterrain.settings.filebiome)
+	--print(dump(realterrain.get_unique_values(cover)))
+	realterrain.input.image  = imageload(RASTERS..realterrain.settings.fileinput) --@todo should only load if mode == distance
 end
 
--- Set mapgen parameters
+
+
+
 realterrain.surface_cache = {} --used to prevent reading of DEM for skyblocks
 
+-- Set mapgen parameters
 minetest.register_on_mapgen_init(function(mgparams)
 	minetest.set_mapgen_params({mgname="singlenode", flags="nolight"})
 end)
+--[[
+realterrain.genlock = false
+minetest.register_globalstep(function(dtime)
+	if not realterrain.genlock then
+		realterrain.genlock = true
+		local c_grass  = minetest.get_content_id("default:dirt_with_grass")
+		local vm = minetest.get_voxel_manip()
+		local emin, emax = vm:read_from_map({x=0,y=minelev,z=-length},{x=width,y=maxelev,z=0})
+		print("emin: "..emin.x..","..emin.y..","..emin.z..", emax: "..emax.x..","..emax.y..","..emax.z)
+		vm = nil
+		for z=emin.z, emax.z, 80 do
+			for y=emin.y, emax.y, 80 do
+				for x=emin.x, emax.x, 80 do
+					realterrain.generate({x=x,y=y,z=z}, {x=x+79,y=y+79,z=z+79})
+				end
+			end
+		end
+		--realterrain.genlock = false
+	end
+end)--]]
 
 -- On generated function
 minetest.register_on_generated(function(minp, maxp, seed)
+	realterrain.generate(minp, maxp)
+end)
+function realterrain.generate(minp, maxp)
 	local t0 = os.clock()
 	local x1 = maxp.x
 	local y1 = maxp.y
@@ -679,7 +706,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								elseif distance < 42 then color = "slope9"
 								elseif distance >= 42 then color = "slope10" end
 								--print("distance: "..distance)
-								data[vi] = cids[color]							get_chunk_pixels(xmin, zmax)
+								data[vi] = cids[color]
 							end
 							local height = realterrain.fill_below(x,z,heightmap)
 							if height > 0 then
@@ -716,25 +743,23 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	
 	local chugent = math.ceil((os.clock() - t0) * 1000)
 	print ("[GEN] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
-end)
-
+end
 --the raw get pixel method that uses the selected method and accounts for bit depth
 function realterrain.get_raw_pixel(x,z, raster) -- "image" is a string for python and an image object for magick / imlib2
 	local v
-	if py then --images for py need to be greyscale
+	--[[py then --images for py need to be greyscale
 		v = py.eval(raster..".getpixel(("..x..","..z.."))") --no bit depth conversion required
 		v = tonumber(tostring(v))
 		--print(e)
-	else
-		if raster == "dem" then raster = dem
-		elseif raster == "lclu" then raster = lclu
-		elseif raster == "distance" then raster = distimage
-		end
-		if magick then
-			v = math.floor(raster:get_pixel(x, z) * (2^tonumber(realterrain.settings.dembits))) --@todo change when magick autodetects bit depth
-		elseif imlib2 then
-			v = raster:get_pixel(x, z).red
-		end
+	--]]
+	if raster == "dem" then raster = realterrain.dem.image
+	elseif raster == "cover" then raster = realterrain.cover.image
+	elseif raster == "input" then raster = realterrain.input.image
+	end
+	if magick then
+		v = math.floor(raster:get_pixel(x, z) * (2^tonumber(realterrain.settings.dembits))) --@todo change when magick autodetects bit depth
+	elseif imlib2 then
+		v = raster:get_pixel(x, z).red
 	end
 	return v
 end
@@ -748,7 +773,7 @@ function realterrain.get_pixel(x,z, elev_only)
     col = math.floor(col / tonumber(realterrain.settings.xscale))
     
     --off the dem return false
-    if ((col < 0) or (col > width) or (row < 0) or (row > length)) then return false end
+    if ((col < 0) or (col > realterrain.dem.width) or (row < 0) or (row > realterrain.dem.length)) then return false end
     
 	e = realterrain.get_raw_pixel(col,row, "dem") or 0
 	--print("raw e: "..e)
@@ -758,7 +783,7 @@ function realterrain.get_pixel(x,z, elev_only)
     if elev_only then
 		return e
 	else
-		b = realterrain.get_raw_pixel(col,row, "lclu") or 0
+		b = realterrain.get_raw_pixel(col,row, "cover") or 0
 	end
     
     
@@ -766,7 +791,7 @@ function realterrain.get_pixel(x,z, elev_only)
     return e, b
 end
 --experimental function to enumerate 80x80 crop of raster at once using IM or GM
-function realterrain.get_chunk_pixels(xmin, zmax)
+--[[function realterrain.get_chunk_pixels(xmin, zmax)
 	local pixels = {}
 		--local firstline = true -- only IM has a firstline
 		--local multiplier = false --only needed with IM 16-bit depth, not with 8-bit and not with GM!
@@ -781,10 +806,10 @@ function realterrain.get_chunk_pixels(xmin, zmax)
 		for line in io.popen(cmd):lines() do                         
 			--print(line)
 			--with IM first line contains the bit depth, parse that first
-			--[[if firstline then
+			--if firstline then
 				--extract the multiplier for IM 16-bit depth
-				firstline = false
-			end--]]
+				--firstline = false
+			end
 			
 			--parse the output pixels
 			local firstcomma = string.find(line, ",")
@@ -804,7 +829,7 @@ function realterrain.get_chunk_pixels(xmin, zmax)
 			pixels[z][x] = {elev=e}
 		end
 	return pixels
-end
+end--]]
 
 --this funcion gets the hieght needed to fill below a node for surface-only modes
 function realterrain.fill_below(x,z,heightmap)
@@ -826,7 +851,29 @@ function realterrain.fill_below(x,z,heightmap)
 	--print(height)
 	return height
 end
-
+--[[function realterrain.get_elev_range()
+	print("calculating min and max elevation...")
+	local minelev, maxelev
+	
+	for z=0, -length, -1 do
+		for x=0, width-1, 1 do
+			local elev = realterrain.get_pixel(x,z, true)
+			if not minelev then
+				minelev = elev
+				maxelev = elev
+			else
+				if elev < minelev then
+					minelev = elev
+				end
+				if elev > maxelev then
+					maxelev = elev
+				end
+			end
+		end
+	end
+	print("min elev: "..minelev..", maxelev: "..maxelev)
+	return minelev, maxelev
+end--]]
 function realterrain.get_slope(n, rad)
 	--print(dump(n))
 	local x_cellsize, z_cellsize = 1, 1
@@ -897,7 +944,7 @@ function realterrain.get_distance(x,y,z)
 			row = math.floor(row / tonumber(realterrain.settings.zscale))
 			col = math.floor(col / tonumber(realterrain.settings.xscale))
 			
-			value = realterrain.get_raw_pixel(col,row, "dem")
+			value = realterrain.get_raw_pixel(col,row, "input")
 			if value > 0 then
 				table.insert(results, {x=i-x, z=j-z})
 			end
@@ -933,19 +980,42 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if string.sub(formname, 1, 12) == "realterrain:" then
 		local wait = os.clock()
 		while os.clock() - wait < 0.05 do end --popups don't work without this
-		--print("fields submitted: "..dump(fields))
+		print("fields submitted: "..dump(fields))
 		local pname = player:get_player_name()
 		
-		-- always save any form fields
-		for k,v in next, fields do
-			realterrain.settings[k] = v --we will preserve field entries exactly as entered 
-		end
-		realterrain.save_settings()
+		--the popup form never has settings so process that first
 		if formname == "realterrain:popup" then
 			if fields.exit == "Back" then
 				realterrain.show_rc_form(pname)
 				return true
 			end
+		end
+		
+		--check to make sure that a DEM file is selected, this is essential
+		if fields.filedem == "" then
+			realterrain.show_popup(pname,"You MUST have an Elevation (DEM) file!")
+			return
+		end
+		--check to make sure that if "distance mode was selected then an 'input' file is selected
+		if fields.output == "distance" and realterrain.settings.fileinput == "" then
+			realterrain.show_popup(pname, "For distance mode you must have an input file selected")
+			return
+		end
+		
+		--check to see if the source rasters were changed, if so re-initialize
+		local old_dem, old_cover, old_input
+		old_dem = realterrain.settings.filedem
+		old_cover = realterrain.settings.filecover
+		old_input = realterrain.settings.fileinput
+		-- otherwise save form fields
+		for k,v in next, fields do
+			realterrain.settings[k] = v --we will preserve field entries exactly as entered 
+		end
+		realterrain.save_settings()
+		if old_dem ~= realterrain.settings.filedem
+			or old_cover ~= realterrain.settings.filecover
+			or old_input ~= realterrain.settings.fileinput then
+			realterrain.init()
 		end
 		
 		--the main form
@@ -960,7 +1030,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				os.remove(WORLDPATH.."/map.sqlite")
                 return true
             elseif fields.exit == "Apply" then
-                minetest.chat_send_player(pname, "You changed the mapgen settings!")
+				minetest.chat_send_player(pname, "You changed the mapgen settings!")
                 return true
 			elseif fields.exit == "Biomes" then
 				realterrain.show_biome_form(pname)
@@ -1063,9 +1133,9 @@ function realterrain.show_rc_form(pname)
 								"label[6,5.5;Raster Mode]"..
 								"dropdown[6,6;4,1;output;normal,surface,slope,aspect,curvature,distance;"..
 									modes[realterrain.settings.output].."]"..
-								"label[6,7;Distance File]"..
-								"dropdown[6,7.5;4,1;filedist;"..f_images..";"..
-									realterrain.get_idx(images, realterrain.get_setting("filedist")) .."]"
+								"label[6,7;Input File]"..
+								"dropdown[6,7.5;4,1;fileinput;"..f_images..";"..
+									realterrain.get_idx(images, realterrain.get_setting("fileinput")) .."]"
 								
 	--Action buttons
 	local f_footer = 			"label[6,9;After applying, exit world and delete map.sqlite]"..
@@ -1152,3 +1222,5 @@ function realterrain.show_popup(pname, message)
 	)
 	return true
 end
+realterrain.init()
+--minelev, maxelev = realterrain.get_elev_range()
