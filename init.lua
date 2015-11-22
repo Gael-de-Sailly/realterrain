@@ -2,8 +2,8 @@ MODPATH = minetest.get_modpath("realterrain")
 WORLDPATH = minetest.get_worldpath()
 RASTERS = MODPATH .. "/rasters/"
 SCHEMS = MODPATH .. "/schems/"
-local realterrain = {}
-realterrain.settings = {}
+--CONVERT = "gm convert" --"convert.exe", "convert", "gm convert", "gm.exe convert",  etc --experimental
+
 local magick, imlib2
 local ie = minetest.request_insecure_environment()
 
@@ -28,6 +28,8 @@ local magick = ie.require "magick"--]]
 --[[package.path = (MODPATH.."/lua-imlib2/?.lua;"..package.path)
 local imlib2 = ie.require "imlib2"--]]
 
+local realterrain = {}
+realterrain.settings = {}
 --defaults
 realterrain.settings.output = "normal"
 realterrain.settings.yscale = 1
@@ -316,6 +318,7 @@ end
 
 -- SELECT the mechanism for loading the image which is later uesed by get_pixel()
 --@todo throw warning if image sizes do not match the dem size
+
 local width, height, dem, lclu, distimage
 
 if py then
@@ -346,12 +349,11 @@ else
 	else error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder") end
 	lclu = imageload(RASTERS..realterrain.settings.filebiome)
 	--print(dump(realterrain.get_unique_values(lclu)))
-	--[[waterimage = imageload(RASTERS..realterrain.settings.filewater)
-	roadimage  = imageload(RASTERS..realterrain.settings.fileroads)]]
-	distimage  = imageload(RASTERS..realterrain.settings.filedist)
+	distimage  = imageload(RASTERS..realterrain.settings.filedist) --@todo should only load if mode == distance
 end
 
 -- Set mapgen parameters
+realterrain.surface_cache = {} --used to prevent reading of DEM for skyblocks
 
 minetest.register_on_mapgen_init(function(mgparams)
 	minetest.set_mapgen_params({mgname="singlenode", flags="nolight"})
@@ -368,7 +370,88 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local z0 = minp.z
 	local treemap = {}
 	local fillmap = {}
+	--print("x0:"..x0..",y0:"..y0..",z0:"..z0..";x1:"..x1..",y1:"..y1..",z1:"..z1)
+	local sidelen = x1 - x0 + 1
+	local ystridevm = sidelen + 32
 	
+	--calculate the chunk coordinates
+	local cx0 = math.floor((x0 + 32) / 80)
+	local cy0 = math.floor((y0 + 32) / 80)
+	local cz0 = math.floor((z0 + 32) / 80) 
+	
+	--check to see if the current chunk is above (or below) the elevation range for this footprint
+	if realterrain.surface_cache[cz0] and realterrain.surface_cache[cz0][cx0] then
+		if realterrain.surface_cache[cz0][cx0].offdem then
+			local chugent = math.ceil((os.clock() - t0) * 1000)
+			print ("[OFF] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
+			return
+		end
+		if y0 >= realterrain.surface_cache[cz0][cx0].maxelev then
+			local chugent = math.ceil((os.clock() - t0) * 1000)
+			print ("[SKY] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
+			return
+		end
+		if mode ~= "normal" and y1 <= realterrain.surface_cache[cz0][cx0].minelev then
+			local chugent = math.ceil((os.clock() - t0) * 1000)
+			print ("[SUB] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
+			return
+		end
+	end
+	
+	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
+	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
+	local data = vm:get_data()
+	
+	--build a "heightmap" for each raster layer plus one pixel around the edges for raster calcs
+	--  includes landcover values, also cache the max and min elevations
+	local heightmap = {}
+	--local heightmap = realterrain.get_chunk_pixels(x0, z1) --experiment
+	local minelev, maxelev
+	for z=z0-1,z1+1 do
+		if not heightmap[z] then heightmap[z] = {} end
+		for x=x0-1,x1+1 do
+			local elev, biome = realterrain.get_pixel(x,z)
+			if elev then 
+				if not minelev then
+					minelev = elev
+					maxelev = elev
+				else
+					if elev < minelev then
+						minelev = elev
+					end
+					if elev > maxelev then
+						maxelev = elev
+					end
+				end
+				heightmap[z][x] = {elev=elev, biome=biome }
+			end
+		end
+	end
+	
+	-- if there were elevations in this footprint then add the min and max to the cache table if not already there
+	if minelev then
+		--print("minelev: "..minelev..", maxelev: "..maxelev)
+		if not realterrain.surface_cache[cz0] then
+			realterrain.surface_cache[cz0] = {}
+		end
+		if not realterrain.surface_cache[cz0][cx0] then
+			realterrain.surface_cache[cz0][cx0] = {minelev = minelev, maxelev=maxelev}
+		end
+	else
+		--otherwise this chunk was off the DEM raster
+		if not realterrain.surface_cache[cz0] then
+			realterrain.surface_cache[cz0] = {}
+		end
+		if not realterrain.surface_cache[cz0][cx0] then
+			realterrain.surface_cache[cz0][cx0] = {offdem=true}
+		end
+		local chugent = math.ceil((os.clock() - t0) * 1000)
+		print ("[OFF] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
+		return
+	end
+	--print(dump(heightmap))
+	
+	--turn various content ids into variables for speed
 	local mode = realterrain.settings.output
 	--content ids
 	local c_grass  = minetest.get_content_id("default:dirt_with_grass")
@@ -409,27 +492,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 			cids["aspect"..k] = minetest.get_content_id("realterrain:".."aspect"..k)
 		end
 	end
-	local sidelen = x1 - x0 + 1
-	local ystridevm = sidelen + 32
-
-	local cx0 = math.floor((x0 + 32) / 80)
-	local cz0 = math.floor((z0 + 32) / 80) 
 	
-	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
-	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
-	local data = vm:get_data()
-	local heightmap = {}
-	--build a "heightmap" for each raster layer plus one pixel around the edges for window calcs
-	for z=z0-1,z1+1 do
-		if not heightmap[z] then heightmap[z] = {} end
-		for x=x0-1,x1+1 do
-			local elev, biome = realterrain.get_pixel(x,z)
-			if elev then 
-				heightmap[z][x] = {elev=elev, biome=biome }
-			end
-		end
-	end
-	--print(dump(heightmap))
+	--generate!
 	for z = z0, z1 do
 	for x = x0, x1 do
 		if heightmap[z] and heightmap[z][x] then
@@ -448,7 +512,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					biome = math.floor(biome)
 				end
 				
-				--print("elev: "..elev..", biome: "..biome..", water: "..water..", road: "..road)
+				--print("elev: "..elev..", biome: "..biome)
 				
 				local ground, ground2, gprob, tree, tprob, tree2, tprob2, shrub, sprob, shrub2, sprob2
 				
@@ -615,7 +679,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								elseif distance < 42 then color = "slope9"
 								elseif distance >= 42 then color = "slope10" end
 								--print("distance: "..distance)
-								data[vi] = cids[color]							
+								data[vi] = cids[color]							get_chunk_pixels(xmin, zmax)
 							end
 							local height = realterrain.fill_below(x,z,heightmap)
 							if height > 0 then
@@ -651,7 +715,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	end]]
 	
 	local chugent = math.ceil((os.clock() - t0) * 1000)
-	print ("[DEM] "..chugent.." ms  mapchunk ("..cx0..", "..math.floor((y0 + 32) / 80)..", "..cz0..")")
+	print ("[GEN] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
 end)
 
 --the raw get pixel method that uses the selected method and accounts for bit depth
@@ -700,6 +764,46 @@ function realterrain.get_pixel(x,z, elev_only)
     
 	--print("elev: "..e..", biome: "..b)
     return e, b
+end
+--experimental function to enumerate 80x80 crop of raster at once using IM or GM
+function realterrain.get_chunk_pixels(xmin, zmax)
+	local pixels = {}
+		--local firstline = true -- only IM has a firstline
+		--local multiplier = false --only needed with IM 16-bit depth, not with 8-bit and not with GM!
+		local row,col = 0 - zmax + tonumber(realterrain.settings.zoffset), 0 + xmin - tonumber(realterrain.settings.xoffset)
+		--adjust for x and z scales
+		row = math.floor(row / tonumber(realterrain.settings.zscale))
+		col = math.floor(col / tonumber(realterrain.settings.xscale))
+		
+		local cmd = CONVERT..' "'..RASTERS..realterrain.settings.filedem..'"'..
+			' -crop 80x80+'..col..'+'..row..' txt:-'
+		
+		for line in io.popen(cmd):lines() do                         
+			--print(line)
+			--with IM first line contains the bit depth, parse that first
+			--[[if firstline then
+				--extract the multiplier for IM 16-bit depth
+				firstline = false
+			end--]]
+			
+			--parse the output pixels
+			local firstcomma = string.find(line, ",")
+			local right = tonumber(string.sub(line, 1 , firstcomma - 1)) + 1
+			--print("right: "..right)
+			local firstcolon = string.find(line, ":")
+			local down = (tonumber(string.sub(line, firstcomma + 1 , firstcolon - 1)) + 1 ) * (-1)
+			--print("down: "..down)
+			local secondcomma = string.find(line, ",", firstcolon)
+			local e = tonumber(string.sub(line, firstcolon + 3, secondcomma -1))
+			--print("elev: "..e)
+			e = math.floor((e / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
+			local x = col + right + 1
+			local z = row - down - 1
+			--print ("x: "..x..", z: "..z..", elev: "..e)
+			if not pixels[z] then pixels[z] = {} end
+			pixels[z][x] = {elev=e}
+		end
+	return pixels
 end
 
 --this funcion gets the hieght needed to fill below a node for surface-only modes
@@ -1030,7 +1134,7 @@ function realterrain.show_item_images(pname, items, setting)
 	end
 	local f_body = "size[14,10]" ..
 					"button_exit[12,0.01;2,1;exit;Cancel]"
-					
+	--print(f_images)	
 	minetest.show_formspec(pname,   "realterrain:image_items",
                                     f_body..f_images
 	)
