@@ -1,4 +1,4 @@
-# realterrain v.0.0.6
+# realterrain v.0.0.7
 A Minetest mod that brings real world Terrain into the game (using freely available DEM tiles). Any image can actually be used.
 
 use any image any bit-depth (suggested to convert to greyscale first):
@@ -34,9 +34,14 @@ Aspect analysis:
 
 ![screenshot_20151031_114215](https://cloud.githubusercontent.com/assets/12679496/10865364/58dbd988-7fc6-11e5-8a7e-75abc31f378d.png)
 
+3D Euclidean Distance analysis (based on input raster):
+
+![screenshot_20151124_201516](https://cloud.githubusercontent.com/assets/12679496/11388193/31d764d0-92e8-11e5-8c92-d34ff733dc56.png)
+
 ### Dependencies:
-- You must have imageMagick and MagickWand , OR imlib2 installed on your system
+- You must have imageMagick and MagickWand , OR imlib2 (8-bit limit) installed on your system
 - Mod security disabled
+-optional dependencies include lunatic-python, python, graphicsmagick (experimental, commented-out-features)
 
 ### Instructions
 - install the dependencies and the mod as usual (luarocks can be activated if needed)
@@ -67,12 +72,16 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact red ch
 - allow raster symbology to be customized in-game
 
 ### Changelog
+#### 0.0.7
+- performance improvements to distance analysis mode, new default (demo) raster for distance mode ("points.tif")
+- refactoring of some code: performance improvements where empty mapchunks are not processed
+- bug fixes
+
 #### 0.0.6
 - biome cover uses absolute values AND ranges which equate exactly to USGS tier system (makes hand painting easier too)
 - small bugfixes and windows compatability
 - early stages of integrating python calls for GDAL and GRASS using lunatic-python (commented out - must be built per install)
 - added some more raster modes, raster symbology nicer and fills in below steep areas
-- performance improvements where empty mapchunks are not processed
 - experimental code for using imagemagick / graphicsmagick command line interface to reduce dependencies (commented out)
 - some improvements to form validation, in-game raster selection doesn't require a restart
 

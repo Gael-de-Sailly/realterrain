@@ -48,6 +48,7 @@ realterrain.settings.biomebits = 8 --@todo remove this setting when magick autod
 
 realterrain.settings.fileinput = ''
 realterrain.settings.dist_lim = 80
+realterrain.settings.dist_mode = "3D" --3D or 3Dp
 
 --default biome (no biome)
 realterrain.settings.b0ground = "default:dirt_with_dry_grass"
@@ -980,17 +981,27 @@ end
 -- this is not tested with offsets and scales but should work
 function realterrain.get_distance(x,y,z, heightmap)
 	local limit = realterrain.settings.dist_lim
+	local dist_mode = realterrain.settings.dist_mode
 	local shortest = limit
 	--buid a square around the search pixel
 	local c=0
 	for j=z-limit, z+limit do
 		for i=x-limit, x+limit do
 			c = c +1
-			local v
+			local v, e
 			if heightmap[j] and heightmap[j][i] and heightmap[j][i].input then
 				v = heightmap[j][i].input
+				if dist_mode == "3D" then
+					e = heightmap[j][i].elev
+				end
 				if v and v > 0 then
-					local distance = math.sqrt(((z-j)^2)+((x-i)^2))
+					local distance
+					if dist_mode == "2D" then
+						distance = math.sqrt(((z-j)^2)+((x-i)^2))
+					elseif dist_mode == "3D" then
+						distance = math.sqrt(((z-j)^2)+((x-i)^2)+((y-e)^2))
+					end
+					
 					--print("candidate: "..distance)
 					if distance < shortest then
 						shortest = distance
