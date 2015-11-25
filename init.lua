@@ -168,6 +168,40 @@ for k,colorcode in next, aspectcolors do
 			end,--]]
 	})
 end
+local websafe = {"00","33","66","99","cc","ff"}
+local symbols = {}
+for k,u in next, websafe do
+	for k,v in next, websafe do
+		for k,w in next, websafe do
+			table.insert(symbols, u..v..w)
+		end
+	end
+end
+for k,v in next, symbols do
+	minetest.register_node(
+		'realterrain:'..v, {
+			description = "Symbol: "..v,
+			tiles = { v..'.png' },
+			light_source = 9,
+			groups = {oddly_breakable_by_hand=1},
+			--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
+				local meta = minetest.get_meta(pos)
+				meta:set_string("infotext", "Gis:"..colorcode);
+				meta:set_int("placed", os.clock()*1000);
+			end,--]]
+	})
+end
+
+realterrain.settings.rastsymbol1 = "realterrain:slope1"
+realterrain.settings.rastsymbol2 = "realterrain:slope2"
+realterrain.settings.rastsymbol3 = "realterrain:slope3"
+realterrain.settings.rastsymbol4 = "realterrain:slope4"
+realterrain.settings.rastsymbol5 = "realterrain:slope5"
+realterrain.settings.rastsymbol6 = "realterrain:slope6"
+realterrain.settings.rastsymbol7 = "realterrain:slope7"
+realterrain.settings.rastsymbol8 = "realterrain:slope8"
+realterrain.settings.rastsymbol9 = "realterrain:slope9"
+realterrain.settings.rastsymbol10 = "realterrain:slope10"
 
 minetest.register_node(
 	'realterrain:water_static', {
@@ -307,6 +341,17 @@ function realterrain.list_plants()
 	return list
 end
 
+function realterrain.list_symbology()
+	local list = {}
+	--generate a list of all registered nodes that are simple blocks
+	for k,v in next, minetest.registered_nodes do
+		if v.drawtype == "normal" and string.sub(k, 1, 12) == "realterrain:"  then
+			table.insert(list, k)
+		end
+	end
+	return list
+end
+
 function realterrain.get_idx(haystack, needle)
 	--returns the image id or if the image is not found it returns zero
 	for k,v in next, haystack do
@@ -388,6 +433,17 @@ minetest.register_globalstep(function(dtime)
 	end
 end)--]]
 
+-- function to get all the heightmap pixels at once using a crop of the image and toblob
+function realterrain.build_heightmap(xstart, xend ,zstart, zend, raster)
+	if not raster then raster = realterrain.dem end
+	--@todo add imlib2 support
+	local crop = realterrain.dem.image:clone() --this might be a bottleneck on large rasters?
+	crop:crop(xend-xstart, zend-zstart, xstart, zstart)
+	crop:set_format("bmp")
+	local blob = crop:get_blob()
+	print(blob)
+end
+
 -- On generated function
 minetest.register_on_generated(function(minp, maxp, seed)
 	realterrain.generate(minp, maxp)
@@ -412,6 +468,8 @@ function realterrain.generate(minp, maxp)
 	local cz0 = math.floor((z0 + 32) / 80) 
 	
 	local mode = realterrain.settings.output
+	
+	--realterrain.build_heightmap(x0,x1,x0+2,z0+2) --experiment
 	
 	--check to see if the current chunk is above (or below) the elevation range for this footprint
 	if realterrain.surface_cache[cz0] and realterrain.surface_cache[cz0][cx0] then
@@ -471,7 +529,7 @@ function realterrain.generate(minp, maxp)
 				elseif mode == "distance" then
 					heightmap[z][x] = {elev=elev, input=input}
 					if input > 0 then
-						input_present = true
+						input_present = true --makes distance more efficient, skips distant chunks
 					end
 				end
 			end
@@ -551,8 +609,8 @@ function realterrain.generate(minp, maxp)
 	--register cids for SLOPE mode
 	if mode == "slope" or mode == "curvature" or mode == "distance" then
 		--cids for symbology nodetypes
-		for k, code in next, slopecolors do
-			cids["slope"..k] = minetest.get_content_id("realterrain:".."slope"..k)
+		for i=1,10 do
+			cids["symbol"..i] = minetest.get_content_id(realterrain.settings["rastsymbol"..i])
 		end
 	end
 	--register cids for ASPECT mode
@@ -696,16 +754,16 @@ function realterrain.generate(minp, maxp)
 							local color
 							if mode == "slope" then
 								local slope = realterrain.get_slope(neighbors)
-								if slope < 1 then color = "slope1"
-								elseif slope < 2 then color = "slope2"
-								elseif slope < 5 then color = "slope3"
-								elseif slope < 10 then color = "slope4"
-								elseif slope < 15 then color = "slope5"
-								elseif slope < 20 then color = "slope6"
-								elseif slope < 30 then color = "slope7"
-								elseif slope < 45 then color = "slope8"
-								elseif slope < 60 then color = "slope9"
-								elseif slope >= 60 then color = "slope10" end
+								if slope < 1 then color = "symbol1"
+								elseif slope < 2 then color = "symbol2"
+								elseif slope < 5 then color = "symbol3"
+								elseif slope < 10 then color = "symbol4"
+								elseif slope < 15 then color = "symbol5"
+								elseif slope < 20 then color = "symbol6"
+								elseif slope < 30 then color = "symbol7"
+								elseif slope < 45 then color = "symbol8"
+								elseif slope < 60 then color = "symbol9"
+								elseif slope >= 60 then color = "symbol10" end
 								--print("slope: "..slope)
 								data[vi] = cids[color]							
 							elseif mode == "aspect" then
@@ -724,35 +782,35 @@ function realterrain.generate(minp, maxp)
 							elseif mode == "curvature" then
 								local curve = realterrain.get_curvature(neighbors)
 								--print("raw curvature: "..curve)
-								if curve < -4 then color = "slope1"
-								elseif curve < -3 then color = "slope2"
-								elseif curve < -2 then color = "slope3"
-								elseif curve < -1 then color = "slope4"
-								elseif curve < 0 then color = "slope5"
-								elseif curve > 4 then color = "slope10"
-								elseif curve > 3 then color = "slope9"
-								elseif curve > 2 then color = "slope8"
-								elseif curve > 1 then color = "slope7"
-								elseif curve >= 0 then color = "slope6" end
+								if curve < -4 then color = "symbol1"
+								elseif curve < -3 then color = "symbol2"
+								elseif curve < -2 then color = "symbol3"
+								elseif curve < -1 then color = "symbol4"
+								elseif curve < 0 then color = "symbol5"
+								elseif curve > 4 then color = "symbol10"
+								elseif curve > 3 then color = "symbol9"
+								elseif curve > 2 then color = "symbol8"
+								elseif curve > 1 then color = "symbol7"
+								elseif curve >= 0 then color = "symbol6" end
 								data[vi] = cids[color]
 							elseif mode == "distance" then
 								local limit = realterrain.settings.dist_lim
 								--if there is no input present in the full search extent skip
 								if input_present then 
 									local distance = realterrain.get_distance(x,y,z, heightmap)
-									if distance < (limit/10) then color = "slope1"
-									elseif distance < (limit/10)*2 then color = "slope2"
-									elseif distance < (limit/10)*3 then color = "slope3"
-									elseif distance < (limit/10)*4 then color = "slope4"
-									elseif distance < (limit/10)*5 then color = "slope5"
-									elseif distance < (limit/10)*6 then color = "slope6"
-									elseif distance < (limit/10)*7 then color = "slope7"
-									elseif distance < (limit/10)*8 then color = "slope8"
-									elseif distance < (limit/10)*9 then color = "slope9"
-									else color = "slope10"
+									if distance < (limit/10) then color = "symbol1"
+									elseif distance < (limit/10)*2 then color = "symbol2"
+									elseif distance < (limit/10)*3 then color = "symbol3"
+									elseif distance < (limit/10)*4 then color = "symbol4"
+									elseif distance < (limit/10)*5 then color = "symbol5"
+									elseif distance < (limit/10)*6 then color = "symbol6"
+									elseif distance < (limit/10)*7 then color = "symbol7"
+									elseif distance < (limit/10)*8 then color = "symbol"
+									elseif distance < (limit/10)*9 then color = "symbol"
+									else color = "symbol10"
 									end
 								else
-									color = "slope10"
+									color = "symbol10"
 								end
 								data[vi] = cids[color]
 							end
@@ -844,41 +902,43 @@ end
 --experimental function to enumerate 80x80 crop of raster at once using IM or GM
 --[[function realterrain.get_chunk_pixels(xmin, zmax)
 	local pixels = {}
-		--local firstline = true -- only IM has a firstline
-		--local multiplier = false --only needed with IM 16-bit depth, not with 8-bit and not with GM!
-		local row,col = 0 - zmax + tonumber(realterrain.settings.zoffset), 0 + xmin - tonumber(realterrain.settings.xoffset)
-		--adjust for x and z scales
-		row = math.floor(row / tonumber(realterrain.settings.zscale))
-		col = math.floor(col / tonumber(realterrain.settings.xscale))
+	--local firstline = true -- only IM has a firstline
+	--local multiplier = false --only needed with IM 16-bit depth, not with 8-bit and not with GM!
+	local row,col = 0 - zmax + tonumber(realterrain.settings.zoffset), 0 + xmin - tonumber(realterrain.settings.xoffset)
+	--adjust for x and z scales
+	row = math.floor(row / tonumber(realterrain.settings.zscale))
+	col = math.floor(col / tonumber(realterrain.settings.xscale))
+	
+	
+	
+	local cmd = CONVERT..' "'..RASTERS..realterrain.settings.filedem..'"'..
+		' -crop 80x80+'..col..'+'..row..' txt:-'
+	
+	for line in io.popen(cmd):lines() do                         
+		--print(line)
+		--with IM first line contains the bit depth, parse that first
+		--if firstline then
+			--extract the multiplier for IM 16-bit depth
+			--firstline = false
+		--end
 		
-		local cmd = CONVERT..' "'..RASTERS..realterrain.settings.filedem..'"'..
-			' -crop 80x80+'..col..'+'..row..' txt:-'
-		
-		for line in io.popen(cmd):lines() do                         
-			--print(line)
-			--with IM first line contains the bit depth, parse that first
-			--if firstline then
-				--extract the multiplier for IM 16-bit depth
-				--firstline = false
-			end
-			
-			--parse the output pixels
-			local firstcomma = string.find(line, ",")
-			local right = tonumber(string.sub(line, 1 , firstcomma - 1)) + 1
-			--print("right: "..right)
-			local firstcolon = string.find(line, ":")
-			local down = (tonumber(string.sub(line, firstcomma + 1 , firstcolon - 1)) + 1 ) * (-1)
-			--print("down: "..down)
-			local secondcomma = string.find(line, ",", firstcolon)
-			local e = tonumber(string.sub(line, firstcolon + 3, secondcomma -1))
-			--print("elev: "..e)
-			e = math.floor((e / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
-			local x = col + right + 1
-			local z = row - down - 1
-			--print ("x: "..x..", z: "..z..", elev: "..e)
-			if not pixels[z] then pixels[z] = {} end
-			pixels[z][x] = {elev=e}
-		end
+		--parse the output pixels
+		local firstcomma = string.find(line, ",")
+		local right = tonumber(string.sub(line, 1 , firstcomma - 1)) + 1
+		--print("right: "..right)
+		local firstcolon = string.find(line, ":")
+		local down = (tonumber(string.sub(line, firstcomma + 1 , firstcolon - 1)) + 1 ) * (-1)
+		--print("down: "..down)
+		local secondcomma = string.find(line, ",", firstcolon)
+		local e = tonumber(string.sub(line, firstcolon + 3, secondcomma -1))
+		--print("elev: "..e)
+		e = math.floor((e / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
+		local x = col + right + 1
+		local z = row - down - 1
+		--print ("x: "..x..", z: "..z..", elev: "..e)
+		if not pixels[z] then pixels[z] = {} end
+		pixels[z][x] = {elev=e}
+	end
 	return pixels
 end--]]
 
@@ -1032,7 +1092,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if string.sub(formname, 1, 12) == "realterrain:" then
 		local wait = os.clock()
 		while os.clock() - wait < 0.05 do end --popups don't work without this
-		--print("fields submitted: "..dump(fields))
+		--print("form, "..formname.." submitted: "..dump(fields))
 		local pname = player:get_player_name()
 		
 		--the popup form never has settings so process that first
@@ -1088,6 +1148,9 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			elseif fields.exit == "Biomes" then
 				realterrain.show_biome_form(pname)
 				return true
+			elseif fields.exit == "Symbols" then
+				realterrain.show_symbology(pname)
+				return true
 			end
 			return true
 		end
@@ -1106,10 +1169,26 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			end
 			return true
 		end
-		
 		--item image selection form
 		if formname == "realterrain:image_items" then
 			realterrain.show_biome_form(pname)
+			return true
+		end
+		--raster symbology selection form
+		if formname == "realterrain:symbology" then
+			if fields.exit == "Apply" then
+				realterrain.show_rc_form(pname)
+				return true
+			elseif fields.rastsymbol then 
+				local setting = "rastsymbol"..fields.rastsymbol
+				minetest.chat_send_player(pname, "please be patient while all symbols load")
+				realterrain.show_all_symbols(pname, realterrain.list_symbology(), setting)
+			end
+			return true
+		end
+		--symbology selection form
+		if formname == "realterrain:all_symbols" then
+			realterrain.show_symbology(pname)
 			return true
 		end
 		return true
@@ -1186,6 +1265,7 @@ function realterrain.show_rc_form(pname)
 								"label[6,5.5;Raster Mode]"..
 								"dropdown[6,6;4,1;output;normal,surface,slope,aspect,curvature,distance;"..
 									modes[realterrain.settings.output].."]"..
+								"button_exit[10,5.9;2,1;exit;Symbols]"..
 								"label[6,7;Input File]"..
 								"dropdown[6,7.5;4,1;fileinput;"..f_images..";"..
 									realterrain.get_idx(images, realterrain.get_setting("fileinput")) .."]"
@@ -1240,7 +1320,24 @@ function realterrain.show_biome_form(pname)
 	)
 	return true
 end
-
+function realterrain.show_symbology(pname)
+	local col= {0.01,2}
+	local f_header = 	"size[14,10]" ..
+						"button_exit[11,0.01;2,1;exit;Apply]"..
+						"label["..col[1]..",0.01;Symbol]"..
+						"label["..col[2]..",0.01;Node]"
+	local f_body = ""
+	for i=1,10 do
+			local h = (i +1) * 0.7
+		f_body = f_body ..
+			"label["..col[1]..","..h ..";"..i.."]"..
+			"item_image_button["..(col[2])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("rastsymbol"..i)..";rastsymbol;"..i.."]"
+	end
+	minetest.show_formspec(pname,   "realterrain:symbology",
+                                    f_header..f_body
+	)
+	return true
+end
 function realterrain.show_item_images(pname, items, setting)
 	local f_images = ""
 	local i = 1
@@ -1264,7 +1361,29 @@ function realterrain.show_item_images(pname, items, setting)
 	return true
 	
 end
-
+function realterrain.show_all_symbols(pname, items, setting)
+	local f_images = ""
+	local i = 1
+	local j = 1
+	for k,v in next, items do
+		f_images = f_images .. "item_image_button["..(i*0.6)..","..(j*0.6)..";0.6,0.6;"..items[k]..";"..setting..";"..items[k].."]"
+		if i < 16 then
+			i = i + 1
+		else
+			i = 1
+			j = j + 1
+		end
+		
+	end
+	local f_body = "size[14,10]" ..
+					"button_exit[12,0.01;2,1;exit;Cancel]"
+	--print(f_images)	
+	minetest.show_formspec(pname,   "realterrain:all_symbols",
+                                    f_body..f_images
+	)
+	return true
+	
+end
 -- this is the form-error popup
 function realterrain.show_popup(pname, message)
 	minetest.chat_send_player(pname, "Form error: ".. message)
