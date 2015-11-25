@@ -435,25 +435,55 @@ function realterrain.generate(minp, maxp)
 	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
 	local data = vm:get_data()
 	
-	--build a "heightmap" for each raster layer includes landcover values, also cache the max and min elevations
+	--build the heightmap and include different extents and values depending on mode
+	local zstart, zend, xstart, xend, get_biome, get_input
+	if mode == "normal" or mode == "surface" then
+		zstart, zend, xstart, xend = z0, z1, x0, x1
+		get_biome = true
+		get_input = false
+	elseif mode == "slope" or mode == "aspect" or mode == "curvature" then
+		zstart, zend, xstart, xend = z0-1, z1+1, x0-1, x1+1
+		get_biome = false
+		get_input = false
+	elseif mode == "distance" then
+		local limit = realterrain.settings.dist_lim
+		zstart, zend, xstart, xend = z0-limit, z1+limit, x0-limit, x1+limit
+		get_biome = false
+		get_input = true
+	end
 	local heightmap = {}
-	--local heightmap = realterrain.get_chunk_pixels(x0, z1) --experiment
-	local minelev, maxelev
 	local entries = 0
-	for z=z0,z1 do
+	local input_present = false
+	for z=zstart,zend do
 		if not heightmap[z] then heightmap[z] = {} end
-		for x=x0,x1 do
+		for x=xstart,xend do
 			local elev, biome, input
-			--biome is only needed for normal and surface mode
-			if mode == "normal" or mode =="surface" then
-				elev, biome = realterrain.get_pixel(x,z, true)
-			elseif mode == "distance" then
-				elev, biome, input = realterrain.get_pixel(x,z, false, true)
-			else
-				elev = realterrain.get_pixel(x,z)
-			end
+			elev, biome, input = realterrain.get_pixel(x,z, get_biome, get_input)
+			--don't include any values if the elevation is not there (off-the dem)
 			if elev then 
 				entries = entries + 1
+				--biome is only needed for normal and surface mode
+				if mode == "normal" or mode =="surface" then
+					heightmap[z][x] = {elev=elev, biome=biome }
+				elseif mode == "slope" or mode == "aspect" or mode == "curvature" then
+					heightmap[z][x] = {elev=elev}
+				elseif mode == "distance" then
+					heightmap[z][x] = {elev=elev, input=input}
+					if input > 0 then
+						input_present = true
+					end
+				end
+			end
+		end
+	end
+	--print("heightmap entries for this chunk: "..entries)
+	--calculate the min and max elevations for skipping certain blocks completely
+	local minelev, maxelev
+	for z=z0, z1 do
+		for x=x0, x1 do
+			local elev
+			if heightmap[z] and heightmap[z][x] then
+				elev = heightmap[z][x].elev
 				if not minelev then
 					minelev = elev
 					maxelev = elev
@@ -465,56 +495,10 @@ function realterrain.generate(minp, maxp)
 						maxelev = elev
 					end
 				end
-				--biome is only needed for normal and surface mode
-				if mode == "normal" or mode =="surface" then
-					heightmap[z][x] = {elev=elev, biome=biome }
-				elseif mode == "distance" then
-					heightmap[z][x] = {elev=elev, input=input}
-				else
-					heightmap[z][x] = {elev=elev}
-				end
 			end
+			
 		end
 	end
-	--depending on the output mode the heightmap has to include other pixels
-	--they are not included in the initial heightmap build because of the min/max
-	--slope, aspect, curvature require an extra pixel all the way around
-	if mode == "slope" or mode == "aspect" or mode == "curvature" then
-		for z=z0-1,z1+1 do
-			if not heightmap[z] then heightmap[z] = {} end
-			local step
-			if z == z0-1 or z == z1+1 then step = 1 else step = 81 end
-			for x=x0-1,x1+1, step do
-				local elev
-				elev = realterrain.get_pixel(x,z)
-				if elev then 
-					entries = entries + 1
-					heightmap[z][x] = {elev=elev}
-				end
-			end
-		end
-	end
-	--distance requires the distance search radius around the block for now we will pad another block
-	local skipped = 0
-	if mode == "distance" then
-		local limit = realterrain.settings.dist_lim
-		for z=z0-limit, z1+limit do
-			if not heightmap[z] then heightmap[z] = {} end
-			for x=x0-limit, x1+limit do
-				if not (z >= z0 and z <= z1 and x >= x0 and x <= x1) then
-					local elev, biome, input
-					elev, biome, input = realterrain.get_pixel(x,z, false, true)
-					if elev then 
-						entries = entries + 1
-						heightmap[z][x] = {elev=elev, input=input} --elev needed for 3D distance
-					end
-					else skipped = skipped + 1
-				end
-			end
-		end
-		--print("skipped: "..skipped)
-	end
-	print("heightmap entries for this chunk: "..entries)
 	-- if there were elevations in this footprint then add the min and max to the cache table if not already there
 	if minelev then
 		--print("minelev: "..minelev..", maxelev: "..maxelev)
@@ -752,19 +736,23 @@ function realterrain.generate(minp, maxp)
 								data[vi] = cids[color]
 							elseif mode == "distance" then
 								local limit = realterrain.settings.dist_lim
-								local distance = realterrain.get_distance(x,y,z, heightmap)
-								--print("distance: "..distance)
-								if distance < (limit/10) then color = "slope1"
-								elseif distance < (limit/10)*2 then color = "slope2"
-								elseif distance < (limit/10)*3 then color = "slope3"
-								elseif distance < (limit/10)*4 then color = "slope4"
-								elseif distance < (limit/10)*5 then color = "slope5"
-								elseif distance < (limit/10)*6 then color = "slope6"
-								elseif distance < (limit/10)*7 then color = "slope7"
-								elseif distance < (limit/10)*8 then color = "slope8"
-								elseif distance < (limit/10)*9 then color = "slope9"
-								elseif distance >= limit then color = "slope10" end
-								--print("distance: "..distance)
+								--if there is no input present in the full search extent skip
+								if input_present then 
+									local distance = realterrain.get_distance(x,y,z, heightmap)
+									if distance < (limit/10) then color = "slope1"
+									elseif distance < (limit/10)*2 then color = "slope2"
+									elseif distance < (limit/10)*3 then color = "slope3"
+									elseif distance < (limit/10)*4 then color = "slope4"
+									elseif distance < (limit/10)*5 then color = "slope5"
+									elseif distance < (limit/10)*6 then color = "slope6"
+									elseif distance < (limit/10)*7 then color = "slope7"
+									elseif distance < (limit/10)*8 then color = "slope8"
+									elseif distance < (limit/10)*9 then color = "slope9"
+									else color = "slope10"
+									end
+								else
+									color = "slope10"
+								end
 								data[vi] = cids[color]
 							end
 							local height = realterrain.fill_below(x,z,heightmap)
@@ -994,15 +982,15 @@ function realterrain.get_distance(x,y,z, heightmap)
 	local limit = realterrain.settings.dist_lim
 	local shortest = limit
 	--buid a square around the search pixel
-	c=0
+	local c=0
 	for j=z-limit, z+limit do
 		for i=x-limit, x+limit do
 			c = c +1
 			local v
-			if heightmap[j][i].input then
+			if heightmap[j] and heightmap[j][i] and heightmap[j][i].input then
 				v = heightmap[j][i].input
 				if v and v > 0 then
-					local distance = math.sqrt((i^2)+(j^2))
+					local distance = math.sqrt(((z-j)^2)+((x-i)^2))
 					--print("candidate: "..distance)
 					if distance < shortest then
 						shortest = distance
@@ -1012,7 +1000,7 @@ function realterrain.get_distance(x,y,z, heightmap)
 			end
 		end
 	end
-	print(c) --this is printing 25921 not 57600! root 161 not 240!
+	--print(c)
 	--print("distance: "..shortest)
 	return shortest
 end
