@@ -535,7 +535,7 @@ function realterrain.generate(minp, maxp)
 					heightmap[z][x] = {elev=elev}
 				elseif mode == "distance" or mode == "demchange" or mode == "coverchange" then
 					if mode == "demchange" then
-						heightmap[z][x] = {elev=elev, cover=cover}
+						heightmap[z][x] = {elev=elev, input=input}
 					elseif mode == "coverchange" then
 						heightmap[z][x] = {elev=elev, cover=cover, input=input}
 					else
@@ -568,20 +568,19 @@ function realterrain.generate(minp, maxp)
 						maxelev = elev
 					end
 				end
+				--when comparing two dems we need both of their min/max elevs
 				if mode == "demchange" then
 					local elev
-					if heightmap[z] and heightmap[z][x] then
-						elev = heightmap[z][x].input
-						if not minelev then
+					elev = heightmap[z][x].input
+					if not minelev then
+						minelev = elev
+						maxelev = elev
+					else
+						if elev < minelev then
 							minelev = elev
+						end
+						if elev > maxelev then
 							maxelev = elev
-						else
-							if elev < minelev then
-								minelev = elev
-							end
-							if elev > maxelev then
-								maxelev = elev
-							end
 						end
 					end
 				end
@@ -1179,9 +1178,18 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			realterrain.show_popup(pname,"You MUST have an Elevation (DEM) file!")
 			return
 		end
-		--check to make sure that if "distance mode was selected then an 'input' file is selected
-		if fields.output == "distance" and realterrain.settings.fileinput == "" then
+		--check to make sure that if a raster mode that needs an input file is used, it is there
+		if ((fields.output == "distance" or fields.output == "demchange" or fields.output == "coverchange")
+				and realterrain.settings.fileinput == "" )
+			or (fields.fileinput == "" and (realterrain.settings.output == "distance"
+											or realterrain.settings.output == "demchange"
+											or realterrain.settings.output == "coverchange")) then
 			realterrain.show_popup(pname, "For this raster mode you must have an input file selected")
+			return
+		end
+		if (fields.output == "coverchange" and realterrain.settings.filecover == "")
+			or (fields.filecover == "" and realterrain.settings.output == "coverchange") then
+			realterrain.show_popup(pname, "For this raster mode you must have a cover file selected")
 			return
 		end
 		--@todo still need to validate the various numerical values for scale and offsets...
