@@ -43,7 +43,7 @@ realterrain.settings.alpinelevel = 1000
 
 realterrain.settings.filedem   = 'demo/dem.tif'
 realterrain.settings.dembits = 8 --@todo remove this setting when magick autodetects bitdepth
-realterrain.settings.filecover = 'demo/covers.tif'
+realterrain.settings.filecover = 'demo/cover.tif'
 realterrain.settings.coverbits = 8 --@todo remove this setting when magick autodetects bitdepth
 
 realterrain.settings.fileinput = ''
@@ -398,7 +398,9 @@ function realterrain.init()
 	--print(dump(realterrain.get_unique_values(cover)))
 	
 	-- for various raster modes such as distance, we need to load the input or output files.
-	if realterrain.settings.output == "distance" or realterrain.settings.output == "compare" then
+	if realterrain.settings.output == "distance"
+		or realterrain.settings.output == "demchange"
+		or realterrain.settings.output == "coverchange" then
 		realterrain.input.image  = imageload(RASTERS..realterrain.settings.fileinput)
 		realterrain.input.bits = realterrain.settings.inputbits
 	end
@@ -497,10 +499,10 @@ function realterrain.generate(minp, maxp)
 	
 	--build the heightmap and include different extents and values depending on mode
 	local zstart, zend, xstart, xend, get_cover, get_input
-	if mode == "normal" or mode == "surface" or mode == "compare" then
+	if mode == "normal" or mode == "surface" or mode == "demchange" or mode == "coverchange" then
 		zstart, zend, xstart, xend = z0, z1, x0, x1
 		get_cover = true
-		if mode == "compare" then
+		if mode == "demchange" or mode == "coverchange" then
 			get_input = true
 		else
 			get_input = false
@@ -531,9 +533,16 @@ function realterrain.generate(minp, maxp)
 					heightmap[z][x] = {elev=elev, cover=cover }
 				elseif mode == "slope" or mode == "aspect" or mode == "curvature" then
 					heightmap[z][x] = {elev=elev}
-				elseif mode == "distance" or mode == "compare" then
-					heightmap[z][x] = {elev=elev, input=input}
-					if input > 0 then
+				elseif mode == "distance" or mode == "demchange" or mode == "coverchange" then
+					if mode == "demchange" then
+						heightmap[z][x] = {elev=elev, cover=cover}
+					elseif mode == "coverchange" then
+						heightmap[z][x] = {elev=elev, cover=cover, input=input}
+					else
+						heightmap[z][x] = {elev=elev, input=input}
+						
+					end
+					if mode == "distance" and input > 0 then
 						input_present = true --makes distance more efficient, skips distant chunks
 					end
 				end
@@ -559,7 +568,7 @@ function realterrain.generate(minp, maxp)
 						maxelev = elev
 					end
 				end
-				if mode == "compare" then
+				if mode == "demchange" then
 					local elev
 					if heightmap[z] and heightmap[z][x] then
 						elev = heightmap[z][x].input
@@ -628,7 +637,7 @@ function realterrain.generate(minp, maxp)
 	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground), shrub=minetest.get_content_id(realterrain.settings.b9shrub)}
 	
 	--register cids for SLOPE mode
-	if mode == "slope" or mode == "curvature" or mode == "distance" or mode == "compare" then
+	if mode == "slope" or mode == "curvature" or mode == "distance" or mode == "demchange" then
 		--cids for symbology nodetypes
 		for i=1,10 do
 			cids["symbol"..i] = minetest.get_content_id(realterrain.settings["rastsymbol"..i])
@@ -647,9 +656,13 @@ function realterrain.generate(minp, maxp)
 	for x = x0, x1 do
 		if heightmap[z] and heightmap[z][x] then
 			--normal mapgen for gameplay and exploration -- not raster analysis output
-			if mode == "normal" or mode == "surface" then
+			if mode == "normal" or mode == "surface" or mode == "coverchange" then
 				local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
 				local cover = heightmap[z][x].cover
+				local cover2
+				if mode == "coverchange" then
+					cover2 = heightmap[z][x].input
+				end
 				--print(cover)
 				if not cover or cover < 1 then
 					cover = 0
@@ -660,7 +673,17 @@ function realterrain.generate(minp, maxp)
 				else
 					cover = math.floor(cover)
 				end
-				
+				if mode == "coverchange" then
+					if not cover2 or cover2 < 1 then
+						cover2 = 0
+					elseif cover2 > 99 then
+						cover2 = math.floor(cover2/100) -- USGS tier3 now tier1
+					elseif cover2 > 9 then
+						cover2 = math.floor(cover2/10) -- USGS tier2 now tier1
+					else
+						cover2 = math.floor(cover2)
+					end
+				end
 				--print("elev: "..elev..", cover: "..cover)
 				
 				local ground, ground2, gprob, tree, tprob, tree2, tprob2, shrub, sprob, shrub2, sprob2
@@ -682,7 +705,7 @@ function realterrain.generate(minp, maxp)
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					--underground layers
-					if y < elev and mode == "normal" then 
+					if y < elev and (mode == "normal" or mode == "coverchange") then 
 						--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
 						if y < elev - (30 + math.random(1,5)) then
 							data[vi] = c_stone
@@ -704,9 +727,12 @@ function realterrain.generate(minp, maxp)
 							end
 						end
 					--the surface layer, determined by cover value
-					elseif y == elev and (cover ~= 5 or mode == "surface") then
-						--sand for lake bottoms 
-						if y < tonumber(realterrain.settings.waterlevel) then
+					elseif  y == elev and ( (cover ~= 5 or mode == "surface")
+						or mode == "coverchange" ) then
+						if mode == "coverchange" and cover2 and cover ~= cover2 then
+							--print("cover1: "..cover..", cover2: "..cover2)
+							data[vi] = minetest.get_content_id("realterrain:slope10")
+						elseif y < tonumber(realterrain.settings.waterlevel) then
 							data[vi] = c_sand
 						--alpine level
 						elseif y > tonumber(realterrain.settings.alpinelevel) + math.random(1,5) then 
@@ -848,7 +874,7 @@ function realterrain.generate(minp, maxp)
 					end
 					vi = vi + ystridevm
 				end -- end y iteration
-			elseif mode == "compare" then
+			elseif mode == "demchange" then
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					local elev1, elev2
@@ -1263,7 +1289,7 @@ function realterrain.show_rc_form(pname)
 	local modes = {}
 	modes["normal"]="1"; modes["surface"] = "2"; modes["slope"]="3";
 	modes["aspect"]="4"; modes["curvature"]="5"; modes["distance"]="6";
-	modes["compare"]="7";
+	modes["demchange"]="7"; modes["coverchange"]="8";
 	--print("IMAGES in DEM folder: "..f_images)
     --form header
 	local f_header = 			"size[14,10]" ..
@@ -1313,7 +1339,7 @@ function realterrain.show_rc_form(pname)
 								
 								
 								"label[6,5.5;Raster Mode]"..
-								"dropdown[6,6;4,1;output;normal,surface,slope,aspect,curvature,distance,compare;"..
+								"dropdown[6,6;4,1;output;normal,surface,slope,aspect,curvature,distance,demchange,coverchange;"..
 									modes[realterrain.settings.output].."]"..
 								"label[6,7;Input File]"..
 								"dropdown[6,7.5;4,1;fileinput;"..f_images..";"..
