@@ -145,7 +145,7 @@ for k, colorcode in next, slopecolors do
 			description = "Slope: "..k,
 			tiles = { colorcode..'.bmp' },
 			light_source = 9,
-			groups = {oddly_breakable_by_hand=1},
+			groups = {oddly_breakable_by_hand=1, not_in_creative_inventory=1},
 			--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
 				local meta = minetest.get_meta(pos)
 				meta:set_string("infotext", "Gis:"..colorcode);
@@ -161,7 +161,7 @@ for k,colorcode in next, aspectcolors do
 			description = "Aspect: "..k,
 			tiles = { colorcode..'.bmp' },
 			light_source = 9,
-			groups = {oddly_breakable_by_hand=1},
+			groups = {oddly_breakable_by_hand=1, not_in_creative_inventory=1},
 			--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
 				local meta = minetest.get_meta(pos)
 				meta:set_string("infotext", "Gis:"..colorcode);
@@ -184,7 +184,7 @@ for k,v in next, symbols do
 			description = "Symbol: "..v,
 			tiles = { v..'.png' },
 			light_source = 9,
-			groups = {oddly_breakable_by_hand=1},
+			groups = {oddly_breakable_by_hand=1, not_in_creative_inventory=1},
 			--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
 				local meta = minetest.get_meta(pos)
 				meta:set_string("infotext", "Gis:"..colorcode);
@@ -328,6 +328,10 @@ function realterrain.list_nodes()
 			table.insert(list, k)
 		end
 	end
+	--add water and lava
+	table.insert(list, "realterrain:water_static")
+	table.insert(list, "default:water_source")
+	table.insert(list, "default:lava_source")
 	return list
 end
 
