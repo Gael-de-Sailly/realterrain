@@ -43,14 +43,15 @@ realterrain.settings.alpinelevel = 1000
 
 realterrain.settings.filedem   = 'demo/dem.tif'
 realterrain.settings.dembits = 8 --@todo remove this setting when magick autodetects bitdepth
-realterrain.settings.filebiome = 'demo/biomes.tif'
-realterrain.settings.biomebits = 8 --@todo remove this setting when magick autodetects bitdepth
+realterrain.settings.filecover = 'demo/covers.tif'
+realterrain.settings.coverbits = 8 --@todo remove this setting when magick autodetects bitdepth
 
 realterrain.settings.fileinput = ''
+realterrain.settings.inputbits = 8
 realterrain.settings.dist_lim = 80
 realterrain.settings.dist_mode = "3D" --3D or 3Dp
 
---default biome (no biome)
+--default cover (no cover)
 realterrain.settings.b0ground = "default:dirt_with_dry_grass"
 realterrain.settings.b0ground2 = "default:sand"
 realterrain.settings.b0gprob = 10
@@ -371,7 +372,7 @@ function realterrain.init()
 	--[[
 	py.execute("import Image")
 	py.execute("dem = Image.open('"..RASTERS..realterrain.settings.filedem.."')")
-	py.execute("cover = Image.open('"..RASTERS..realterrain.settings.filebiome.."')")
+	py.execute("cover = Image.open('"..RASTERS..realterrain.settings.filecover.."')")
 	local pybits = py.eval("dem.mode")
 	py.execute("w, l = dem.size")
 	realterrain.dem.width = tonumber(tostring(py.eval("w")))
@@ -390,16 +391,16 @@ function realterrain.init()
 	if realterrain.dem.image then 
 		realterrain.dem.width = realterrain.dem.image:get_width()
 		realterrain.dem.length = realterrain.dem.image:get_height()
-		--local depth = dem:get_depth()-- @todo need to find correct syntax for this
-		--print("depth: "..depth)
-		--print("width: "..width..", height: "..length)
+		realterrain.dem.bits = realterrain.settings.dembits
 	else error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder") end
-	realterrain.cover.image = imageload(RASTERS..realterrain.settings.filebiome)
+	realterrain.cover.image = imageload(RASTERS..realterrain.settings.filecover)
+	realterrain.cover.bits = realterrain.settings.coverbits
 	--print(dump(realterrain.get_unique_values(cover)))
 	
 	-- for various raster modes such as distance, we need to load the input or output files.
-	if realterrain.settings.output == "distance" then
-		realterrain.input.image  = imageload(RASTERS..realterrain.settings.fileinput) 
+	if realterrain.settings.output == "distance" or realterrain.settings.output == "compare" then
+		realterrain.input.image  = imageload(RASTERS..realterrain.settings.fileinput)
+		realterrain.input.bits = realterrain.settings.inputbits
 	end
 end
 
@@ -495,19 +496,23 @@ function realterrain.generate(minp, maxp)
 	local data = vm:get_data()
 	
 	--build the heightmap and include different extents and values depending on mode
-	local zstart, zend, xstart, xend, get_biome, get_input
-	if mode == "normal" or mode == "surface" then
+	local zstart, zend, xstart, xend, get_cover, get_input
+	if mode == "normal" or mode == "surface" or mode == "compare" then
 		zstart, zend, xstart, xend = z0, z1, x0, x1
-		get_biome = true
-		get_input = false
+		get_cover = true
+		if mode == "compare" then
+			get_input = true
+		else
+			get_input = false
+		end
 	elseif mode == "slope" or mode == "aspect" or mode == "curvature" then
 		zstart, zend, xstart, xend = z0-1, z1+1, x0-1, x1+1
-		get_biome = false
+		get_cover = false
 		get_input = false
 	elseif mode == "distance" then
 		local limit = realterrain.settings.dist_lim
 		zstart, zend, xstart, xend = z0-limit, z1+limit, x0-limit, x1+limit
-		get_biome = false
+		get_cover = false
 		get_input = true
 	end
 	local heightmap = {}
@@ -516,17 +521,17 @@ function realterrain.generate(minp, maxp)
 	for z=zstart,zend do
 		if not heightmap[z] then heightmap[z] = {} end
 		for x=xstart,xend do
-			local elev, biome, input
-			elev, biome, input = realterrain.get_pixel(x,z, get_biome, get_input)
+			local elev, cover, input
+			elev, cover, input = realterrain.get_pixel(x,z, get_cover, get_input)
 			--don't include any values if the elevation is not there (off-the dem)
 			if elev then 
 				entries = entries + 1
-				--biome is only needed for normal and surface mode
+				--cover is only needed for normal and surface mode
 				if mode == "normal" or mode =="surface" then
-					heightmap[z][x] = {elev=elev, biome=biome }
+					heightmap[z][x] = {elev=elev, cover=cover }
 				elseif mode == "slope" or mode == "aspect" or mode == "curvature" then
 					heightmap[z][x] = {elev=elev}
-				elseif mode == "distance" then
+				elseif mode == "distance" or mode == "compare" then
 					heightmap[z][x] = {elev=elev, input=input}
 					if input > 0 then
 						input_present = true --makes distance more efficient, skips distant chunks
@@ -554,8 +559,24 @@ function realterrain.generate(minp, maxp)
 						maxelev = elev
 					end
 				end
+				if mode == "compare" then
+					local elev
+					if heightmap[z] and heightmap[z][x] then
+						elev = heightmap[z][x].input
+						if not minelev then
+							minelev = elev
+							maxelev = elev
+						else
+							if elev < minelev then
+								minelev = elev
+							end
+							if elev > maxelev then
+								maxelev = elev
+							end
+						end
+					end
+				end
 			end
-			
 		end
 	end
 	-- if there were elevations in this footprint then add the min and max to the cache table if not already there
@@ -590,7 +611,7 @@ function realterrain.generate(minp, maxp)
 	local c_dirt   = minetest.get_content_id("default:dirt")
 	local c_coal   = minetest.get_content_id("default:stone_with_coal")
 	local c_cobble = minetest.get_content_id("default:cobble")
-	--biome specific cids
+	--cover specific cids
 	local cids = {}
 	cids[0] = {ground=minetest.get_content_id(realterrain.settings.b0ground),
 			   ground2=minetest.get_content_id(realterrain.settings.b0ground2),
@@ -607,7 +628,7 @@ function realterrain.generate(minp, maxp)
 	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground), shrub=minetest.get_content_id(realterrain.settings.b9shrub)}
 	
 	--register cids for SLOPE mode
-	if mode == "slope" or mode == "curvature" or mode == "distance" then
+	if mode == "slope" or mode == "curvature" or mode == "distance" or mode == "compare" then
 		--cids for symbology nodetypes
 		for i=1,10 do
 			cids["symbol"..i] = minetest.get_content_id(realterrain.settings["rastsymbol"..i])
@@ -628,35 +649,35 @@ function realterrain.generate(minp, maxp)
 			--normal mapgen for gameplay and exploration -- not raster analysis output
 			if mode == "normal" or mode == "surface" then
 				local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
-				local biome = heightmap[z][x].biome
-				--print(biome)
-				if not biome or biome < 1 then
-					biome = 0
-				elseif biome > 99 then
-					biome = math.floor(biome/100) -- USGS tier3 now tier1
-				elseif biome > 9 then
-					biome = math.floor(biome/10) -- USGS tier2 now tier1
+				local cover = heightmap[z][x].cover
+				--print(cover)
+				if not cover or cover < 1 then
+					cover = 0
+				elseif cover > 99 then
+					cover = math.floor(cover/100) -- USGS tier3 now tier1
+				elseif cover > 9 then
+					cover = math.floor(cover/10) -- USGS tier2 now tier1
 				else
-					biome = math.floor(biome)
+					cover = math.floor(cover)
 				end
 				
-				--print("elev: "..elev..", biome: "..biome)
+				--print("elev: "..elev..", cover: "..cover)
 				
 				local ground, ground2, gprob, tree, tprob, tree2, tprob2, shrub, sprob, shrub2, sprob2
 				
-				ground = cids[biome].ground
-				ground2 = cids[biome].ground2
-				gprob = tonumber(realterrain.get_setting("b"..biome.."gprob"))
-				tree = realterrain.get_setting("b"..biome.."tree")
-				tprob = tonumber(realterrain.get_setting("b"..biome.."tprob"))
-				tree2 = realterrain.get_setting("b"..biome.."tree2")
-				tprob2 = tonumber(realterrain.get_setting("b"..biome.."tprob2"))
-				shrub = cids[biome].shrub
-				sprob = tonumber(realterrain.get_setting("b"..biome.."sprob"))
-				shrub2 =cids[biome].shrub2
-				sprob2 = tonumber(realterrain.get_setting("b"..biome.."sprob2")) 
-				--[[if tree then print("biome: "..biome..", ground: "..ground..", tree: "..tree..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
-				else print("biome: "..biome..", ground: "..ground..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
+				ground = cids[cover].ground
+				ground2 = cids[cover].ground2
+				gprob = tonumber(realterrain.get_setting("b"..cover.."gprob"))
+				tree = realterrain.get_setting("b"..cover.."tree")
+				tprob = tonumber(realterrain.get_setting("b"..cover.."tprob"))
+				tree2 = realterrain.get_setting("b"..cover.."tree2")
+				tprob2 = tonumber(realterrain.get_setting("b"..cover.."tprob2"))
+				shrub = cids[cover].shrub
+				sprob = tonumber(realterrain.get_setting("b"..cover.."sprob"))
+				shrub2 =cids[cover].shrub2
+				sprob2 = tonumber(realterrain.get_setting("b"..cover.."sprob2")) 
+				--[[if tree then print("cover: "..cover..", ground: "..ground..", tree: "..tree..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
+				else print("cover: "..cover..", ground: "..ground..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
 				end]]
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
@@ -676,14 +697,14 @@ function realterrain.generate(minp, maxp)
 						elseif y < elev - (5 + math.random(1,5)) then
 							data[vi] = c_sand
 						else
-							if biome == 5 then
+							if cover == 5 then
 								data[vi] = ground
 							else
 								data[vi] = c_dirt
 							end
 						end
-					--the surface layer, determined by biome value
-					elseif y == elev and (biome ~= 5 or mode == "surface") then
+					--the surface layer, determined by cover value
+					elseif y == elev and (cover ~= 5 or mode == "surface") then
 						--sand for lake bottoms 
 						if y < tonumber(realterrain.settings.waterlevel) then
 							data[vi] = c_sand
@@ -729,7 +750,8 @@ function realterrain.generate(minp, maxp)
 					vi = vi + ystridevm
 				end --end y iteration
 			--if raster output then display only that
-			elseif mode == "slope" or mode == "aspect" or mode == "curvature" or mode == "distance" then
+			elseif mode == "slope" or mode == "aspect" or mode == "curvature"
+				or mode == "distance" then
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					local elev
@@ -826,6 +848,23 @@ function realterrain.generate(minp, maxp)
 					end
 					vi = vi + ystridevm
 				end -- end y iteration
+			elseif mode == "compare" then
+				local vi = area:index(x, y0, z) -- voxelmanip index
+				for y = y0, y1 do
+					local elev1, elev2
+					elev1 = heightmap[z][x].elev
+					elev2 = heightmap[z][x].input
+					if (y >= elev1 and y <= elev2) or (y >= elev2 and y <= elev1) then
+						local diff = elev2 - elev1
+						--print("elev1: "..elev1..", elev2: "..elev2..",diff: "..diff)
+						if diff == 0 then color = "symbol5"
+						elseif diff < 0 then color = "symbol10"
+						elseif diff > 0 then color = "symbol1"
+						end
+						data[vi] = cids[color]
+					end
+					vi = vi + ystridevm
+				end
 			end --end mode options
 		end --end if pixel is in heightmap
 	end
@@ -858,13 +897,20 @@ function realterrain.get_raw_pixel(x,z, raster) -- "image" is a string for pytho
 		v = tonumber(tostring(v))
 		--print(e)
 	--]]
-	if raster == "dem" then raster = realterrain.dem.image
-	elseif raster == "cover" then raster = realterrain.cover.image
-	elseif raster == "input" then raster = realterrain.input.image
+	local bits
+	if raster == "dem" then
+		raster = realterrain.dem.image
+		bits = realterrain.dem.bits
+	elseif raster == "cover" then
+		raster = realterrain.cover.image
+		bits = realterrain.cover.bits
+	elseif raster == "input" then
+		raster = realterrain.input.image
+		bits = realterrain.input.bits
 	end
 	if raster then
 		if magick then
-			v = math.floor(raster:get_pixel(x, z) * (2^tonumber(realterrain.settings.dembits))) --@todo change when magick autodetects bit depth
+			v = math.floor(raster:get_pixel(x, z) * (2^bits)) --@todo change when magick autodetects bit depth
 		elseif imlib2 then
 			v = raster:get_pixel(x, z).red
 		end
@@ -873,7 +919,7 @@ function realterrain.get_raw_pixel(x,z, raster) -- "image" is a string for pytho
 end
 
 --the main get pixel method that applies the scale and offsets
-function realterrain.get_pixel(x,z, get_biome, get_input)
+function realterrain.get_pixel(x,z, get_cover, get_input)
 	local e, b, i
     local row,col = 0 - z + tonumber(realterrain.settings.zoffset), 0 + x - tonumber(realterrain.settings.xoffset)
 	--adjust for x and z scales
@@ -886,17 +932,16 @@ function realterrain.get_pixel(x,z, get_biome, get_input)
 	e = realterrain.get_raw_pixel(col,row, "dem") or 0
 	--print("raw e: "..e)
 	--adjust for offset and scale
-    e = math.floor((e / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
+    e = math.floor((e * tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
 	
-    if get_biome then
+    if get_cover then
 		b = realterrain.get_raw_pixel(col,row, "cover") or 0
 	end
 	
 	if get_input then
 		i = realterrain.get_raw_pixel(col,row, "input") or 0
 	end
-    
-	--print("elev: "..e..", biome: "..b)
+	--print("elev: "..e..", cover: "..b)
     return e, b, i
 end
 --experimental function to enumerate 80x80 crop of raster at once using IM or GM
@@ -1110,7 +1155,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		end
 		--check to make sure that if "distance mode was selected then an 'input' file is selected
 		if fields.output == "distance" and realterrain.settings.fileinput == "" then
-			realterrain.show_popup(pname, "For distance mode you must have an input file selected")
+			realterrain.show_popup(pname, "For this raster mode you must have an input file selected")
 			return
 		end
 		--@todo still need to validate the various numerical values for scale and offsets...
@@ -1146,7 +1191,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				minetest.chat_send_player(pname, "You changed the mapgen settings!")
                 return true
 			elseif fields.exit == "Biomes" then
-				realterrain.show_biome_form(pname)
+				realterrain.show_cover_form(pname)
 				return true
 			elseif fields.exit == "Symbols" then
 				realterrain.show_symbology(pname)
@@ -1155,8 +1200,8 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			return true
 		end
 		
-		--biome config form
-		if formname == "realterrain:biome_config" then
+		--cover config form
+		if formname == "realterrain:cover_config" then
 			if fields.exit == "Apply" then
 				realterrain.show_rc_form(pname)
 				return true
@@ -1171,7 +1216,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		end
 		--item image selection form
 		if formname == "realterrain:image_items" then
-			realterrain.show_biome_form(pname)
+			realterrain.show_cover_form(pname)
 			return true
 		end
 		--raster symbology selection form
@@ -1218,25 +1263,29 @@ function realterrain.show_rc_form(pname)
 	local modes = {}
 	modes["normal"]="1"; modes["surface"] = "2"; modes["slope"]="3";
 	modes["aspect"]="4"; modes["curvature"]="5"; modes["distance"]="6";
+	modes["compare"]="7";
 	--print("IMAGES in DEM folder: "..f_images)
     --form header
 	local f_header = 			"size[14,10]" ..
-								--"tabheader[0,0;tab;1D, 2D, 3D, Import, Manage;"..tab.."]"..
+								"button_exit[0.1,0.1.9;2,1;exit;Biomes]"..
+								"button_exit[2,0.1;2,1;exit;Symbols]"..
 								"label[6,0;You are at x= "..math.floor(ppos.x)..
 								" y= "..math.floor(ppos.y).." z= "..math.floor(ppos.z).." and mostly facing "..dir.."]"
 	--Scale settings
 	local f_scale_settings =
-                                "field[1,1;4,1;yscale;Vertical meters per voxel;"..
+                                "label[1,1;Scales]"..
+								"field[1,2;1,1;yscale;y;"..
                                     realterrain.esc(realterrain.get_setting("yscale")).."]" ..
-                                "field[1,2;4,1;xscale;East-West voxels per pixel;"..
+                                "field[2,2;1,1;xscale;x;"..
                                     realterrain.esc(realterrain.get_setting("xscale")).."]" ..
-								"field[1,3;4,1;zscale;North-South voxels per pixel;"..
+								"field[3,2;1,1;zscale;z;"..
                                     realterrain.esc(realterrain.get_setting("zscale")).."]" ..
-								"field[1,4;4,1;yoffset;Vertical Offset;"..
+								"label[1,3;Offsets]"..
+								"field[1,4;1,1;yoffset;y;"..
                                     realterrain.esc(realterrain.get_setting("yoffset")).."]" ..
-                                "field[1,5;4,1;xoffset;East Offset;"..
+                                "field[2,4;1,1;xoffset;x;"..
                                     realterrain.esc(realterrain.get_setting("xoffset")).."]" ..
-								"field[1,6;4,1;zoffset;North Offset;"..
+								"field[3,4;1,1;zoffset;z;"..
                                     realterrain.esc(realterrain.get_setting("zoffset")).."]" ..
 								
 								"field[1,8;4,1;waterlevel;Water Level;"..
@@ -1250,10 +1299,11 @@ function realterrain.show_rc_form(pname)
 								"label[10,1;DEM bit-depth]"..
 								"dropdown[10.8,1.5;1,1;dembits;8,16;"..
 									bits[realterrain.esc(realterrain.get_setting("dembits"))].."]" ..
-								"label[6,2.5;Biome File (8 bit)]"..
-								"dropdown[6,3;4,1;filebiome;"..f_images..";"..
-                                    realterrain.get_idx(images, realterrain.get_setting("filebiome")) .."]" ..
-								"button_exit[10,2.9;2,1;exit;Biomes]"..
+								"label[6,2.5;Biome File]"..
+								"dropdown[6,3;4,1;filecover;"..f_images..";"..
+                                    realterrain.get_idx(images, realterrain.get_setting("filecover")) .."]" ..
+								"dropdown[10.8,3;1,1;coverbits;8,16;"..
+									bits[realterrain.esc(realterrain.get_setting("coverbits"))].."]" ..
 								--[["label[6,4;Water File]"..
 								"dropdown[6,4.5;4,1;filewater;"..f_images..";"..
                                     realterrain.get_idx(images, realterrain.get_setting("filewater")) .."]"..
@@ -1263,12 +1313,13 @@ function realterrain.show_rc_form(pname)
 								
 								
 								"label[6,5.5;Raster Mode]"..
-								"dropdown[6,6;4,1;output;normal,surface,slope,aspect,curvature,distance;"..
+								"dropdown[6,6;4,1;output;normal,surface,slope,aspect,curvature,distance,compare;"..
 									modes[realterrain.settings.output].."]"..
-								"button_exit[10,5.9;2,1;exit;Symbols]"..
 								"label[6,7;Input File]"..
 								"dropdown[6,7.5;4,1;fileinput;"..f_images..";"..
-									realterrain.get_idx(images, realterrain.get_setting("fileinput")) .."]"
+									realterrain.get_idx(images, realterrain.get_setting("fileinput")) .."]"..
+								"dropdown[10.8,7.5;1,1;inputbits;8,16;"..
+									bits[realterrain.esc(realterrain.get_setting("inputbits"))].."]"
 								
 	--Action buttons
 	local f_footer = 			"label[6,9;After applying, exit world and delete map.sqlite]"..
@@ -1286,7 +1337,7 @@ function realterrain.show_rc_form(pname)
     return true
 end
 
-function realterrain.show_biome_form(pname)
+function realterrain.show_cover_form(pname)
 	local schems = realterrain.list_schems()
 	local f_schems = ""
 	for k,v in next, schems do
@@ -1315,7 +1366,7 @@ function realterrain.show_biome_form(pname)
 				realterrain.esc(realterrain.get_setting("b"..i.."sprob")).."]"
 	end
 					
-	minetest.show_formspec(pname,   "realterrain:biome_config",
+	minetest.show_formspec(pname,   "realterrain:cover_config",
                                     f_header .. f_body
 	)
 	return true
