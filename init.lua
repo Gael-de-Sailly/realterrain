@@ -503,6 +503,7 @@ function realterrain.generate(minp, maxp)
 	
 	--build the heightmap and include different extents and values depending on mode
 	local zstart, zend, xstart, xend, get_cover, get_input
+	--modes that need only the exact footprint of the mapchunk
 	if mode == "normal" or mode == "demchange" or mode == "coverchange" then
 		zstart, zend, xstart, xend = z0, z1, x0, x1
 		get_cover = true
@@ -511,7 +512,8 @@ function realterrain.generate(minp, maxp)
 		else
 			get_input = false
 		end
-	elseif mode == "surface" or mode == "slope" or mode == "aspect" or mode == "curvature" then
+	--modes that need one node around the footprint of the mapchunk for fill_below() or moving windows
+	elseif mode == "surface" or mode == "elevation" or mode == "slope" or mode == "aspect" or mode == "curvature" then
 		zstart, zend, xstart, xend = z0-1, z1+1, x0-1, x1+1
 		get_input = false
 		if mode == "surface" then
@@ -519,6 +521,7 @@ function realterrain.generate(minp, maxp)
 		else
 			get_cover = false
 		end
+	--modes that need the footprint of the mapchunk plus the dist_limit
 	elseif mode == "distance" then
 		local limit = realterrain.settings.dist_lim
 		zstart, zend, xstart, xend = z0-limit, z1+limit, x0-limit, x1+limit
@@ -536,23 +539,21 @@ function realterrain.generate(minp, maxp)
 			--don't include any values if the elevation is not there (off-the dem)
 			if elev then 
 				entries = entries + 1
-				--cover is only needed for normal and surface mode
+				--modes that need cover
 				if mode == "normal" or mode =="surface" then
 					heightmap[z][x] = {elev=elev, cover=cover }
-				elseif mode == "slope" or mode == "aspect" or mode == "curvature" then
+				--modes that need only elevation
+				elseif mode =="elevation" or mode == "slope" or mode == "aspect" or mode == "curvature" then
 					heightmap[z][x] = {elev=elev}
-				elseif mode == "distance" or mode == "demchange" or mode == "coverchange" then
-					if mode == "demchange" then
-						heightmap[z][x] = {elev=elev, input=input}
-					elseif mode == "coverchange" then
-						heightmap[z][x] = {elev=elev, cover=cover, input=input}
-					else
-						heightmap[z][x] = {elev=elev, input=input}
-						
-					end
+				--modes that need input
+				elseif mode == "distance" or mode == "demchange" then
+					heightmap[z][x] = {elev=elev, input=input}
 					if mode == "distance" and input > 0 then
 						input_present = true --makes distance more efficient, skips distant chunks
 					end
+				--modes that need all three rasters
+				elseif mode == "coverchange" then
+					heightmap[z][x] = {elev=elev, cover=cover, input=input}
 				end
 			end
 		end
@@ -644,7 +645,8 @@ function realterrain.generate(minp, maxp)
 	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground), shrub=minetest.get_content_id(realterrain.settings.b9shrub)}
 	
 	--register cids for SLOPE mode
-	if mode == "slope" or mode == "curvature" or mode == "distance" or mode == "demchange" then
+	if mode == "elevation" or mode == "slope" or mode == "curvature"
+		or mode == "distance" or mode == "demchange" then
 		--cids for symbology nodetypes
 		for i=1,10 do
 			cids["symbol"..i] = minetest.get_content_id(realterrain.settings["rastsymbol"..i])
@@ -656,6 +658,9 @@ function realterrain.generate(minp, maxp)
 		for k, code in next, aspectcolors do
 			cids["aspect"..k] = minetest.get_content_id("realterrain:".."aspect"..k)
 		end
+	end
+	if mode == "coverchange" then
+		cids["symbol10"] = minetest.get_content_id("realterrain:slope10")
 	end
 	
 	--generate!
@@ -738,7 +743,7 @@ function realterrain.generate(minp, maxp)
 						or mode == "coverchange" ) then
 						if mode == "coverchange" and cover2 and cover ~= cover2 then
 							--print("cover1: "..cover..", cover2: "..cover2)
-							data[vi] = minetest.get_content_id("realterrain:slope10")
+							data[vi] = cids["symbol10"]
 						elseif y < tonumber(realterrain.settings.waterlevel) then
 							data[vi] = c_sand
 						--alpine level
@@ -783,31 +788,47 @@ function realterrain.generate(minp, maxp)
 					vi = vi + ystridevm
 				end --end y iteration
 			--if raster output then display only that
-			elseif mode == "slope" or mode == "aspect" or mode == "curvature"
-				or mode == "distance" then
+			elseif mode =="elevation" or mode == "slope" or mode == "aspect"
+				or mode == "curvature" or mode == "distance" then
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					local elev
 					elev = heightmap[z][x].elev
 					if y == elev then
 						local neighbors = {}
-						neighbors["e"] = y
 						local edge_case = false
-						for dir, offset in next, neighborhood do
-							--get elev for all surrounding nodes
-							local nelev
-							if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x]then
-								nelev = heightmap[z+offset.z][x+offset.x].elev
-							end
-							if nelev then
-								neighbors[dir] = nelev
-							else --edge case, need to abandon this pixel for slope
-								edge_case = true
+						--moving window modes need neighborhood built
+						if mode =="elevation" or mode == "slope" or mode == "aspect" then
+							neighbors["e"] = y
+							for dir, offset in next, neighborhood do
+								--get elev for all surrounding nodes
+								local nelev
+								if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x]then
+									nelev = heightmap[z+offset.z][x+offset.x].elev
+								end
+								if nelev then
+									neighbors[dir] = nelev
+								else --edge case, need to abandon this pixel for slope
+									edge_case = true
+								end
 							end
 						end
 						if not edge_case then
 							local color
-							if mode == "slope" then
+							if mode == "elevation" then
+								if elev < 10 then color = "symbol1"
+								elseif elev < 20 then color = "symbol2"
+								elseif elev < 50 then color = "symbol3"
+								elseif elev < 100 then color = "symbol4"
+								elseif elev < 150 then color = "symbol5"
+								elseif elev < 200 then color = "symbol6"
+								elseif elev < 300 then color = "symbol7"
+								elseif elev < 450 then color = "symbol8"
+								elseif elev < 600 then color = "symbol9"
+								elseif elev >= 600 then color = "symbol10" end
+								--print("elev: "..elev)
+								data[vi] = cids[color]				
+							elseif mode == "slope" then
 								local slope = realterrain.get_slope(neighbors)
 								if slope < 1 then color = "symbol1"
 								elseif slope < 2 then color = "symbol2"
@@ -1303,9 +1324,10 @@ function realterrain.show_rc_form(pname)
 	bits["8"] = "1"
 	bits["16"] = "2"
 	local modes = {}
-	modes["normal"]="1"; modes["surface"] = "2"; modes["slope"]="3";
-	modes["aspect"]="4"; modes["curvature"]="5"; modes["distance"]="6";
-	modes["demchange"]="7"; modes["coverchange"]="8";
+	modes["normal"]="1"; modes["surface"] = "2"; modes["elevation"] = "3";
+	modes["slope"]="4";	modes["aspect"]="5"; modes["curvature"]="6";
+	modes["distance"]="7"; modes["demchange"]="8"; modes["coverchange"]="9";
+	
 	--print("IMAGES in DEM folder: "..f_images)
     --form header
 	local f_header = 			"size[14,10]" ..
@@ -1355,7 +1377,7 @@ function realterrain.show_rc_form(pname)
 								
 								
 								"label[6,5.5;Raster Mode]"..
-								"dropdown[6,6;4,1;output;normal,surface,slope,aspect,curvature,distance,demchange,coverchange;"..
+								"dropdown[6,6;4,1;output;normal,surface,elevation,slope,aspect,curvature,distance,demchange,coverchange;"..
 									modes[realterrain.settings.output].."]"..
 								"label[6,7;Input File]"..
 								"dropdown[6,7.5;4,1;fileinput;"..f_images..";"..
