@@ -860,8 +860,8 @@ function realterrain.generate(minp, maxp)
 									elseif distance < (limit/10)*5 then color = "symbol5"
 									elseif distance < (limit/10)*6 then color = "symbol6"
 									elseif distance < (limit/10)*7 then color = "symbol7"
-									elseif distance < (limit/10)*8 then color = "symbol"
-									elseif distance < (limit/10)*9 then color = "symbol"
+									elseif distance < (limit/10)*8 then color = "symbol8"
+									elseif distance < (limit/10)*9 then color = "symbol9"
 									else color = "symbol10"
 									end
 								else
