@@ -503,7 +503,7 @@ function realterrain.generate(minp, maxp)
 	
 	--build the heightmap and include different extents and values depending on mode
 	local zstart, zend, xstart, xend, get_cover, get_input
-	if mode == "normal" or mode == "surface" or mode == "demchange" or mode == "coverchange" then
+	if mode == "normal" or mode == "demchange" or mode == "coverchange" then
 		zstart, zend, xstart, xend = z0, z1, x0, x1
 		get_cover = true
 		if mode == "demchange" or mode == "coverchange" then
@@ -511,10 +511,14 @@ function realterrain.generate(minp, maxp)
 		else
 			get_input = false
 		end
-	elseif mode == "slope" or mode == "aspect" or mode == "curvature" then
+	elseif mode == "surface" or mode == "slope" or mode == "aspect" or mode == "curvature" then
 		zstart, zend, xstart, xend = z0-1, z1+1, x0-1, x1+1
-		get_cover = false
 		get_input = false
+		if mode == "surface" then
+			get_cover = true
+		else
+			get_cover = false
+		end
 	elseif mode == "distance" then
 		local limit = realterrain.settings.dist_lim
 		zstart, zend, xstart, xend = z0-limit, z1+limit, x0-limit, x1+limit
