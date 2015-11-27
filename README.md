@@ -66,15 +66,19 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact red ch
 
 - allow for placement of buildings and other structures via .mts import
 - allow DEMs to tile according to standard naming conventions, or explicitly
+- pull DEMs directly from the internet
+- pull landcover directly from the internet
 - allow output of heightmap and land cover to image files
 - admin priv for using the settings tool
 - add more raster analysis modes
-- allow raster symbology to be customized in-game
 
 ### Changelog
 #### 0.0.7
 - performance improvements to distance analysis mode, new default (demo) raster for distance mode ("points.tif")
 - refactoring of some code: performance improvements where empty mapchunks are not processed
+- compare two dems
+- compare two biome files (or any other raster)
+- customize raster output symbology
 - bug fixes
 
 #### 0.0.6
