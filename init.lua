@@ -2,9 +2,10 @@ MODPATH = minetest.get_modpath("realterrain")
 WORLDPATH = minetest.get_worldpath()
 RASTERS = MODPATH .. "/rasters/"
 SCHEMS = MODPATH .. "/schems/"
+HEIGHTMAP = false --experimental mode to build entire heightmap at once not pixel-by-pixel (requires im or gm)
 --CONVERT = "gm convert" --"convert.exe", "convert", "gm convert", "gm.exe convert",  etc --experimental
 
-local magick, imlib2
+local magick, imlib2, py, gm, convert, socket
 local ie = minetest.request_insecure_environment()
 
 --ie.require "luarocks.loader"
@@ -21,12 +22,18 @@ py.execute("from osgeo import gdal")]]
 --package.path = (MODPATH.."/luasocket/?.lua;"..MODPATH.."/luasocket/?/init.lua;"..package.path)
 --local socket = ie.require "socket"
 
---ONLY RUN ONE OF MAGICK OR IMLIB2 AT ANY TIME
+--ONLY RUN ONE OF magick OR imlib2 OR gm OR convert AT ANY TIME
 package.path = (MODPATH.."/magick/?.lua;"..MODPATH.."/magick/?/init.lua;"..package.path)
 local magick = ie.require "magick"--]]
 
 --[[package.path = (MODPATH.."/lua-imlib2/?.lua;"..package.path)
 local imlib2 = ie.require "imlib2"--]]
+
+--[[package.path = (MODPATH.."/?.lua;"..MODPATH.."/?/init.lua;"..package.path)
+local gm = ie.require "graphicsmagick"--]]
+
+--you can avoid libraries if you use command line im (convert, convert.exe) or gm (gm convert, gm.exe convert)
+--[[convert = "convert" --]]
 
 local realterrain = {}
 realterrain.settings = {}
@@ -384,7 +391,8 @@ function realterrain.init()
 	print("[PYTHON] mode: "..pybits..", width: "..width..", length: "..length)
 	--]]
 	local imageload
-	if magick then imageload = magick.load_image
+	if gm then imageload = gm.Image
+	elseif magick then imageload = magick.load_image
 	elseif imlib2 then imageload = imlib2.image.load
 	end
 	
@@ -393,20 +401,43 @@ function realterrain.init()
 	--local dem = magick.load_image(RASTERS..realterrain.settings.filedem)
 	
 	if realterrain.dem.image then 
-		realterrain.dem.width = realterrain.dem.image:get_width()
-		realterrain.dem.length = realterrain.dem.image:get_height()
-		realterrain.dem.bits = realterrain.settings.dembits
-	else error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder") end
-	realterrain.cover.image = imageload(RASTERS..realterrain.settings.filecover)
-	realterrain.cover.bits = realterrain.settings.coverbits
-	--print(dump(realterrain.get_unique_values(cover)))
-	
+		if gm then
+			realterrain.dem.width, realterrain.dem.length = realterrain.dem.image:size()
+			realterrain.dem.bits = realterrain.dem.image:depth()
+		else
+			realterrain.dem.width = realterrain.dem.image:get_width()
+			realterrain.dem.length = realterrain.dem.image:get_height()
+			realterrain.dem.bits = realterrain.settings.dembits
+		end
+		print("depth: "..realterrain.dem.bits..", width: "..realterrain.dem.width..", length: "..realterrain.dem.length)
+	else
+		error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder")
+	end
+	if realterrain.settings.output == "normal"
+		or realterrain.settings.output == "surface"
+		or realterrain.settings.output == "coverchange" then
+		realterrain.cover.image = imageload(RASTERS..realterrain.settings.filecover)
+		if gm then
+			realterrain.cover.width, realterrain.cover.length = realterrain.cover.image:size()
+			realterrain.cover.bits = realterrain.cover.image:depth()
+		else
+			realterrain.cover.image = imageload(RASTERS..realterrain.settings.filecover)
+			realterrain.cover.bits = realterrain.settings.coverbits
+			--print(dump(realterrain.get_unique_values(cover)))
+		end
+	end
 	-- for various raster modes such as distance, we need to load the input or output files.
 	if realterrain.settings.output == "distance"
 		or realterrain.settings.output == "demchange"
 		or realterrain.settings.output == "coverchange" then
-		realterrain.input.image  = imageload(RASTERS..realterrain.settings.fileinput)
-		realterrain.input.bits = realterrain.settings.inputbits
+		realterrain.input.image = imageload(RASTERS..realterrain.settings.fileinput)
+		if gm then
+			realterrain.input.width, realterrain.input.length = realterrain.input.image:size()
+			realterrain.input.bits = realterrain.input.image:depth()
+		else
+			realterrain.input.image  = imageload(RASTERS..realterrain.settings.fileinput)
+			realterrain.input.bits = realterrain.settings.inputbits
+		end
 	end
 end
 
@@ -440,17 +471,6 @@ minetest.register_globalstep(function(dtime)
 	end
 end)--]]
 
--- function to get all the heightmap pixels at once using a crop of the image and toblob
-function realterrain.build_heightmap(xstart, xend ,zstart, zend, raster)
-	if not raster then raster = realterrain.dem end
-	--@todo add imlib2 support
-	local crop = realterrain.dem.image:clone() --this might be a bottleneck on large rasters?
-	crop:crop(xend-xstart, zend-zstart, xstart, zstart)
-	crop:set_format("bmp")
-	local blob = crop:get_blob()
-	print(blob)
-end
-
 -- On generated function
 minetest.register_on_generated(function(minp, maxp, seed)
 	realterrain.generate(minp, maxp)
@@ -475,8 +495,6 @@ function realterrain.generate(minp, maxp)
 	local cz0 = math.floor((z0 + 32) / 80) 
 	
 	local mode = realterrain.settings.output
-	
-	--realterrain.build_heightmap(x0,x1,x0+2,z0+2) --experiment
 	
 	--check to see if the current chunk is above (or below) the elevation range for this footprint
 	if realterrain.surface_cache[cz0] and realterrain.surface_cache[cz0][cx0] then
@@ -531,29 +549,33 @@ function realterrain.generate(minp, maxp)
 	local heightmap = {}
 	local entries = 0
 	local input_present = false
-	for z=zstart,zend do
-		if not heightmap[z] then heightmap[z] = {} end
-		for x=xstart,xend do
-			local elev, cover, input
-			elev, cover, input = realterrain.get_pixel(x,z, get_cover, get_input)
-			--don't include any values if the elevation is not there (off-the dem)
-			if elev then 
-				entries = entries + 1
-				--modes that need cover
-				if mode == "normal" or mode =="surface" then
-					heightmap[z][x] = {elev=elev, cover=cover }
-				--modes that need only elevation
-				elseif mode =="elevation" or mode == "slope" or mode == "aspect" or mode == "curvature" then
-					heightmap[z][x] = {elev=elev}
-				--modes that need input
-				elseif mode == "distance" or mode == "demchange" then
-					heightmap[z][x] = {elev=elev, input=input}
-					if mode == "distance" and input > 0 then
-						input_present = true --makes distance more efficient, skips distant chunks
+	if HEIGHTMAP then
+		heightmap = realterrain.build_heightmap(xstart,xend,zstart,zend, get_cover, get_input) --experiment
+	else
+		for z=zstart,zend do
+			if not heightmap[z] then heightmap[z] = {} end
+			for x=xstart,xend do
+				local elev, cover, input
+				elev, cover, input = realterrain.get_pixel(x,z, get_cover, get_input)
+				--don't include any values if the elevation is not there (off-the dem)
+				if elev then 
+					entries = entries + 1
+					--modes that need cover
+					if mode == "normal" or mode =="surface" then
+						heightmap[z][x] = {elev=elev, cover=cover }
+					--modes that need only elevation
+					elseif mode =="elevation" or mode == "slope" or mode == "aspect" or mode == "curvature" then
+						heightmap[z][x] = {elev=elev}
+					--modes that need input
+					elseif mode == "distance" or mode == "demchange" then
+						heightmap[z][x] = {elev=elev, input=input}
+						if mode == "distance" and input > 0 then
+							input_present = true --makes distance more efficient, skips distant chunks
+						end
+					--modes that need all three rasters
+					elseif mode == "coverchange" then
+						heightmap[z][x] = {elev=elev, cover=cover, input=input}
 					end
-				--modes that need all three rasters
-				elseif mode == "coverchange" then
-					heightmap[z][x] = {elev=elev, cover=cover, input=input}
 				end
 			end
 		end
@@ -918,7 +940,7 @@ function realterrain.generate(minp, maxp)
 						data[vi] = cids[color]
 					end
 					vi = vi + ystridevm
-				end
+				end --end y iteration
 			end --end mode options
 		end --end if pixel is in heightmap
 	end
@@ -963,12 +985,29 @@ function realterrain.get_raw_pixel(x,z, raster) -- "image" is a string for pytho
 		bits = realterrain.input.bits
 	end
 	if raster then
+		--[[if gm then --this method is unusable until direct pixel access is exposed in gm!
+			line = raster:clone():crop(1,1,x,z):format("txt"):toString()
+			--print(line)
+			--parse the output pixels
+			--local firstcomma = string.find(line, ",")
+			--local right = tonumber(string.sub(line, 1 , firstcomma - 1)) + 1
+			--print("right: "..right)
+			local firstcolon = string.find(line, ":")
+			--local down = (tonumber(string.sub(line, firstcomma + 1 , firstcolon - 1)) + 1 ) * (-1)
+			--print("down: "..down)
+			local secondcomma = string.find(line, ",", firstcolon)
+			v = string.sub(line, firstcolon + 3, secondcomma -1)
+			--print(v)
+			v = tonumber(v)
+			--print(v)
+		else--]]
 		if magick then
 			v = math.floor(raster:get_pixel(x, z) * (2^bits)) --@todo change when magick autodetects bit depth
 		elseif imlib2 then
 			v = raster:get_pixel(x, z).red
 		end
 	end
+	--print (v)
 	return v
 end
 
@@ -998,46 +1037,123 @@ function realterrain.get_pixel(x,z, get_cover, get_input)
 	--print("elev: "..e..", cover: "..b)
     return e, b, i
 end
---experimental function to enumerate 80x80 crop of raster at once using IM or GM
---[[function realterrain.get_chunk_pixels(xmin, zmax)
-	local pixels = {}
-	--local firstline = true -- only IM has a firstline
-	--local multiplier = false --only needed with IM 16-bit depth, not with 8-bit and not with GM!
-	local row,col = 0 - zmax + tonumber(realterrain.settings.zoffset), 0 + xmin - tonumber(realterrain.settings.xoffset)
-	--adjust for x and z scales
-	row = math.floor(row / tonumber(realterrain.settings.zscale))
-	col = math.floor(col / tonumber(realterrain.settings.xscale))
-	
-	
-	
-	local cmd = CONVERT..' "'..RASTERS..realterrain.settings.filedem..'"'..
-		' -crop 80x80+'..col..'+'..row..' txt:-'
-	
-	for line in io.popen(cmd):lines() do                         
-		--print(line)
-		--with IM first line contains the bit depth, parse that first
-		--if firstline then
-			--extract the multiplier for IM 16-bit depth
-			--firstline = false
-		--end
-		
-		--parse the output pixels
-		local firstcomma = string.find(line, ",")
-		local right = tonumber(string.sub(line, 1 , firstcomma - 1)) + 1
-		--print("right: "..right)
-		local firstcolon = string.find(line, ":")
-		local down = (tonumber(string.sub(line, firstcomma + 1 , firstcolon - 1)) + 1 ) * (-1)
-		--print("down: "..down)
-		local secondcomma = string.find(line, ",", firstcolon)
-		local e = tonumber(string.sub(line, firstcolon + 3, secondcomma -1))
-		--print("elev: "..e)
-		e = math.floor((e / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
-		local x = col + right + 1
-		local z = row - down - 1
-		--print ("x: "..x..", z: "..z..", elev: "..e)
-		if not pixels[z] then pixels[z] = {} end
-		pixels[z][x] = {elev=e}
+--this function parses a line of IM or GM pixel enumeration without any scaling or adjustment
+function realterrain.parse_enumeration(line)
+	--print("enumeration line: "..line)
+	--parse the output pixels
+	local firstcomma = string.find(line, ",")
+	--print("first comma: "..firstcomma)
+	local right = tonumber(string.sub(line, 1 , firstcomma - 1)) + 1
+	--print("right: "..right)
+	local firstcolon = string.find(line, ":")
+	--print("first colon: "..firstcolon)
+	local down = tonumber(string.sub(line, firstcomma + 1 , firstcolon - 1))
+	--print("down: "..down)
+	local secondcomma = string.find(line, ",", firstcolon)
+	local value = tonumber(string.sub(line, firstcolon + 3, secondcomma -1))
+	return value, right, down 
+end
+function realterrain.get_enumeration(image, xstart, width, zstart, length)
+	local enumeration
+	if gm then
+		enumeration = realterrain.dem.image:clone():crop(width,length,xstart,zstart):format("txt"):toString()
+	elseif magick then
+		local tmpimg
+		tmpimg = realterrain.dem.image:clone()
+		tmpimg:crop(width,length,xstart,zstart)
+		tmpimg:set_format("txt")
+		enumeration = tmpimg:get_blob()
+		tmpimg:destroy()
 	end
+	return enumeration
+end
+
+--experimental function to enumerate 80x80 crop of raster at once using IM or GM
+function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_input)
+	print("request range: x:"..xstart..","..xend.."; z:"..zstart..","..zend)	
+	local pixels = {}
+	local width = xend-xstart+1
+	local length = zend-zstart+1
+	--print("width: "..width ..", length: "..length)
+	print("request entries: "..width*length)
+	zstart = 0 - zstart
+	local enumeration = realterrain.get_enumeration(realterrain.dem.image, xstart, width, zstart, length)
+	
+	--print("entire enumeration: "..enumeration)
+	local entries = 0
+	--local cmd = CONVERT..' "'..RASTERS..realterrain.settings.filedem..'"'..' -crop 80x80+'..col..'+'..row..' txt:-'
+	local mincol, maxcol, minrow, maxrow
+	local firstline = true
+	for k,line in next, string.split(enumeration, "\n") do                         
+		if magick and firstline then
+			firstline = false --first line is a head in IM but not GM
+		else
+			entries = entries + 1
+			--print(entries .." :: " .. v)
+	
+			value, right, down = realterrain.parse_enumeration(line)
+			
+			--print("elev: "..e)
+			value = math.floor((value / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
+			
+			local x = xstart + right -1
+			local z = 0- zstart + down
+			if not mincol then
+				mincol = x
+				maxcol = x
+				minrow = z
+				maxrow = z
+			else
+				if x < mincol then mincol = x end
+				if x > maxcol then maxcol = x end
+				if z < minrow then minrow = z end
+				if z > maxrow then maxrow = z end
+			end--]]
+			--print ("x: "..x..", z: "..z..", elev: "..e)
+			if not pixels[z] then pixels[z] = {} end
+			pixels[z][x] = {elev=value}
+		end
+	end
+	local firstline = true
+	if get_cover then
+		local enumeration = realterrain.get_enumeration(realterrain.cover.image, xstart, width, zstart, length)
+		for k,line in next, string.split(enumeration, "\n") do                         
+			if magick and firstline then
+				firstline = false --first line is a head in IM but not GM
+			else
+				value, right, down = realterrain.parse_enumeration(line)
+				
+				value = math.floor((value / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
+				
+				local x = xstart + right -1
+				local z = 0- zstart + down
+				if not pixels[z] then pixels[z] = {} end
+				pixels[z][x] = {cover=value}
+			end
+		end
+	end
+	local firstline = true
+	if get_input then
+		local enumeration = realterrain.get_enumeration(realterrain.input.image, xstart, width, zstart, length)
+		for k,line in next, string.split(enumeration, "\n") do                         
+			if magick and firstline then
+			firstline = false --first line is a head in IM but not GM
+			else
+				value, right, down = realterrain.parse_enumeration(line)
+				
+				value = math.floor((value / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
+				
+				local x = xstart + right -1
+				local z = 0- zstart + down
+				if not pixels[z] then pixels[z] = {} end
+				pixels[z][x] = {input=value}
+			end
+		end
+	end
+	
+	--print(dump(pixels))
+	print("result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
+	print("result entries: "..entries)
 	return pixels
 end--]]
 
