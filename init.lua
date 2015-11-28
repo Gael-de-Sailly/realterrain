@@ -251,7 +251,7 @@ function realterrain.load_settings()
 		file:close()
 	end
 end
---retrieve individual form field
+--retrieve individual form field --@todo haven't been using this much, been accesing the settings table directly
 function realterrain.get_setting(setting)
 	if realterrain.settings ~= {} then
 		if realterrain.settings[setting] then
@@ -390,6 +390,8 @@ function realterrain.init()
 	realterrain.dem.length = tonumber(tostring(py.eval("l")))
 	print("[PYTHON] mode: "..pybits..", width: "..width..", length: "..length)
 	--]]
+	local mode = realterrain.settings.output
+	
 	local imageload
 	if gm then imageload = gm.Image
 	elseif magick then imageload = magick.load_image
@@ -413,9 +415,9 @@ function realterrain.init()
 	else
 		error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder")
 	end
-	if realterrain.settings.output == "normal"
-		or realterrain.settings.output == "surface"
-		or realterrain.settings.output == "coverchange" then
+	if mode == "normal"
+		or mode == "surface"
+		or mode == "coverchange" then
 		realterrain.cover.image = imageload(RASTERS..realterrain.settings.filecover)
 		if gm then
 			realterrain.cover.width, realterrain.cover.length = realterrain.cover.image:size()
@@ -427,9 +429,9 @@ function realterrain.init()
 		end
 	end
 	-- for various raster modes such as distance, we need to load the input or output files.
-	if realterrain.settings.output == "distance"
-		or realterrain.settings.output == "demchange"
-		or realterrain.settings.output == "coverchange" then
+	if mode == "distance"
+		or mode == "demchange"
+		or mode == "coverchange" then
 		realterrain.input.image = imageload(RASTERS..realterrain.settings.fileinput)
 		if gm then
 			realterrain.input.width, realterrain.input.length = realterrain.input.image:size()
