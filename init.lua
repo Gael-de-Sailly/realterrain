@@ -270,6 +270,17 @@ end
 
 --read from file, various persisted settings
 realterrain.load_settings()
+--modes table for easier feature addition, fillbelow and moving_window require a buffer of at least 1
+realterrain.modes = {}
+table.insert(realterrain.modes, {name="normal", get_cover=true})
+table.insert(realterrain.modes, {name="surface", get_cover=true, buffer=1, fill_below=true})
+table.insert(realterrain.modes, {name="elevation", buffer=1, fill_below=true})
+table.insert(realterrain.modes, {name="slope", buffer=1, fill_below=true, moving_window=true})
+table.insert(realterrain.modes, {name="aspect", buffer=1, fill_below=true, moving_window=true})
+table.insert(realterrain.modes, {name="curvature", buffer=1, fill_below=true, moving_window=true})
+table.insert(realterrain.modes, {name="distance", get_input=true, buffer=realterrain.settings.dist_lim, fill_below=true})
+table.insert(realterrain.modes, {name="demchange", get_input=true})
+table.insert(realterrain.modes, {name="coverchange", get_cover=true, get_input=true})
 
 --need to override the minetest.formspec_escape to return empty string when nil
 function realterrain.esc(str)
@@ -374,6 +385,16 @@ function realterrain.get_idx(haystack, needle)
 	return 0
 end
 
+function realterrain.get_mode_idx(modename)
+	for k,v in next, realterrain.modes do
+		if v.name == modename then
+			return k
+		end
+	end
+end
+function realterrain.get_mode()
+	return realterrain.modes[realterrain.get_mode_idx(realterrain.settings.output)]
+end
 -- SELECT the mechanism for loading the image which is later uesed by get_pixel()
 --@todo throw warning if image sizes do not match the dem size
 realterrain.dem = {}
@@ -390,8 +411,8 @@ function realterrain.init()
 	realterrain.dem.length = tonumber(tostring(py.eval("l")))
 	print("[PYTHON] mode: "..pybits..", width: "..width..", length: "..length)
 	--]]
-	local mode = realterrain.settings.output
-	
+	local mode = realterrain.get_mode()
+	print(dump(mode))
 	local imageload
 	if gm then imageload = gm.Image
 	elseif magick then imageload = magick.load_image
@@ -415,9 +436,8 @@ function realterrain.init()
 	else
 		error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder")
 	end
-	if mode == "normal"
-		or mode == "surface"
-		or mode == "coverchange" then
+	if mode.get_cover then
+		print("here")
 		realterrain.cover.image = imageload(RASTERS..realterrain.settings.filecover)
 		if gm then
 			realterrain.cover.width, realterrain.cover.length = realterrain.cover.image:size()
@@ -428,10 +448,8 @@ function realterrain.init()
 			--print(dump(realterrain.get_unique_values(cover)))
 		end
 	end
-	-- for various raster modes such as distance, we need to load the input or output files.
-	if mode == "distance"
-		or mode == "demchange"
-		or mode == "coverchange" then
+	-- for various raster modes such as distance, we need to load the input raster.
+	if mode.get_input then
 		realterrain.input.image = imageload(RASTERS..realterrain.settings.fileinput)
 		if gm then
 			realterrain.input.width, realterrain.input.length = realterrain.input.image:size()
@@ -496,8 +514,7 @@ function realterrain.generate(minp, maxp)
 	local cy0 = math.floor((y0 + 32) / 80)
 	local cz0 = math.floor((z0 + 32) / 80) 
 	
-	local mode = realterrain.settings.output
-	
+	local mode = realterrain.get_mode()
 	--check to see if the current chunk is above (or below) the elevation range for this footprint
 	if realterrain.surface_cache[cz0] and realterrain.surface_cache[cz0][cx0] then
 		if realterrain.surface_cache[cz0][cx0].offdem then
@@ -522,32 +539,13 @@ function realterrain.generate(minp, maxp)
 	local data = vm:get_data()
 	
 	--build the heightmap and include different extents and values depending on mode
-	local zstart, zend, xstart, xend, get_cover, get_input
-	--modes that need only the exact footprint of the mapchunk
-	if mode == "normal" or mode == "demchange" or mode == "coverchange" then
-		zstart, zend, xstart, xend = z0, z1, x0, x1
-		get_cover = true
-		if mode == "demchange" or mode == "coverchange" then
-			get_input = true
-		else
-			get_input = false
-		end
-	--modes that need one node around the footprint of the mapchunk for fill_below() or moving windows
-	elseif mode == "surface" or mode == "elevation" or mode == "slope" or mode == "aspect" or mode == "curvature" then
-		zstart, zend, xstart, xend = z0-1, z1+1, x0-1, x1+1
-		get_input = false
-		if mode == "surface" then
-			get_cover = true
-		else
-			get_cover = false
-		end
-	--modes that need the footprint of the mapchunk plus the dist_limit
-	elseif mode == "distance" then
-		local limit = realterrain.settings.dist_lim
-		zstart, zend, xstart, xend = z0-limit, z1+limit, x0-limit, x1+limit
-		get_cover = false
-		get_input = true
-	end
+	local zstart, zend, xstart, xend, get_cover, get_input, buffer
+	buffer = mode.buffer or 0
+	zstart, zend, xstart, xend = z0-buffer, z1+buffer, x0-buffer, x1+buffer
+	get_cover = mode.get_cover
+	get_input = mode.get_input
+	fill_below = mode.fill_below
+	moving_window = mode.moving_window
 	local heightmap = {}
 	local entries = 0
 	local input_present = false
@@ -563,20 +561,18 @@ function realterrain.generate(minp, maxp)
 				if elev then 
 					entries = entries + 1
 					--modes that need cover
-					if mode == "normal" or mode =="surface" then
+					if get_cover and get_input then
+						heightmap[z][x] = {elev=elev, cover=cover, input=input}
+					elseif get_cover then
 						heightmap[z][x] = {elev=elev, cover=cover }
 					--modes that need only elevation
-					elseif mode =="elevation" or mode == "slope" or mode == "aspect" or mode == "curvature" then
-						heightmap[z][x] = {elev=elev}
-					--modes that need input
-					elseif mode == "distance" or mode == "demchange" then
+					elseif get_input then
 						heightmap[z][x] = {elev=elev, input=input}
-						if mode == "distance" and input > 0 then
+						if mode.name == "distance" and input > 0 then
 							input_present = true --makes distance more efficient, skips distant chunks
 						end
-					--modes that need all three rasters
-					elseif mode == "coverchange" then
-						heightmap[z][x] = {elev=elev, cover=cover, input=input}
+					else
+						heightmap[z][x] = {elev=elev}
 					end
 				end
 			end
@@ -602,7 +598,7 @@ function realterrain.generate(minp, maxp)
 					end
 				end
 				--when comparing two dems we need both of their min/max elevs
-				if mode == "demchange" then
+				if mode.name == "demchange" then
 					local elev
 					elev = heightmap[z][x].input
 					if not minelev then
@@ -668,22 +664,22 @@ function realterrain.generate(minp, maxp)
 	cids[8]  = {ground=minetest.get_content_id(realterrain.settings.b8ground), shrub=minetest.get_content_id(realterrain.settings.b8shrub)}
 	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground), shrub=minetest.get_content_id(realterrain.settings.b9shrub)}
 	
-	--register cids for SLOPE mode
-	if mode == "elevation" or mode == "slope" or mode == "curvature"
-		or mode == "distance" or mode == "demchange" then
+	--register cids for SLOPE mode.name
+	if mode.name == "elevation" or mode.name == "slope" or mode.name == "curvature"
+		or mode.name == "distance" or mode.name == "demchange" then
 		--cids for symbology nodetypes
 		for i=1,10 do
 			cids["symbol"..i] = minetest.get_content_id(realterrain.settings["rastsymbol"..i])
 		end
 	end
-	--register cids for ASPECT mode
-	if mode == "aspect" then
+	--register cids for ASPECT mode.name
+	if mode.name == "aspect" then
 		--cids for symbology nodetypes
 		for k, code in next, aspectcolors do
 			cids["aspect"..k] = minetest.get_content_id("realterrain:".."aspect"..k)
 		end
 	end
-	if mode == "coverchange" then
+	if mode.name == "coverchange" then
 		cids["symbol10"] = minetest.get_content_id("realterrain:slope10")
 	end
 	
@@ -691,12 +687,12 @@ function realterrain.generate(minp, maxp)
 	for z = z0, z1 do
 	for x = x0, x1 do
 		if heightmap[z] and heightmap[z][x] then
-			--normal mapgen for gameplay and exploration -- not raster analysis output
-			if mode == "normal" or mode == "surface" or mode == "coverchange" then
+			--modes that use biomes:
+			if get_cover then
 				local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
 				local cover = heightmap[z][x].cover
 				local cover2
-				if mode == "coverchange" then
+				if mode.name == "coverchange" then
 					cover2 = heightmap[z][x].input
 				end
 				--print(cover)
@@ -709,7 +705,7 @@ function realterrain.generate(minp, maxp)
 				else
 					cover = math.floor(cover)
 				end
-				if mode == "coverchange" then
+				if mode.name == "coverchange" then
 					if not cover2 or cover2 < 1 then
 						cover2 = 0
 					elseif cover2 > 99 then
@@ -741,7 +737,7 @@ function realterrain.generate(minp, maxp)
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					--underground layers
-					if y < elev and (mode == "normal" or mode == "coverchange") then 
+					if y < elev and (mode.name == "normal" or mode.name == "coverchange") then 
 						--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
 						if y < elev - (30 + math.random(1,5)) then
 							data[vi] = c_stone
@@ -763,9 +759,9 @@ function realterrain.generate(minp, maxp)
 							end
 						end
 					--the surface layer, determined by cover value
-					elseif  y == elev and ( (cover ~= 5 or mode == "surface")
-						or mode == "coverchange" ) then
-						if mode == "coverchange" and cover2 and cover ~= cover2 then
+					elseif  y == elev and ( (cover ~= 5 or mode.name == "surface")
+						or mode.name == "coverchange" ) then
+						if mode.name == "coverchange" and cover2 and cover ~= cover2 then
 							--print("cover1: "..cover..", cover2: "..cover2)
 							data[vi] = cids["symbol10"]
 						elseif y < tonumber(realterrain.settings.waterlevel) then
@@ -782,7 +778,7 @@ function realterrain.generate(minp, maxp)
 								data[vi] = ground
 							end
 						end
-						if mode == "surface" then
+						if fill_below then
 							local height = realterrain.fill_below(x,z,heightmap)
 							if height > 0 then
 								for i=1, height, 1 do
@@ -812,8 +808,7 @@ function realterrain.generate(minp, maxp)
 					vi = vi + ystridevm
 				end --end y iteration
 			--if raster output then display only that
-			elseif mode =="elevation" or mode == "slope" or mode == "aspect"
-				or mode == "curvature" or mode == "distance" then
+			elseif not get_cover then
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					local elev
@@ -821,8 +816,8 @@ function realterrain.generate(minp, maxp)
 					if y == elev then
 						local neighbors = {}
 						local edge_case = false
-						--moving window modes need neighborhood built
-						if mode =="elevation" or mode == "slope" or mode == "aspect" then
+						--moving window mode.names need neighborhood built
+						if moving_window then
 							neighbors["e"] = y
 							for dir, offset in next, neighborhood do
 								--get elev for all surrounding nodes
@@ -839,7 +834,7 @@ function realterrain.generate(minp, maxp)
 						end
 						if not edge_case then
 							local color
-							if mode == "elevation" then
+							if mode.name == "elevation" then
 								if elev < 10 then color = "symbol1"
 								elseif elev < 20 then color = "symbol2"
 								elseif elev < 50 then color = "symbol3"
@@ -852,7 +847,7 @@ function realterrain.generate(minp, maxp)
 								elseif elev >= 600 then color = "symbol10" end
 								--print("elev: "..elev)
 								data[vi] = cids[color]				
-							elseif mode == "slope" then
+							elseif mode.name == "slope" then
 								local slope = realterrain.get_slope(neighbors)
 								if slope < 1 then color = "symbol1"
 								elseif slope < 2 then color = "symbol2"
@@ -866,7 +861,7 @@ function realterrain.generate(minp, maxp)
 								elseif slope >= 60 then color = "symbol10" end
 								--print("slope: "..slope)
 								data[vi] = cids[color]							
-							elseif mode == "aspect" then
+							elseif mode.name == "aspect" then
 								local aspect = realterrain.get_aspect(neighbors)
 								local slice = 22.5
 								if aspect > 360 - slice or aspect <= slice then color = "aspect1"
@@ -879,7 +874,7 @@ function realterrain.generate(minp, maxp)
 								elseif aspect <= slice * 15 then color = "aspect8" end
 								--print(aspect..":"..color)
 								data[vi] = cids[color]
-							elseif mode == "curvature" then
+							elseif mode.name == "curvature" then
 								local curve = realterrain.get_curvature(neighbors)
 								--print("raw curvature: "..curve)
 								if curve < -4 then color = "symbol1"
@@ -893,7 +888,7 @@ function realterrain.generate(minp, maxp)
 								elseif curve > 1 then color = "symbol7"
 								elseif curve >= 0 then color = "symbol6" end
 								data[vi] = cids[color]
-							elseif mode == "distance" then
+							elseif mode.name == "distance" then
 								local limit = realterrain.settings.dist_lim
 								--if there is no input present in the full search extent skip
 								if input_present then 
@@ -914,6 +909,7 @@ function realterrain.generate(minp, maxp)
 								end
 								data[vi] = cids[color]
 							end
+							--coudl check for fill_below here but it is implied in these modes
 							local height = realterrain.fill_below(x,z,heightmap)
 							if height > 0 then
 								for i=1, height, 1 do
@@ -926,7 +922,7 @@ function realterrain.generate(minp, maxp)
 					end
 					vi = vi + ystridevm
 				end -- end y iteration
-			elseif mode == "demchange" then
+			elseif mode.name == "demchange" then
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					local elev1, elev2
@@ -943,7 +939,7 @@ function realterrain.generate(minp, maxp)
 					end
 					vi = vi + ystridevm
 				end --end y iteration
-			end --end mode options
+			end --end mode.name options
 		end --end if pixel is in heightmap
 	end
 	end
@@ -1441,10 +1437,14 @@ function realterrain.show_rc_form(pname)
 	local bits = {}
 	bits["8"] = "1"
 	bits["16"] = "2"
-	local modes = {}
-	modes["normal"]="1"; modes["surface"] = "2"; modes["elevation"] = "3";
-	modes["slope"]="4";	modes["aspect"]="5"; modes["curvature"]="6";
-	modes["distance"]="7"; modes["demchange"]="8"; modes["coverchange"]="9";
+	local f_modes = ""
+	for k,v in next, realterrain.modes do
+		if f_modes == ""  then
+			f_modes = v.name
+		else
+			f_modes = f_modes .. "," .. v.name
+		end
+	end
 	
 	--print("IMAGES in DEM folder: "..f_images)
     --form header
@@ -1495,8 +1495,8 @@ function realterrain.show_rc_form(pname)
 								
 								
 								"label[6,5.5;Raster Mode]"..
-								"dropdown[6,6;4,1;output;normal,surface,elevation,slope,aspect,curvature,distance,demchange,coverchange;"..
-									modes[realterrain.settings.output].."]"..
+								"dropdown[6,6;4,1;output;"..f_modes..";"..
+									realterrain.get_mode_idx(realterrain.settings.output).."]"..
 								"label[6,7;Input File]"..
 								"dropdown[6,7.5;4,1;fileinput;"..f_images..";"..
 									realterrain.get_idx(images, realterrain.get_setting("fileinput")) .."]"..
