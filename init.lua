@@ -279,9 +279,19 @@ table.insert(realterrain.modes, {name="slope", buffer=1, fill_below=true, moving
 table.insert(realterrain.modes, {name="aspect", buffer=1, fill_below=true, moving_window=true})
 table.insert(realterrain.modes, {name="curvature", buffer=1, fill_below=true, moving_window=true})
 table.insert(realterrain.modes, {name="distance", get_input=true, buffer=realterrain.settings.dist_lim, fill_below=true})
-table.insert(realterrain.modes, {name="demchange", get_input=true})
+table.insert(realterrain.modes, {name="demchange", get_cover=true, get_input=true})
 table.insert(realterrain.modes, {name="coverchange", get_cover=true, get_input=true})
 
+function realterrain.get_mode_idx(modename)
+	for k,v in next, realterrain.modes do
+		if v.name == modename then
+			return k
+		end
+	end
+end
+function realterrain.get_mode()
+	return realterrain.modes[realterrain.get_mode_idx(realterrain.settings.output)]
+end
 --need to override the minetest.formspec_escape to return empty string when nil
 function realterrain.esc(str)
 	if str == "" or not str then return "" else return minetest.formspec_escape(str) end
@@ -383,17 +393,6 @@ function realterrain.get_idx(haystack, needle)
 		end		
 	end
 	return 0
-end
-
-function realterrain.get_mode_idx(modename)
-	for k,v in next, realterrain.modes do
-		if v.name == modename then
-			return k
-		end
-	end
-end
-function realterrain.get_mode()
-	return realterrain.modes[realterrain.get_mode_idx(realterrain.settings.output)]
 end
 -- SELECT the mechanism for loading the image which is later uesed by get_pixel()
 --@todo throw warning if image sizes do not match the dem size
@@ -691,10 +690,7 @@ function realterrain.generate(minp, maxp)
 			if get_cover then
 				local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
 				local cover = heightmap[z][x].cover
-				local cover2
-				if mode.name == "coverchange" then
-					cover2 = heightmap[z][x].input
-				end
+				local cover2, elev2
 				--print(cover)
 				if not cover or cover < 1 then
 					cover = 0
@@ -705,7 +701,11 @@ function realterrain.generate(minp, maxp)
 				else
 					cover = math.floor(cover)
 				end
+				if mode.name == "demchange" then
+					elev2 = heightmap[z][x].input
+				end
 				if mode.name == "coverchange" then
+					cover2 = heightmap[z][x].input
 					if not cover2 or cover2 < 1 then
 						cover2 = 0
 					elseif cover2 > 99 then
@@ -737,7 +737,7 @@ function realterrain.generate(minp, maxp)
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					--underground layers
-					if y < elev and (mode.name == "normal" or mode.name == "coverchange") then 
+					if y < elev and (mode.name == "normal" or mode.name == "coverchange" or mode.name == "demchange") then 
 						--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
 						if y < elev - (30 + math.random(1,5)) then
 							data[vi] = c_stone
@@ -764,6 +764,14 @@ function realterrain.generate(minp, maxp)
 						if mode.name == "coverchange" and cover2 and cover ~= cover2 then
 							--print("cover1: "..cover..", cover2: "..cover2)
 							data[vi] = cids["symbol10"]
+						elseif mode.name == "demchange"	and (elev ~= elev2) then
+							local diff = elev2 - elev
+							if diff < 0 then
+								color = "symbol10"
+							else
+								color = "symbol1"
+							end
+							data[vi] = cids[color]						
 						elseif y < tonumber(realterrain.settings.waterlevel) then
 							data[vi] = c_sand
 						--alpine level
@@ -922,24 +930,7 @@ function realterrain.generate(minp, maxp)
 					end
 					vi = vi + ystridevm
 				end -- end y iteration
-			elseif mode.name == "demchange" then
-				local vi = area:index(x, y0, z) -- voxelmanip index
-				for y = y0, y1 do
-					local elev1, elev2
-					elev1 = heightmap[z][x].elev
-					elev2 = heightmap[z][x].input
-					if (y >= elev1 and y <= elev2) or (y >= elev2 and y <= elev1) then
-						local diff = elev2 - elev1
-						--print("elev1: "..elev1..", elev2: "..elev2..",diff: "..diff)
-						if diff == 0 then color = "symbol5"
-						elseif diff < 0 then color = "symbol10"
-						elseif diff > 0 then color = "symbol1"
-						end
-						data[vi] = cids[color]
-					end
-					vi = vi + ystridevm
-				end --end y iteration
-			end --end mode.name options
+			end --end mode options
 		end --end if pixel is in heightmap
 	end
 	end
