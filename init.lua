@@ -64,75 +64,129 @@ realterrain.settings.b0ground2 = "default:sand"
 realterrain.settings.b0gprob = 10
 realterrain.settings.b0tree = "tree"
 realterrain.settings.b0tprob = 0.1
-realterrain.settings.b0tree2 = "cactus"
+realterrain.settings.b0tree2 = "jungletree"
 realterrain.settings.b0tprob2 = 30
 realterrain.settings.b0shrub = "default:dry_grass_1"
 realterrain.settings.b0sprob = 3
 realterrain.settings.b0shrub2 = "default:dry_shrub"
-realterrain.settings.b0sprob2 = 50
+realterrain.settings.b0sprob2 = 20
 
 --USGS tier 1 landcover: 1 - URBAN or BUILT-UP
 realterrain.settings.b1ground = "default:cobble"
+realterrain.settings.b1ground2 = "default:cobble"
+realterrain.settings.b1gprob = 0
 realterrain.settings.b1tree = ""
 realterrain.settings.b1tprob = 0
-realterrain.settings.b1shrub = "default:dry_grass_1"
+realterrain.settings.b1tree2 = ""
+realterrain.settings.b1tprob2 = 0
+realterrain.settings.b1shrub = "default:grass_1"
 realterrain.settings.b1sprob = 0
+realterrain.settings.b1shrub2 = "default:grass_1"
+realterrain.settings.b1sprob2 = 0
 
 --USGS tier 1 landcover: 2 - AGRICULTURAL
 realterrain.settings.b2ground = "default:dirt_with_grass"
+realterrain.settings.b2ground2 = "default:dirt_with_dry_grass"
+realterrain.settings.b2gprob = 10
 realterrain.settings.b2tree = ""
 realterrain.settings.b2tprob = 0
+realterrain.settings.b2tree2 = ""
+realterrain.settings.b2tprob2 = 0
 realterrain.settings.b2shrub = "default:grass_1"
 realterrain.settings.b2sprob = 10
+realterrain.settings.b2shrub2 = "default:dry_grass_1"
+realterrain.settings.b2sprob2 = 50
 
 --USGS tier 1 landcover: 3 - RANGELAND
-realterrain.settings.b3ground = "default:dirt_with_dry_grass"
+realterrain.settings.b3ground = "default:dirt_with_grass"
+realterrain.settings.b3ground2 = "default:dirt_with_dry_grass"
+realterrain.settings.b3gprob = 30
 realterrain.settings.b3tree = "tree"
 realterrain.settings.b3tprob = 0.1
+realterrain.settings.b3tree2 = "cactus"
+realterrain.settings.b3tprob2 = 30
 realterrain.settings.b3shrub = "default:dry_grass_1"
 realterrain.settings.b3sprob = 5
+realterrain.settings.b3shrub2 = "default:dry_shrub"
+realterrain.settings.b3sprob2 = 50
 
 --USGS tier 1 landcover: 4 - FOREST
 realterrain.settings.b4ground = "default:dirt_with_grass"
+realterrain.settings.b4ground2 = "default:gravel"
+realterrain.settings.b4gprob = 10
 realterrain.settings.b4tree = "jungletree"
 realterrain.settings.b4tprob = 0.5
+realterrain.settings.b4tree2 = "tree"
+realterrain.settings.b4tprob2 = 30
 realterrain.settings.b4shrub = "default:junglegrass"
 realterrain.settings.b4sprob = 5
+realterrain.settings.b4shrub2 = "default:grass_1"
+realterrain.settings.b4sprob2 = 50
 
 --USGS tier 1 landcover: 5 - WATER
 realterrain.settings.b5ground = "realterrain:water_static" --not normal minetest water, too messy
+realterrain.settings.b5ground2 = "realterrain:water_static"
+realterrain.settings.b5gprob = 0
 realterrain.settings.b5tree = ""
 realterrain.settings.b5tprob = 0
+realterrain.settings.b5tree2 = ""
+realterrain.settings.b5tprob2 = 0
 realterrain.settings.b5shrub = "default:grass_1"
 realterrain.settings.b5sprob = 0
+realterrain.settings.b5shrub2 = "default:grass_1"
+realterrain.settings.b5sprob2 = 0
 
 --USGS tier 1 landcover: 6 - WETLAND
 realterrain.settings.b6ground = "default:dirt_with_grass" --@todo add a wetland node
+realterrain.settings.b6ground2 = "realterrain:water_static"
+realterrain.settings.b6gprob = 10
 realterrain.settings.b6tree = ""
 realterrain.settings.b6tprob = 0
+realterrain.settings.b6tree2 = ""
+realterrain.settings.b6tprob2 = 0
 realterrain.settings.b6shrub = "default:junglegrass"
-realterrain.settings.b6sprob = 10
+realterrain.settings.b6sprob = 20
+realterrain.settings.b6shrub2 = "default:grass_1"
+realterrain.settings.b6sprob2 = 40
 
 --USGS tier 1 landcover: 7 - BARREN
 realterrain.settings.b7ground = "default:sand"
+realterrain.settings.b7ground2 = "default:dirt_with_dry_grass"
+realterrain.settings.b7gprob = 10
 realterrain.settings.b7tree = "cactus"
 realterrain.settings.b7tprob = 0.2
+realterrain.settings.b7tree2 = "tree"
+realterrain.settings.b7tprob2 = 5
 realterrain.settings.b7shrub = "default:dry_shrub"
 realterrain.settings.b7sprob = 5
+realterrain.settings.b7shrub2 = "default:dry_grass_1"
+realterrain.settings.b7sprob2 = 50
 
 --USGS tier 1 landcover: 8 - TUNDRA
 realterrain.settings.b8ground = "default:gravel"
+realterrain.settings.b8ground2 = "default:dirt_with_snow"
+realterrain.settings.b8gprob = 10
 realterrain.settings.b8tree = "snowtree"
 realterrain.settings.b8tprob = 0.1
+realterrain.settings.b8tree2 = "tree"
+realterrain.settings.b8tprob2 = 5
 realterrain.settings.b8shrub = "default:dry_grass_1"
-realterrain.settings.b8sprob = 2
+realterrain.settings.b8sprob = 5
+realterrain.settings.b8shrub2 = "default:dry_shrub"
+realterrain.settings.b8sprob2 = 50
 
 --USGS tier 1 landcover: PERENNIAL SNOW OR ICE
 realterrain.settings.b9ground = "default:dirt_with_snow"
+realterrain.settings.b9ground2 = "default:ice"
+realterrain.settings.b9gprob = 10
 realterrain.settings.b9tree = ""
 realterrain.settings.b9tprob = 0
+realterrain.settings.b9tree2 = ""
+realterrain.settings.b9tprob2 = 0
 realterrain.settings.b9shrub = "default:dry_grass_1"
-realterrain.settings.b9sprob = 1
+realterrain.settings.b9sprob = 2
+realterrain.settings.b9shrub2 = "default:dry_shrub"
+realterrain.settings.b9sprob2 = 50
 
 local neighborhood = {}
 neighborhood.a = {x= 1,y= 0,z= 1} -- NW
@@ -294,7 +348,7 @@ function realterrain.get_mode()
 end
 --need to override the minetest.formspec_escape to return empty string when nil
 function realterrain.esc(str)
-	if str == "" or not str then return "" else return minetest.formspec_escape(str) end
+	if not str or str == "" then return "" else return minetest.formspec_escape(str) end
 end
 
 function realterrain.list_images()
@@ -653,15 +707,42 @@ function realterrain.generate(minp, maxp)
 			   ground2=minetest.get_content_id(realterrain.settings.b0ground2),
 			   shrub=minetest.get_content_id(realterrain.settings.b0shrub),
 			   shrub2=minetest.get_content_id(realterrain.settings.b0shrub2)}
-	cids[1]  = {ground=minetest.get_content_id(realterrain.settings.b1ground), shrub=minetest.get_content_id(realterrain.settings.b1shrub)}
-	cids[2]  = {ground=minetest.get_content_id(realterrain.settings.b2ground), shrub=minetest.get_content_id(realterrain.settings.b2shrub)}
-	cids[3]  = {ground=minetest.get_content_id(realterrain.settings.b3ground), shrub=minetest.get_content_id(realterrain.settings.b3shrub)}
-	cids[4]  = {ground=minetest.get_content_id(realterrain.settings.b4ground), shrub=minetest.get_content_id(realterrain.settings.b4shrub)}
-	cids[5]  = {ground=minetest.get_content_id(realterrain.settings.b5ground), shrub=minetest.get_content_id(realterrain.settings.b5shrub)}
-	cids[6]  = {ground=minetest.get_content_id(realterrain.settings.b6ground), shrub=minetest.get_content_id(realterrain.settings.b6shrub)}
-	cids[7]  = {ground=minetest.get_content_id(realterrain.settings.b7ground), shrub=minetest.get_content_id(realterrain.settings.b7shrub)}
-	cids[8]  = {ground=minetest.get_content_id(realterrain.settings.b8ground), shrub=minetest.get_content_id(realterrain.settings.b8shrub)}
-	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground), shrub=minetest.get_content_id(realterrain.settings.b9shrub)}
+	cids[1]  = {ground=minetest.get_content_id(realterrain.settings.b1ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b1ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b1shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b1shrub2)}
+	cids[2]  = {ground=minetest.get_content_id(realterrain.settings.b2ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b2ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b2shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b2shrub2)}
+	cids[3]  = {ground=minetest.get_content_id(realterrain.settings.b3ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b3ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b3shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b3shrub2)}
+	cids[4]  = {ground=minetest.get_content_id(realterrain.settings.b4ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b4ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b4shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b4shrub2)}
+	cids[5]  = {ground=minetest.get_content_id(realterrain.settings.b5ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b5ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b5shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b5shrub2)}
+	cids[6]  = {ground=minetest.get_content_id(realterrain.settings.b6ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b6ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b6shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b6shrub2)}
+	cids[7]  = {ground=minetest.get_content_id(realterrain.settings.b7ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b7ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b7shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b7shrub2)}
+	cids[8]  = {ground=minetest.get_content_id(realterrain.settings.b8ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b8ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b8shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b8shrub2)}
+	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b9ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b9shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b9shrub2)}
 	
 	--register cids for SLOPE mode.name
 	if mode.name == "elevation" or mode.name == "slope" or mode.name == "curvature"
@@ -1517,26 +1598,42 @@ function realterrain.show_cover_form(pname)
 		f_schems = f_schems .. v .. ","
 	end
 	
-	local col= {0.01,1.2,2,3,5,6,7,11}
+	local col= {0.01,  0.5,1.3,2.1,   3.5,5.5,6.5,8.5,   10,11,12,13,   12.5}
 	local f_header = 	"size[14,10]" ..
-						"button_exit["..col[8]..",0.01;2,1;exit;Apply]"..
-						"label["..col[1]..",0.01;USGS Biome]"..
-						"label["..col[3]..",0.01;Ground]"..
-						"label["..col[4]..",0.01;Tree]".."label["..col[5]..",0.01;Prob]"..
-						"label["..col[6]..",0.01;Shrub]".."label["..col[7]..",0.01;Prob]"
+						"button_exit["..col[13]..",9.5;1.5,1;exit;Apply]"..
+						--"label["..col[1]..",0.01;USGS Biome]"..
+						"label["..col[2]..",0.01;Ground 1,2]"..
+						"label["..col[4]..",0.01;Mix]"..
+						"label["..col[5]..",0.01;Tree]".."label["..col[6]..",0.01;Prob]"..
+						"label["..col[7]..",0.01;Tree2]".."label["..col[8]..",0.01;Mix]"..
+						"label["..col[9]..",0.01;Shrub]".."label["..col[10]..",0.01;Prob]"..
+						"label["..col[11]..",0.01;Shrub2]".."label["..col[12]..",0.01;Mix]"
 	local f_body = ""
 	for i=0,9,1 do
 		local h = (i +1) * 0.7
 		f_body = f_body ..
 			"label["..col[1]..","..h ..";"..i.."]"..
-			"item_image_button["..(col[3])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."ground")..";ground;"..i.."]"..
-			"dropdown["..col[4]..","..(h-0.3) ..";2,1;b"..i.."tree;"..f_schems..";"..
+			"item_image_button["..(col[2])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."ground")..";ground;"..i.."]"..
+			"item_image_button["..(col[3])..","..(h-0.2)..";0.8,0.8;"..
+			realterrain.get_setting("b"..i.."ground2")..";ground2;"..i.."]"..
+			"field["..(col[4]+0.2)..","..h ..";1,1;b"..i.."gprob;;"..
+				realterrain.esc(realterrain.get_setting("b"..i.."gprob")).."]"
+		f_body = f_body ..
+			"dropdown["..col[5]..","..(h-0.3) ..";2,1;b"..i.."tree;"..f_schems..";"..
 				realterrain.get_idx(schems, realterrain.get_setting("b"..i.."tree")) .."]" ..
-			"field["..(col[5]+0.2)..","..h ..";1,1;b"..i.."tprob;;"..
+			"field["..(col[6]+0.2)..","..h ..";1,1;b"..i.."tprob;;"..
 				realterrain.esc(realterrain.get_setting("b"..i.."tprob")).."]" ..
-			"item_image_button["..(col[6])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."shrub")..";shrub;"..i.."]"..
-			"field["..col[7]..","..h ..";1,1;b"..i.."sprob;;"..
-				realterrain.esc(realterrain.get_setting("b"..i.."sprob")).."]"
+			"dropdown["..col[7]..","..(h-0.3) ..";2,1;b"..i.."tree2;"..f_schems..";"..
+				realterrain.get_idx(schems, realterrain.get_setting("b"..i.."tree2")) .."]" ..
+			"field["..(col[8]+0.2)..","..h ..";1,1;b"..i.."tprob2;;"..
+				realterrain.esc(realterrain.get_setting("b"..i.."tprob2")).."]"
+		f_body = f_body ..
+			"item_image_button["..(col[9])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."shrub")..";shrub;"..i.."]"..
+			"field["..col[10]..","..h ..";1,1;b"..i.."sprob;;"..
+				realterrain.esc(realterrain.get_setting("b"..i.."sprob")).."]"..
+			"item_image_button["..(col[11])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."shrub2")..";shrub2;"..i.."]"..
+			"field["..col[12]..","..h ..";1,1;b"..i.."sprob2;;"..
+				realterrain.esc(realterrain.get_setting("b"..i.."sprob2")).."]"
 	end
 					
 	minetest.show_formspec(pname,   "realterrain:cover_config",

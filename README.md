@@ -1,4 +1,4 @@
-# realterrain v.0.0.7
+# realterrain v.0.0.8
 A Minetest mod that brings real world Terrain into the game (using freely available DEM tiles). Any image can actually be used.
 
 use any image any bit-depth (suggested to convert to greyscale first):
@@ -16,11 +16,11 @@ Rock strata:
 
 Settings tool (Realterrain Remote)
 
-![screenshot_20151111_171901](https://cloud.githubusercontent.com/assets/12679496/11108071/9a0804ec-8898-11e5-8341-ad211e94f6fc.png)
+![screenshot_20151128_172841](https://cloud.githubusercontent.com/assets/12679496/11454885/7abec818-95f5-11e5-8203-0b77726bfdfa.png)
 
 Biomes tool:
 
-![screenshot_20151031_093508](https://cloud.githubusercontent.com/assets/12679496/10864655/bf992306-7fb2-11e5-80b8-236d0440f72b.png)
+![screenshot_20151128_170909](https://cloud.githubusercontent.com/assets/12679496/11454829/e5d4cbfa-95f2-11e5-9a1a-a820c3f50f07.png)
 
 Trees and shrubs:
 
@@ -73,6 +73,11 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact red ch
 - add more raster analysis modes
 
 ### Changelog
+
+#### 0.0.8
+- expanded biome editor
+- some code refactoring and performance improvements
+
 #### 0.0.7
 - performance improvements to distance analysis mode, new default (demo) raster for distance mode ("points.tif")
 - refactoring of some code: performance improvements where empty mapchunks are not processed
