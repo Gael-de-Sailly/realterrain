@@ -50,7 +50,7 @@ realterrain.settings.alpinelevel = 1000
 
 realterrain.settings.filedem   = 'demo/dem.tif'
 realterrain.settings.dembits = 8 --@todo remove this setting when magick autodetects bitdepth
-realterrain.settings.filecover = 'demo/cover.tif'
+realterrain.settings.filecover = 'demo/biomes.tif'
 realterrain.settings.coverbits = 8 --@todo remove this setting when magick autodetects bitdepth
 
 realterrain.settings.fileinput = ''
@@ -1635,9 +1635,12 @@ function realterrain.show_cover_form(pname)
 			"field["..col[12]..","..h ..";1,1;b"..i.."sprob2;;"..
 				realterrain.esc(realterrain.get_setting("b"..i.."sprob2")).."]"
 	end
-					
+	local f_notes = "label[1,8;Biome 1 - Roads,  Biome2 - Agriculture,  Biome3 - Rangeland]"..
+					"label[1,8.5;Biome 4 - Forest,  Biome 5 - Water,  Biome 6 - Wetlands]"..
+					"label[1,9;Biome 7 - Barren,  Biome 8 - Tundra,  Biome 9 - Glacial]"
+	
 	minetest.show_formspec(pname,   "realterrain:cover_config",
-                                    f_header .. f_body
+                                    f_header .. f_body .. f_notes
 	)
 	return true
 end
