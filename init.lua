@@ -280,6 +280,90 @@ minetest.register_node(
 			meta:set_int("placed", os.clock()*1000);
 		end,--]]
 })
+realterrain.cids = nil
+function realterrain.build_cids()
+	local cids = {}
+	--turn various content ids into variables for speed
+	cids["ores"] = {}
+	
+	cids.ores[3] = minetest.get_content_id("default:stone_with_diamond")
+	cids.ores[4] = minetest.get_content_id("default:obsidian")
+	cids.ores[5] = minetest.get_content_id("default:stone_with_copper")
+	cids.ores[6] = minetest.get_content_id("default:clay")
+	cids.ores[7] = minetest.get_content_id("default:stone")
+	cids.ores[8] = minetest.get_content_id("default:sandstone")
+	cids.ores[9] = minetest.get_content_id("default:dirt")
+	cids.ores[10] = minetest.get_content_id("default:desert_stone")
+	cids.ores[11] = minetest.get_content_id("default:desert_sand")
+	cids.ores[12] = minetest.get_content_id("default:gravel")
+	cids.ores[13] = minetest.get_content_id("default:sand")
+	cids.ores[14] = minetest.get_content_id("default:ice")
+	cids.ores[15] = minetest.get_content_id("default:stone_with_coal")
+	cids.ores[16] = minetest.get_content_id("default:stone_with_iron")
+	cids.ores[17] = minetest.get_content_id("default:stone_with_gold")
+	cids.ores[18] = minetest.get_content_id("default:stone_with_mese")
+	
+	cids["alpine"] = minetest.get_content_id("default:gravel")
+	cids["water_bottom"] = minetest.get_content_id("default:sand")
+	
+	cids["water"] = minetest.get_content_id("water_source")
+	cids["air"] = minetest.get_content_id("air")
+	cids["lava"] = minetest.get_content_id("lava_source")
+	cids[0] = {ground=minetest.get_content_id(realterrain.settings.b0ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b0ground2),
+			   shrub=minetest.get_content_id(realterrain.settings.b0shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b0shrub2)}
+	cids[1]  = {ground=minetest.get_content_id(realterrain.settings.b1ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b1ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b1shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b1shrub2)}
+	cids[2]  = {ground=minetest.get_content_id(realterrain.settings.b2ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b2ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b2shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b2shrub2)}
+	cids[3]  = {ground=minetest.get_content_id(realterrain.settings.b3ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b3ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b3shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b3shrub2)}
+	cids[4]  = {ground=minetest.get_content_id(realterrain.settings.b4ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b4ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b4shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b4shrub2)}
+	cids[5]  = {ground=minetest.get_content_id(realterrain.settings.b5ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b5ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b5shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b5shrub2)}
+	cids[6]  = {ground=minetest.get_content_id(realterrain.settings.b6ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b6ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b6shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b6shrub2)}
+	cids[7]  = {ground=minetest.get_content_id(realterrain.settings.b7ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b7ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b7shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b7shrub2)}
+	cids[8]  = {ground=minetest.get_content_id(realterrain.settings.b8ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b8ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b8shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b8shrub2)}
+	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground),
+			   ground2=minetest.get_content_id(realterrain.settings.b9ground2),
+				shrub=minetest.get_content_id(realterrain.settings.b9shrub),
+			   shrub2=minetest.get_content_id(realterrain.settings.b9shrub2)}
+	--register cids for SLOPE mode.name
+	for i=1,10 do
+		cids["symbol"..i] = minetest.get_content_id(realterrain.settings["rastsymbol"..i])
+	end
+
+	--register cids for ASPECT mode.name
+	for k, code in next, aspectcolors do
+		cids["aspect"..k] = minetest.get_content_id("realterrain:".."aspect"..k)
+	end
+
+
+	cids["symbol10"] = minetest.get_content_id("realterrain:slope10")
+
+	realterrain.cids = cids
+end
 
 --called at each form submission
 function realterrain.save_settings()
@@ -333,8 +417,8 @@ table.insert(realterrain.modes, {name="slope", buffer=1, fill_below=true, moving
 table.insert(realterrain.modes, {name="aspect", buffer=1, fill_below=true, moving_window=true})
 table.insert(realterrain.modes, {name="curvature", buffer=1, fill_below=true, moving_window=true})
 table.insert(realterrain.modes, {name="distance", get_input=true, buffer=realterrain.settings.dist_lim, fill_below=true})
-table.insert(realterrain.modes, {name="demchange", get_cover=true, get_input=true})
-table.insert(realterrain.modes, {name="coverchange", get_cover=true, get_input=true})
+table.insert(realterrain.modes, {name="demchange", get_cover=true, get_input=true, buffer=1, fill_below=true })
+table.insert(realterrain.modes, {name="coverchange", get_cover=true, get_input=true, buffer=1, fill_below=true})
 
 function realterrain.get_mode_idx(modename)
 	for k,v in next, realterrain.modes do
@@ -465,7 +549,6 @@ function realterrain.init()
 	print("[PYTHON] mode: "..pybits..", width: "..width..", length: "..length)
 	--]]
 	local mode = realterrain.get_mode()
-	print(dump(mode))
 	local imageload
 	if gm then imageload = gm.Image
 	elseif magick then imageload = magick.load_image
@@ -489,8 +572,7 @@ function realterrain.init()
 	else
 		error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder")
 	end
-	if mode.get_cover then
-		print("here")
+	if mode.get_cover and realterrain.settings.filecover and realterrain.settings.filecover ~= "" then
 		realterrain.cover.image = imageload(RASTERS..realterrain.settings.filecover)
 		if gm then
 			realterrain.cover.width, realterrain.cover.length = realterrain.cover.image:size()
@@ -500,9 +582,11 @@ function realterrain.init()
 			realterrain.cover.bits = realterrain.settings.coverbits
 			--print(dump(realterrain.get_unique_values(cover)))
 		end
+	else
+		realterrain.cover = {}
 	end
 	-- for various raster modes such as distance, we need to load the input raster.
-	if mode.get_input then
+	if mode.get_input and realterrain.settings.fileinput and realterrain.settings.fileinput ~= "" then
 		realterrain.input.image = imageload(RASTERS..realterrain.settings.fileinput)
 		if gm then
 			realterrain.input.width, realterrain.input.length = realterrain.input.image:size()
@@ -511,6 +595,8 @@ function realterrain.init()
 			realterrain.input.image  = imageload(RASTERS..realterrain.settings.fileinput)
 			realterrain.input.bits = realterrain.settings.inputbits
 		end
+	else
+		realterrain.input = {}
 	end
 end
 
@@ -580,7 +666,7 @@ function realterrain.generate(minp, maxp)
 			print ("[SKY] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
 			return
 		end
-		if mode ~= "normal" and y1 <= realterrain.surface_cache[cz0][cx0].minelev then
+		if mode.name ~= "normal" and y1 <= realterrain.surface_cache[cz0][cx0].minelev then
 			local chugent = math.ceil((os.clock() - t0) * 1000)
 			print ("[SUB] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
 			return
@@ -691,78 +777,12 @@ function realterrain.generate(minp, maxp)
 		return
 	end
 	--print(dump(heightmap))
-	
-	--turn various content ids into variables for speed
-	local c_grass  = minetest.get_content_id("default:dirt_with_grass")
-	local c_gravel = minetest.get_content_id("default:gravel")
-	local c_stone  = minetest.get_content_id("default:stone")
-	local c_sand   = minetest.get_content_id("default:sand")
-	local c_water  = minetest.get_content_id("default:water_source")
-	local c_dirt   = minetest.get_content_id("default:dirt")
-	local c_coal   = minetest.get_content_id("default:stone_with_coal")
-	local c_cobble = minetest.get_content_id("default:cobble")
-	--cover specific cids
-	local cids = {}
-	cids[0] = {ground=minetest.get_content_id(realterrain.settings.b0ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b0ground2),
-			   shrub=minetest.get_content_id(realterrain.settings.b0shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b0shrub2)}
-	cids[1]  = {ground=minetest.get_content_id(realterrain.settings.b1ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b1ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b1shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b1shrub2)}
-	cids[2]  = {ground=minetest.get_content_id(realterrain.settings.b2ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b2ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b2shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b2shrub2)}
-	cids[3]  = {ground=minetest.get_content_id(realterrain.settings.b3ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b3ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b3shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b3shrub2)}
-	cids[4]  = {ground=minetest.get_content_id(realterrain.settings.b4ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b4ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b4shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b4shrub2)}
-	cids[5]  = {ground=minetest.get_content_id(realterrain.settings.b5ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b5ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b5shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b5shrub2)}
-	cids[6]  = {ground=minetest.get_content_id(realterrain.settings.b6ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b6ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b6shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b6shrub2)}
-	cids[7]  = {ground=minetest.get_content_id(realterrain.settings.b7ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b7ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b7shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b7shrub2)}
-	cids[8]  = {ground=minetest.get_content_id(realterrain.settings.b8ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b8ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b8shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b8shrub2)}
-	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b9ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b9shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b9shrub2)}
-	
-	--register cids for SLOPE mode.name
-	if mode.name == "elevation" or mode.name == "slope" or mode.name == "curvature"
-		or mode.name == "distance" or mode.name == "demchange" then
-		--cids for symbology nodetypes
-		for i=1,10 do
-			cids["symbol"..i] = minetest.get_content_id(realterrain.settings["rastsymbol"..i])
-		end
+	if not realterrain.cids then
+		realterrain.build_cids()
 	end
-	--register cids for ASPECT mode.name
-	if mode.name == "aspect" then
-		--cids for symbology nodetypes
-		for k, code in next, aspectcolors do
-			cids["aspect"..k] = minetest.get_content_id("realterrain:".."aspect"..k)
-		end
-	end
-	if mode.name == "coverchange" then
-		cids["symbol10"] = minetest.get_content_id("realterrain:slope10")
-	end
-	
+	local cids = realterrain.cids
+	--print(dump(cids))
+		
 	--generate!
 	for z = z0, z1 do
 	for x = x0, x1 do
@@ -818,29 +838,19 @@ function realterrain.generate(minp, maxp)
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					--underground layers
-					if y < elev and (mode.name == "normal" or mode.name == "coverchange" or mode.name == "demchange") then 
+					if y < elev and (mode.name == "normal") then 
 						--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
-						if y < elev - (30 + math.random(1,5)) then
-							data[vi] = c_stone
-						elseif y < elev - (25 + math.random(1,5)) then
-							data[vi] = c_gravel
-						elseif y < elev - (20 + math.random(1,5)) then
-							data[vi] = c_sand
-						elseif y < elev - (15 + math.random(1,5)) then
-							data[vi] = c_coal
-						elseif y < elev - (10 + math.random(1,5)) then
-							data[vi] = c_stone
-						elseif y < elev - (5 + math.random(1,5)) then
-							data[vi] = c_sand
+						if y < elev-(math.random(10,15)) then
+							local d1 = math.random(1,6)
+							local d2 = math.random(1,6)
+							local d3 = math.random(1,6)
+							local d18 = d1+d2+d3 --classic d&d bell curve
+							data[vi] = cids.ores[d18]
 						else
-							if cover == 5 then
-								data[vi] = ground
-							else
-								data[vi] = c_dirt
-							end
+							data[vi] = ground
 						end
 					--the surface layer, determined by cover value
-					elseif  y == elev and ( (cover ~= 5 or mode.name == "surface")
+					elseif  y == elev and ( (cover ~= 5 or fill_below)
 						or mode.name == "coverchange" ) then
 						if mode.name == "coverchange" and cover2 and cover ~= cover2 then
 							--print("cover1: "..cover..", cover2: "..cover2)
@@ -854,10 +864,10 @@ function realterrain.generate(minp, maxp)
 							end
 							data[vi] = cids[color]						
 						elseif y < tonumber(realterrain.settings.waterlevel) then
-							data[vi] = c_sand
+							data[vi] = cids["water_bottom"]
 						--alpine level
 						elseif y > tonumber(realterrain.settings.alpinelevel) + math.random(1,5) then 
-							data[vi] = c_gravel
+							data[vi] = cids["alpine"]
 						--default
 						else
 							--print("ground2: "..ground2..", gprob: "..gprob)
@@ -892,7 +902,7 @@ function realterrain.generate(minp, maxp)
 							end
 						end
 					elseif y <= tonumber(realterrain.settings.waterlevel) then
-						data[vi] = c_water --normal minetest water source
+						data[vi] = cids["water"] --normal minetest water source
 					end
 					vi = vi + ystridevm
 				end --end y iteration
@@ -1135,6 +1145,7 @@ function realterrain.get_enumeration(image, xstart, width, zstart, length)
 		enumeration = tmpimg:get_blob()
 		tmpimg:destroy()
 	end
+	--local cmd = convert..' "'..RASTERS..realterrain.settings.filedem..'"'..' -crop 80x80+'..col..'+'..row..' txt:-'
 	return enumeration
 end
 
@@ -1151,7 +1162,7 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 	
 	--print("entire enumeration: "..enumeration)
 	local entries = 0
-	--local cmd = CONVERT..' "'..RASTERS..realterrain.settings.filedem..'"'..' -crop 80x80+'..col..'+'..row..' txt:-'
+	
 	local mincol, maxcol, minrow, maxrow
 	local firstline = true
 	for k,line in next, string.split(enumeration, "\n") do                         
@@ -1168,6 +1179,7 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 			
 			local x = xstart + right -1
 			local z = 0- zstart + down
+			
 			if not mincol then
 				mincol = x
 				maxcol = x
@@ -1179,7 +1191,7 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 				if z < minrow then minrow = z end
 				if z > maxrow then maxrow = z end
 			end--]]
-			--print ("x: "..x..", z: "..z..", elev: "..e)
+			--print ("x: "..x..", z: "..z..", elev: "..value)
 			if not pixels[z] then pixels[z] = {} end
 			pixels[z][x] = {elev=value}
 		end
@@ -1558,14 +1570,7 @@ function realterrain.show_rc_form(pname)
                                     realterrain.get_idx(images, realterrain.get_setting("filecover")) .."]" ..
 								"dropdown[10.8,3;1,1;coverbits;8,16;"..
 									bits[realterrain.esc(realterrain.get_setting("coverbits"))].."]" ..
-								--[["label[6,4;Water File]"..
-								"dropdown[6,4.5;4,1;filewater;"..f_images..";"..
-                                    realterrain.get_idx(images, realterrain.get_setting("filewater")) .."]"..
-                                "label[6,5.5;Road File]"..
-								"dropdown[6,6;4,1;fileroads;"..f_images..";"..
-									realterrain.get_idx(images, realterrain.get_setting("fileroads")) .."]"..]]
-								
-								
+									
 								"label[6,5.5;Raster Mode]"..
 								"dropdown[6,6;4,1;output;"..f_modes..";"..
 									realterrain.get_mode_idx(realterrain.settings.output).."]"..
