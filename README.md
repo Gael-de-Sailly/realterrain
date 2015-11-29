@@ -20,7 +20,7 @@ Settings tool (Realterrain Remote)
 
 Biomes tool:
 
-![screenshot_20151128_170909](https://cloud.githubusercontent.com/assets/12679496/11454829/e5d4cbfa-95f2-11e5-9a1a-a820c3f50f07.png)
+![screenshot_20151128_181814](https://cloud.githubusercontent.com/assets/12679496/11455022/87e1833a-95fc-11e5-81d8-d2f65cadf1a4.png)
 
 Trees and shrubs:
 
