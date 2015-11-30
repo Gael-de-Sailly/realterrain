@@ -40,7 +40,7 @@ Aspect analysis:
 
 Overlay a color image:
 
-
+![screenshot_20151129_200807](https://cloud.githubusercontent.com/assets/12679496/11463363/2ecb5c24-96d5-11e5-8cf3-2b305198eac3.png)
 
 ### Dependencies:
 - You must have imageMagick and MagickWand , OR imlib2 (8-bit limit) installed on your system
