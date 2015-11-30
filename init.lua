@@ -362,6 +362,10 @@ function realterrain.build_cids()
 
 	cids["symbol10"] = minetest.get_content_id("realterrain:slope10")
 
+	for k,v in next, symbols do
+		cids[v] = minetest.get_content_id("realterrain:"..v)
+	end
+	
 	realterrain.cids = cids
 end
 
@@ -419,6 +423,7 @@ table.insert(realterrain.modes, {name="curvature", buffer=1, fill_below=true, mo
 table.insert(realterrain.modes, {name="distance", get_input=true, buffer=realterrain.settings.dist_lim, fill_below=true})
 table.insert(realterrain.modes, {name="demchange", get_cover=true, get_input=true, buffer=1, fill_below=true })
 table.insert(realterrain.modes, {name="coverchange", get_cover=true, get_input=true, buffer=1, fill_below=true})
+table.insert(realterrain.modes, {name="imageoverlay", get_input=true, get_input_color=true, buffer=1, fill_below=true})
 
 function realterrain.get_mode_idx(modename)
 	for k,v in next, realterrain.modes do
@@ -681,10 +686,15 @@ function realterrain.generate(minp, maxp)
 	local zstart, zend, xstart, xend, get_cover, get_input, buffer
 	buffer = mode.buffer or 0
 	zstart, zend, xstart, xend = z0-buffer, z1+buffer, x0-buffer, x1+buffer
+	
 	get_cover = mode.get_cover
 	get_input = mode.get_input
+	get_input2 = mode.get_input2
+	get_input3 = mode.get_input3
+	get_input_color = mode.get_input_color
 	fill_below = mode.fill_below
 	moving_window = mode.moving_window
+	
 	local heightmap = {}
 	local entries = 0
 	local input_present = false
@@ -694,8 +704,8 @@ function realterrain.generate(minp, maxp)
 		for z=zstart,zend do
 			if not heightmap[z] then heightmap[z] = {} end
 			for x=xstart,xend do
-				local elev, cover, input
-				elev, cover, input = realterrain.get_pixel(x,z, get_cover, get_input)
+				local elev, cover, input, input2, input3
+				elev, cover, input, input2, input3 = realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input2, get_input_color)
 				--don't include any values if the elevation is not there (off-the dem)
 				if elev then 
 					entries = entries + 1
@@ -706,9 +716,13 @@ function realterrain.generate(minp, maxp)
 						heightmap[z][x] = {elev=elev, cover=cover }
 					--modes that need only elevation
 					elseif get_input then
-						heightmap[z][x] = {elev=elev, input=input}
-						if mode.name == "distance" and input > 0 then
-							input_present = true --makes distance more efficient, skips distant chunks
+						if get_input_color then
+							heightmap[z][x] = {elev=elev, cover=cover, input=input, input2=input2, input3=input3}
+						else
+							heightmap[z][x] = {elev=elev, input=input}
+							if mode.name == "distance" and input > 0 then
+								input_present = true --makes distance more efficient, skips distant chunks
+							end
 						end
 					else
 						heightmap[z][x] = {elev=elev}
@@ -907,7 +921,7 @@ function realterrain.generate(minp, maxp)
 					vi = vi + ystridevm
 				end --end y iteration
 			--if raster output then display only that
-			elseif not get_cover then
+			else
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					local elev
@@ -1007,8 +1021,23 @@ function realterrain.generate(minp, maxp)
 									color = "symbol10"
 								end
 								data[vi] = cids[color]
+							elseif mode.name == "imageoverlay" then
+								local input = heightmap[z][x].input
+								local input2 = heightmap[z][x].input2
+								local input3 = heightmap[z][x].input3
+								local color1 = math.floor( ( input / 255 ) * 5 + 0.5) * 51
+								local color2 = math.floor( ( input2 / 255 ) * 5 + 0.5) * 51
+								local color3 = math.floor( ( input3 / 255 ) * 5 + 0.5) * 51
+								color1 = string.format("%x", color1)
+								if color1 == "0" then color1 = "00" end
+								color2 = string.format("%x", color2)
+								if color2 == "0" then color2 = "00" end
+								color3 = string.format("%x", color3)
+								if color3 == "0" then color3 = "00" end
+								color = color1..color2..color3
+								data[vi] = cids[color]
 							end
-							--coudl check for fill_below here but it is implied in these modes
+							--could check for fill_below here but it is implied in these modes
 							local height = realterrain.fill_below(x,z,heightmap)
 							if height > 0 then
 								for i=1, height, 1 do
@@ -1047,7 +1076,7 @@ function realterrain.generate(minp, maxp)
 end
 --the raw get pixel method that uses the selected method and accounts for bit depth
 function realterrain.get_raw_pixel(x,z, raster) -- "image" is a string for python and an image object for magick / imlib2
-	local v
+	local r,g,b
 	--[[py then --images for py need to be greyscale
 		v = py.eval(raster..".getpixel(("..x..","..z.."))") --no bit depth conversion required
 		v = tonumber(tostring(v))
@@ -1082,18 +1111,23 @@ function realterrain.get_raw_pixel(x,z, raster) -- "image" is a string for pytho
 			--print(v)
 		else--]]
 		if magick then
-			v = math.floor(raster:get_pixel(x, z) * (2^bits)) --@todo change when magick autodetects bit depth
+			r,g,b = raster:get_pixel(x, z) --@todo change when magick autodetects bit depth
+			r = math.floor(r * (2^bits))
+			g = math.floor(g * (2^bits))
+			b = math.floor(b * (2^bits))
 		elseif imlib2 then
-			v = raster:get_pixel(x, z).red
+			r = raster:get_pixel(x, z).red
+			g = raster:get_pixel(x, z).green
+			b = raster:get_pixel(x, z).blue
 		end
 	end
 	--print (v)
-	return v
+	return r,g,b
 end
 
 --the main get pixel method that applies the scale and offsets
-function realterrain.get_pixel(x,z, get_cover, get_input)
-	local e, b, i
+function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3, get_input_color)
+	local e, b, i, i2, i3
     local row,col = 0 - z + tonumber(realterrain.settings.zoffset), 0 + x - tonumber(realterrain.settings.xoffset)
 	--adjust for x and z scales
     row = math.floor(row / tonumber(realterrain.settings.zscale))
@@ -1103,6 +1137,7 @@ function realterrain.get_pixel(x,z, get_cover, get_input)
     if ((col < 0) or (col > realterrain.dem.width) or (row < 0) or (row > realterrain.dem.length)) then return false end
     
 	e = realterrain.get_raw_pixel(col,row, "dem") or 0
+	
 	--print("raw e: "..e)
 	--adjust for offset and scale
     e = math.floor((e * tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
@@ -1112,10 +1147,18 @@ function realterrain.get_pixel(x,z, get_cover, get_input)
 	end
 	
 	if get_input then
-		i = realterrain.get_raw_pixel(col,row, "input") or 0
+		if get_input_color then
+			i, i2, i3 = realterrain.get_raw_pixel(col,row, "input")
+			if not i then i = 0 end
+			if not i2 then i2 = 0 end
+			if not i3 then i3 = 0 end
+		else
+			i = realterrain.get_raw_pixel(col,row, "input") or 0
+		end
 	end
+	
 	--print("elev: "..e..", cover: "..b)
-    return e, b, i
+    return e, b, i, i2, i3
 end
 --this function parses a line of IM or GM pixel enumeration without any scaling or adjustment
 function realterrain.parse_enumeration(line)

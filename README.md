@@ -38,6 +38,10 @@ Aspect analysis:
 
 ![screenshot_20151124_201516](https://cloud.githubusercontent.com/assets/12679496/11388193/31d764d0-92e8-11e5-8c92-d34ff733dc56.png)
 
+Overlay a color image:
+
+
+
 ### Dependencies:
 - You must have imageMagick and MagickWand , OR imlib2 (8-bit limit) installed on your system
 - Mod security disabled
@@ -76,6 +80,7 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact red ch
 
 #### 0.0.8
 - expanded biome editor
+- overlay color image onto map
 - some code refactoring and performance improvements
 
 #### 0.0.7
