@@ -10,10 +10,6 @@ Supplied heightmap and landcover files:
 ![dem](https://cloud.githubusercontent.com/assets/12679496/10683910/00078544-78fc-11e5-9806-1c0786b3fa4e.png)
 ![biomes](https://cloud.githubusercontent.com/assets/12679496/10683908/fffbac4c-78fb-11e5-8190-4f0c0561b4b1.png)
 
-Rock strata:
-
-![screenshot_20151022_202823](https://cloud.githubusercontent.com/assets/12679496/10683866/771561ac-78fb-11e5-8fb4-6e9d876fcc67.png)
-
 Settings tool (Realterrain Remote)
 
 ![screenshot_20151130_195859](https://cloud.githubusercontent.com/assets/12679496/11492217/d0813f6a-979e-11e5-872c-c7d68b964ade.png)
