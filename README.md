@@ -16,7 +16,7 @@ Rock strata:
 
 Settings tool (Realterrain Remote)
 
-![screenshot_20151128_172841](https://cloud.githubusercontent.com/assets/12679496/11454885/7abec818-95f5-11e5-8203-0b77726bfdfa.png)
+![screenshot_20151130_195859](https://cloud.githubusercontent.com/assets/12679496/11492217/d0813f6a-979e-11e5-872c-c7d68b964ade.png)
 
 Biomes tool:
 
@@ -100,7 +100,7 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact red ch
 - experimental code for using imagemagick / graphicsmagick command line interface to reduce dependencies (commented out)
 - some improvements to form validation, in-game raster selection doesn't require a restart
 
-#### 0.0.5
+#### 0.0.5![screenshot_20151130_195859](https://cloud.githubusercontent.com/assets/12679496/11492217/d0813f6a-979e-11e5-872c-c7d68b964ade.png)
 - improved raster modes symbology and added "aspect"
 - made the biome form fully clickable (image buttons and dropdowns)
 - added a static water node
