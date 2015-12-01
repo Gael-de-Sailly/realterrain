@@ -38,7 +38,7 @@ Aspect analysis:
 
 ![screenshot_20151124_201516](https://cloud.githubusercontent.com/assets/12679496/11388193/31d764d0-92e8-11e5-8c92-d34ff733dc56.png)
 
-Overlay a color image:
+Overlay a color image or raster bands for false-color mapping of landsat imagery:
 
 ![screenshot_20151129_200807](https://cloud.githubusercontent.com/assets/12679496/11463363/2ecb5c24-96d5-11e5-8cf3-2b305198eac3.png)
 
@@ -81,6 +81,7 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact red ch
 #### 0.0.8
 - expanded biome editor
 - overlay color image onto map
+- overlay color bands individually (landsat false-color)
 - some code refactoring and performance improvements
 
 #### 0.0.7

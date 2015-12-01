@@ -55,6 +55,11 @@ realterrain.settings.coverbits = 8 --@todo remove this setting when magick autod
 
 realterrain.settings.fileinput = ''
 realterrain.settings.inputbits = 8
+realterrain.settings.fileinput2 = ''
+realterrain.settings.input2bits = 8
+realterrain.settings.fileinput3 = ''
+realterrain.settings.input3bits = 8
+
 realterrain.settings.dist_lim = 80
 realterrain.settings.dist_mode = "3D" --3D or 3Dp
 
@@ -424,6 +429,7 @@ table.insert(realterrain.modes, {name="distance", get_input=true, buffer=realter
 table.insert(realterrain.modes, {name="demchange", get_cover=true, get_input=true, buffer=1, fill_below=true })
 table.insert(realterrain.modes, {name="coverchange", get_cover=true, get_input=true, buffer=1, fill_below=true})
 table.insert(realterrain.modes, {name="imageoverlay", get_input=true, get_input_color=true, buffer=1, fill_below=true})
+table.insert(realterrain.modes, {name="bandoverlay", get_input=true, get_input2=true, get_input3=true, buffer=1, fill_below=true})
 
 function realterrain.get_mode_idx(modename)
 	for k,v in next, realterrain.modes do
@@ -542,6 +548,8 @@ end
 realterrain.dem = {}
 realterrain.cover = {}
 realterrain.input = {}
+realterrain.input2 = {}
+realterrain.input3 = {}
 function realterrain.init()
 	--[[
 	py.execute("import Image")
@@ -573,35 +581,71 @@ function realterrain.init()
 			realterrain.dem.length = realterrain.dem.image:get_height()
 			realterrain.dem.bits = realterrain.settings.dembits
 		end
-		print("depth: "..realterrain.dem.bits..", width: "..realterrain.dem.width..", length: "..realterrain.dem.length)
+		print("[DEM] depth: "..realterrain.dem.bits..", width: "..realterrain.dem.width..", length: "..realterrain.dem.length)
 	else
-		error(RASTERS..realterrain.settings.filedem.." does not appear to be an image file. your image may need to be renamed, or you may need to manually edit the realterrain.settings file in the world folder")
+		print("your dem file is missing, maybe delete or edit world/realterrain_settings")
+		realterrain.dem = {}
 	end
+	
 	if mode.get_cover and realterrain.settings.filecover and realterrain.settings.filecover ~= "" then
 		realterrain.cover.image = imageload(RASTERS..realterrain.settings.filecover)
 		if gm then
 			realterrain.cover.width, realterrain.cover.length = realterrain.cover.image:size()
 			realterrain.cover.bits = realterrain.cover.image:depth()
 		else
-			realterrain.cover.image = imageload(RASTERS..realterrain.settings.filecover)
+			realterrain.cover.width = realterrain.cover.image:get_width()
+			realterrain.cover.length = realterrain.cover.image:get_height()
 			realterrain.cover.bits = realterrain.settings.coverbits
 			--print(dump(realterrain.get_unique_values(cover)))
 		end
+		print("[COVER] depth: "..realterrain.cover.bits..", width: "..realterrain.cover.width..", length: "..realterrain.cover.length)
 	else
 		realterrain.cover = {}
 	end
-	-- for various raster modes such as distance, we need to load the input raster.
+	
 	if mode.get_input and realterrain.settings.fileinput and realterrain.settings.fileinput ~= "" then
 		realterrain.input.image = imageload(RASTERS..realterrain.settings.fileinput)
 		if gm then
 			realterrain.input.width, realterrain.input.length = realterrain.input.image:size()
 			realterrain.input.bits = realterrain.input.image:depth()
 		else
-			realterrain.input.image  = imageload(RASTERS..realterrain.settings.fileinput)
+			realterrain.input.width = realterrain.input.image:get_width()
+			realterrain.input.length = realterrain.input.image:get_height()
 			realterrain.input.bits = realterrain.settings.inputbits
 		end
+		print("[IN1] depth: "..realterrain.input.bits..", width: "..realterrain.input.width..", length: "..realterrain.input.length)
 	else
 		realterrain.input = {}
+	end
+	
+	if mode.get_input2 and realterrain.settings.fileinput2 and realterrain.settings.fileinput2 ~= "" then
+		realterrain.input2.image = imageload(RASTERS..realterrain.settings.fileinput2)
+		if gm then
+			realterrain.input2.width, realterrain.input2.length = realterrain.input2.image:size()
+			realterrain.input2.bits = realterrain.input2.image:depth()
+		else
+			realterrain.input2.width = realterrain.input2.image:get_width()
+			realterrain.input2.length = realterrain.input2.image:get_height()
+			realterrain.input2.bits = realterrain.settings.input2bits
+		end
+		print("[IN2] depth: "..realterrain.input2.bits..", width: "..realterrain.input2.width..", length: "..realterrain.input2.length)
+	else
+		realterrain.input2 = {}
+	end
+	
+	if mode.get_input3 and realterrain.settings.fileinput3 and realterrain.settings.fileinput3 ~= "" then
+		realterrain.input3.image = imageload(RASTERS..realterrain.settings.fileinput3)
+		if gm then
+			realterrain.input3.width, realterrain.input3.length = realterrain.input3.image:size()
+			realterrain.input3.bits = realterrain.input3.image:depth()
+		else
+			realterrain.input3.width = realterrain.input3.image:get_width()
+			realterrain.input3.length = realterrain.input3.image:get_height()
+			realterrain.input3.bits = realterrain.settings.input3bits
+		end
+		print("[IN3] depth: "..realterrain.input3.bits..", width: "..realterrain.input3.width..", length: "..realterrain.input3.length)
+	else
+		realterrain.input3 = {}
 	end
 end
 
@@ -683,7 +727,7 @@ function realterrain.generate(minp, maxp)
 	local data = vm:get_data()
 	
 	--build the heightmap and include different extents and values depending on mode
-	local zstart, zend, xstart, xend, get_cover, get_input, buffer
+	local zstart, zend, xstart, xend, get_cover, get_input, get_input2, get_input3, get_input_color, buffer, fill_below, moving_window
 	buffer = mode.buffer or 0
 	zstart, zend, xstart, xend = z0-buffer, z1+buffer, x0-buffer, x1+buffer
 	
@@ -718,6 +762,8 @@ function realterrain.generate(minp, maxp)
 					elseif get_input then
 						if get_input_color then
 							heightmap[z][x] = {elev=elev, cover=cover, input=input, input2=input2, input3=input3}
+						elseif get_input and get_input2 and get_input3 then
+						heightmap[z][x] = {elev=elev, cover=cover, input=input, input2=input2, input3=input3}
 						else
 							heightmap[z][x] = {elev=elev, input=input}
 							if mode.name == "distance" and input > 0 then
@@ -1021,13 +1067,14 @@ function realterrain.generate(minp, maxp)
 									color = "symbol10"
 								end
 								data[vi] = cids[color]
-							elseif mode.name == "imageoverlay" then
+							elseif mode.name == "imageoverlay" or mode.name == "bandoverlay" then
 								local input = heightmap[z][x].input
 								local input2 = heightmap[z][x].input2
 								local input3 = heightmap[z][x].input3
 								local color1 = math.floor( ( input / 255 ) * 5 + 0.5) * 51
 								local color2 = math.floor( ( input2 / 255 ) * 5 + 0.5) * 51
 								local color3 = math.floor( ( input3 / 255 ) * 5 + 0.5) * 51
+								--print("r: "..color1..", g: "..color2..", b: "..color3)
 								color1 = string.format("%x", color1)
 								if color1 == "0" then color1 = "00" end
 								color2 = string.format("%x", color2)
@@ -1092,6 +1139,12 @@ function realterrain.get_raw_pixel(x,z, raster) -- "image" is a string for pytho
 	elseif raster == "input" then
 		raster = realterrain.input.image
 		bits = realterrain.input.bits
+	elseif raster == "input2" then
+		raster = realterrain.input2.image
+		bits = realterrain.input2.bits
+	elseif raster == "input3" then
+		raster = realterrain.input3.image
+		bits = realterrain.input3.bits
 	end
 	if raster then
 		--[[if gm then --this method is unusable until direct pixel access is exposed in gm!
@@ -1133,8 +1186,12 @@ function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3
     row = math.floor(row / tonumber(realterrain.settings.zscale))
     col = math.floor(col / tonumber(realterrain.settings.xscale))
     
-    --off the dem return false
-    if ((col < 0) or (col > realterrain.dem.width) or (row < 0) or (row > realterrain.dem.length)) then return false end
+    --off the dem return false unless no dem is set in which case flat maps and gibberish are expected
+	--hint there is always a dem unless realterrain_settings is hand-edited due to form validation
+    if realterrain.dem.image
+		and ((col < 0) or (col > realterrain.dem.width) or (row < 0) or (row > realterrain.dem.length)) then
+		return false
+	end
     
 	e = realterrain.get_raw_pixel(col,row, "dem") or 0
 	
@@ -1156,7 +1213,12 @@ function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3
 			i = realterrain.get_raw_pixel(col,row, "input") or 0
 		end
 	end
-	
+	if get_input2 then
+		i2 = realterrain.get_raw_pixel(col,row, "input2") or 0
+	end
+	if get_input3 then
+		i3 = realterrain.get_raw_pixel(col,row, "input3") or 0
+	end
 	--print("elev: "..e..", cover: "..b)
     return e, b, i, i2, i3
 end
@@ -1597,6 +1659,10 @@ function realterrain.show_rc_form(pname)
 								"field[3,4;1,1;zoffset;z;"..
                                     realterrain.esc(realterrain.get_setting("zoffset")).."]" ..
 								
+								"label[1,5.5;Raster Mode]"..
+								"dropdown[1,6;4,1;output;"..f_modes..";"..
+									realterrain.get_mode_idx(realterrain.settings.output).."]"..
+								
 								"field[1,8;4,1;waterlevel;Water Level;"..
                                     realterrain.esc(realterrain.get_setting("waterlevel")).."]"..
                                 "field[1,9;4,1;alpinelevel;Alpine Level;"..
@@ -1614,15 +1680,23 @@ function realterrain.show_rc_form(pname)
 								"dropdown[10.8,3;1,1;coverbits;8,16;"..
 									bits[realterrain.esc(realterrain.get_setting("coverbits"))].."]" ..
 									
-								"label[6,5.5;Raster Mode]"..
-								"dropdown[6,6;4,1;output;"..f_modes..";"..
-									realterrain.get_mode_idx(realterrain.settings.output).."]"..
-								"label[6,7;Input File]"..
-								"dropdown[6,7.5;4,1;fileinput;"..f_images..";"..
-									realterrain.get_idx(images, realterrain.get_setting("fileinput")) .."]"..
-								"dropdown[10.8,7.5;1,1;inputbits;8,16;"..
-									bits[realterrain.esc(realterrain.get_setting("inputbits"))].."]"
 								
+								"label[6,3.8;Input File (R)]"..
+								"dropdown[6,4.3;4,1;fileinput;"..f_images..";"..
+									realterrain.get_idx(images, realterrain.get_setting("fileinput")) .."]"..
+								"dropdown[10.8,4.3;1,1;inputbits;8,16;"..
+									bits[realterrain.esc(realterrain.get_setting("inputbits"))].."]"..
+								"label[6,5;Input File2 (G)]"..
+								"dropdown[6,5.5;4,1;fileinput2;"..f_images..";"..
+									realterrain.get_idx(images, realterrain.get_setting("fileinput2")) .."]"..
+								"dropdown[10.8,5.5;1,1;input2bits2;8,16;"..
+									bits[realterrain.esc(realterrain.get_setting("input2bits"))].."]"..
+								"label[6,6.2;Input File3 (B)]"..
+								"dropdown[6,6.7;4,1;fileinput3;"..f_images..";"..
+									realterrain.get_idx(images, realterrain.get_setting("fileinput3")) .."]"..
+								"dropdown[10.8,6.7;1,1;input3bits;8,16;"..
+									bits[realterrain.esc(realterrain.get_setting("input3bits"))].."]"
+									
 	--Action buttons
 	local f_footer = 			"label[6,9;After applying, exit world and delete map.sqlite]"..
 								"label[6,9.5;in the world folder before restarting the map]"..
