@@ -20,7 +20,7 @@ Biomes tool:
 
 Trees and shrubs:
 
-![screenshot_20151025_140009](https://cloud.githubusercontent.com/assets/12679496/10717817/c79e4608-7b20-11e5-97e5-63c6116f480a.png)
+![screenshot_20151128_180108](https://cloud.githubusercontent.com/assets/12679496/11454976/44c755b8-95fa-11e5-98d4-16329f5981ee.png)
 
 Slope analysis:
 
