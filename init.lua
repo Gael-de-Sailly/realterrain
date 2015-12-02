@@ -1636,70 +1636,87 @@ function realterrain.show_rc_form(pname)
 	end
 	
 	--print("IMAGES in DEM folder: "..f_images)
-    --form header
+    local col = {0.5, 2.5, 6.4, 8, 9, 10, 11, 12, 13}
+	
+	--form header
 	local f_header = 			"size[14,10]" ..
-								"button_exit[0.1,0.1.9;2,1;exit;Biomes]"..
-								"button_exit[2,0.1;2,1;exit;Symbols]"..
 								"label[6,0;You are at x= "..math.floor(ppos.x)..
 								" y= "..math.floor(ppos.y).." z= "..math.floor(ppos.z).." and mostly facing "..dir.."]"
 	--Scale settings
-	local f_scale_settings =
-                                "label[1,1;Scales]"..
-								"field[1,2;1,1;yscale;y;"..
+	local f_settings =			"label["..col[1]..",1.1;Raster Mode]"..
+								"dropdown["..col[2]..",1;4,1;output;"..f_modes..";"..
+									realterrain.get_mode_idx(realterrain.settings.output).."]"..
+									
+                                "label["..col[3]+0.2 ..",2;bits]"..
+								"label["..col[4]-.2 ..",2;Scales]"..
+								"label["..col[7]-.2 ..",2;Offsets]"..					
+								
+								"label["..col[4]..",2.5;Y]"..
+								"label["..col[5]..",2.5;X]"..
+								"label["..col[6]..",2.5;Z]"..
+								
+								"field["..col[4]..",3.25;1,1;yscale;;"..
                                     realterrain.esc(realterrain.get_setting("yscale")).."]" ..
-                                "field[2,2;1,1;xscale;x;"..
+                                "field["..col[5]..",3.25;1,1;xscale;;"..
                                     realterrain.esc(realterrain.get_setting("xscale")).."]" ..
-								"field[3,2;1,1;zscale;z;"..
+								"field["..col[6]..",3.25;1,1;zscale;;"..
                                     realterrain.esc(realterrain.get_setting("zscale")).."]" ..
-								"label[1,3;Offsets]"..
-								"field[1,4;1,1;yoffset;y;"..
+								
+								"label["..col[7]..",2.5;Y]"..
+								"label["..col[8]..",2.5;X]"..
+								"label["..col[9]..",2.5;Z]"..
+								
+								"field["..col[7]..",3.25;1,1;yoffset;;"..
                                     realterrain.esc(realterrain.get_setting("yoffset")).."]" ..
-                                "field[2,4;1,1;xoffset;x;"..
+                                "field["..col[8]..",3.25;1,1;xoffset;;"..
                                     realterrain.esc(realterrain.get_setting("xoffset")).."]" ..
-								"field[3,4;1,1;zoffset;z;"..
+								"field["..col[9]..",3.25;1,1;zoffset;;"..
                                     realterrain.esc(realterrain.get_setting("zoffset")).."]" ..
 								
-								"label[1,5.5;Raster Mode]"..
-								"dropdown[1,6;4,1;output;"..f_modes..";"..
-									realterrain.get_mode_idx(realterrain.settings.output).."]"..
-								
-								"field[1,8;4,1;waterlevel;Water Level;"..
-                                    realterrain.esc(realterrain.get_setting("waterlevel")).."]"..
-                                "field[1,9;4,1;alpinelevel;Alpine Level;"..
-                                    realterrain.esc(realterrain.get_setting("alpinelevel")).."]"..
-								
-								"label[6,1;Elevation File]"..
-								"dropdown[6,1.5;4,1;filedem;"..f_images..";"..
+								"label["..col[1]..",3.1;Elevation File]"..
+								"dropdown["..col[2]..",3;4,1;filedem;"..f_images..";"..
                                     realterrain.get_idx(images, realterrain.get_setting("filedem")) .."]" ..
-								"label[10,1;DEM bit-depth]"..
-								"dropdown[10.8,1.5;1,1;dembits;8,16;"..
+								"dropdown["..col[3]..",3;1,1;dembits;8,16;"..
 									bits[realterrain.esc(realterrain.get_setting("dembits"))].."]" ..
-								"label[6,2.5;Biome File]"..
-								"dropdown[6,3;4,1;filecover;"..f_images..";"..
-                                    realterrain.get_idx(images, realterrain.get_setting("filecover")) .."]" ..
-								"dropdown[10.8,3;1,1;coverbits;8,16;"..
-									bits[realterrain.esc(realterrain.get_setting("coverbits"))].."]" ..
-									
 								
-								"label[6,3.8;Input File (R)]"..
-								"dropdown[6,4.3;4,1;fileinput;"..f_images..";"..
+								"label["..col[1]..",4.1;Biome File]"..
+								"dropdown["..col[2]..",4;4,1;filecover;"..f_images..";"..
+                                    realterrain.get_idx(images, realterrain.get_setting("filecover")) .."]" ..
+								"dropdown["..col[3]..",4;1,1;coverbits;8,16;"..
+									bits[realterrain.esc(realterrain.get_setting("coverbits"))].."]" ..
+								
+								"label["..col[1]..",5.1;Input File 1 (R)]"..
+								"dropdown["..col[2]..",5;4,1;fileinput;"..f_images..";"..
 									realterrain.get_idx(images, realterrain.get_setting("fileinput")) .."]"..
-								"dropdown[10.8,4.3;1,1;inputbits;8,16;"..
+								"dropdown["..col[3]..",5;1,1;inputbits;8,16;"..
 									bits[realterrain.esc(realterrain.get_setting("inputbits"))].."]"..
-								"label[6,5;Input File2 (G)]"..
-								"dropdown[6,5.5;4,1;fileinput2;"..f_images..";"..
+									
+								"label["..col[1]..",6.1;Input File 2 (G)]"..
+								"dropdown["..col[2]..",6;4,1;fileinput2;"..f_images..";"..
 									realterrain.get_idx(images, realterrain.get_setting("fileinput2")) .."]"..
-								"dropdown[10.8,5.5;1,1;input2bits2;8,16;"..
+								"dropdown["..col[3]..",6;1,1;input2bits2;8,16;"..
 									bits[realterrain.esc(realterrain.get_setting("input2bits"))].."]"..
-								"label[6,6.2;Input File3 (B)]"..
-								"dropdown[6,6.7;4,1;fileinput3;"..f_images..";"..
+									
+								"label["..col[1]..",7.1;Input File 3 (B)]"..
+								"dropdown["..col[2]..",7;4,1;fileinput3;"..f_images..";"..
 									realterrain.get_idx(images, realterrain.get_setting("fileinput3")) .."]"..
-								"dropdown[10.8,6.7;1,1;input3bits;8,16;"..
-									bits[realterrain.esc(realterrain.get_setting("input3bits"))].."]"
+								"dropdown["..col[3]..",7;1,1;input3bits;8,16;"..
+									bits[realterrain.esc(realterrain.get_setting("input3bits"))].."]"..
+
+								"field[1,9;2,1;waterlevel;Water Level;"..
+                                    realterrain.esc(realterrain.get_setting("waterlevel")).."]"..
+                                "field[3,9;2,1;alpinelevel;Alpine Level;"..
+                                    realterrain.esc(realterrain.get_setting("alpinelevel")).."]"
+								
+								
 									
 	--Action buttons
-	local f_footer = 			"label[6,9;After applying, exit world and delete map.sqlite]"..
-								"label[6,9.5;in the world folder before restarting the map]"..
+	local f_footer =			"button_exit[8,8;2,1;exit;Biomes]"..
+								"button_exit[10,8;2,1;exit;Ores]"..
+								"button_exit[12,8;2,1;exit;Symbols]"..
+								
+								"label[5.5,9;After applying, exit world and delete map.sqlite]"..
+								"label[5.5,9.5;in the world folder before restarting the map]"..
 								--"button_exit[2,9;2,1;exit;Delete]"..
                                 --"label[10,8.5;Apply changes]"..
 								"button_exit[12,9;2,1;exit;Apply]"
@@ -1707,7 +1724,7 @@ function realterrain.show_rc_form(pname)
     
     minetest.show_formspec(pname, "realterrain:rc_form", 
                         f_header ..
-                        f_scale_settings ..
+                        f_settings ..
                         f_footer
     )
     return true
