@@ -12,7 +12,7 @@ Supplied heightmap and landcover files:
 
 Settings tool (Realterrain Remote)
 
-![screenshot_20151130_195859](https://cloud.githubusercontent.com/assets/12679496/11492217/d0813f6a-979e-11e5-872c-c7d68b964ade.png)
+![screenshot_20151201_190737](https://cloud.githubusercontent.com/assets/12679496/11521234/48a2749e-985f-11e5-9d22-9ee3b33c529c.png)
 
 Biomes tool:
 
