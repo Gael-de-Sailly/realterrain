@@ -702,6 +702,12 @@ function realterrain.generate(minp, maxp)
 	local cy0 = math.floor((y0 + 32) / 80)
 	local cz0 = math.floor((z0 + 32) / 80) 
 	
+	
+	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
+	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
+	local data = vm:get_data()
+	
+	
 	local mode = realterrain.get_mode()
 	--check to see if the current chunk is above (or below) the elevation range for this footprint
 	if realterrain.surface_cache[cz0] and realterrain.surface_cache[cz0][cx0] then
@@ -713,6 +719,10 @@ function realterrain.generate(minp, maxp)
 		if y0 >= realterrain.surface_cache[cz0][cx0].maxelev then
 			local chugent = math.ceil((os.clock() - t0) * 1000)
 			print ("[SKY] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
+			vm:set_data(data)
+			vm:calc_lighting()
+			vm:write_to_map(data)
+			vm:update_liquids()
 			return
 		end
 		if mode.name ~= "normal" and y1 <= realterrain.surface_cache[cz0][cx0].minelev then
@@ -721,10 +731,6 @@ function realterrain.generate(minp, maxp)
 			return
 		end
 	end
-	
-	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
-	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
-	local data = vm:get_data()
 	
 	--build the heightmap and include different extents and values depending on mode
 	local zstart, zend, xstart, xend, get_cover, get_input, get_input2, get_input3, get_input_color, buffer, fill_below, moving_window
@@ -1559,6 +1565,9 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			elseif fields.exit == "Biomes" then
 				realterrain.show_cover_form(pname)
 				return true
+			elseif fields.exit == "Ores" then
+				realterrain.show_ores_form(pname)
+				return true
 			elseif fields.exit == "Symbols" then
 				realterrain.show_symbology(pname)
 				return true
@@ -1779,6 +1788,26 @@ function realterrain.show_cover_form(pname)
 					"label[1,9;Biome 7 - Barren,  Biome 8 - Tundra,  Biome 9 - Glacial]"
 	
 	minetest.show_formspec(pname,   "realterrain:cover_config",
+                                    f_header .. f_body .. f_notes
+	)
+	return true
+end
+function realterrain.show_ores_form(pname)
+	
+	local col= {0.01,  0.5,1.3,2.1,   3.5,5.5,6.5,8.5,   10,11,12,13,   12.5}
+	local f_header = 	"size[14,10]" ..
+						"button_exit["..col[13]..",9.5;1.5,1;exit;Apply]"
+						--"label["..col[1]..",0.01;USGS Biome]"..
+						
+	local f_body = ""
+	for i=0,9,1 do
+		local h = (i +1) * 0.7
+		
+		f_body = ""
+	end
+	local f_notes = ""
+	
+	minetest.show_formspec(pname,   "realterrain:ores_config",
                                     f_header .. f_body .. f_notes
 	)
 	return true
