@@ -589,61 +589,81 @@ function realterrain.init()
 	
 	if mode.get_cover and realterrain.settings.filecover and realterrain.settings.filecover ~= "" then
 		realterrain.cover.image = imageload(RASTERS..realterrain.settings.filecover)
-		if gm then
-			realterrain.cover.width, realterrain.cover.length = realterrain.cover.image:size()
-			realterrain.cover.bits = realterrain.cover.image:depth()
+		if realterrain.cover.image then
+			if gm then
+				realterrain.cover.width, realterrain.cover.length = realterrain.cover.image:size()
+				realterrain.cover.bits = realterrain.cover.image:depth()
+			else
+				realterrain.cover.width = realterrain.cover.image:get_width()
+				realterrain.cover.length = realterrain.cover.image:get_height()
+				realterrain.cover.bits = realterrain.settings.coverbits
+				--print(dump(realterrain.get_unique_values(cover)))
+			end
+			print("[COVER] depth: "..realterrain.cover.bits..", width: "..realterrain.cover.width..", length: "..realterrain.cover.length)
 		else
-			realterrain.cover.width = realterrain.cover.image:get_width()
-			realterrain.cover.length = realterrain.cover.image:get_height()
-			realterrain.cover.bits = realterrain.settings.coverbits
-			--print(dump(realterrain.get_unique_values(cover)))
+			print("your biome file is missing, maybe delete or edit world/realterrain_settings")
+			realterrain.cover = {}
 		end
-		print("[COVER] depth: "..realterrain.cover.bits..", width: "..realterrain.cover.width..", length: "..realterrain.cover.length)
 	else
 		realterrain.cover = {}
 	end
 	
 	if mode.get_input and realterrain.settings.fileinput and realterrain.settings.fileinput ~= "" then
 		realterrain.input.image = imageload(RASTERS..realterrain.settings.fileinput)
-		if gm then
-			realterrain.input.width, realterrain.input.length = realterrain.input.image:size()
-			realterrain.input.bits = realterrain.input.image:depth()
+		if realterrain.input.image then
+			if gm then
+				realterrain.input.width, realterrain.input.length = realterrain.input.image:size()
+				realterrain.input.bits = realterrain.input.image:depth()
+			else
+				realterrain.input.width = realterrain.input.image:get_width()
+				realterrain.input.length = realterrain.input.image:get_height()
+				realterrain.input.bits = realterrain.settings.inputbits
+			end
+			print("[IN1] depth: "..realterrain.input.bits..", width: "..realterrain.input.width..", length: "..realterrain.input.length)
 		else
-			realterrain.input.width = realterrain.input.image:get_width()
-			realterrain.input.length = realterrain.input.image:get_height()
-			realterrain.input.bits = realterrain.settings.inputbits
+			print("your input 1 file is missing, maybe delete or edit world/realterrain_settings")
+			realterrain.input = {}
 		end
-		print("[IN1] depth: "..realterrain.input.bits..", width: "..realterrain.input.width..", length: "..realterrain.input.length)
 	else
 		realterrain.input = {}
 	end
 	
 	if mode.get_input2 and realterrain.settings.fileinput2 and realterrain.settings.fileinput2 ~= "" then
 		realterrain.input2.image = imageload(RASTERS..realterrain.settings.fileinput2)
-		if gm then
-			realterrain.input2.width, realterrain.input2.length = realterrain.input2.image:size()
-			realterrain.input2.bits = realterrain.input2.image:depth()
+		if realterrain.input2.image then
+			if gm then
+				realterrain.input2.width, realterrain.input2.length = realterrain.input2.image:size()
+				realterrain.input2.bits = realterrain.input2.image:depth()
+			else
+				realterrain.input2.width = realterrain.input2.image:get_width()
+				realterrain.input2.length = realterrain.input2.image:get_height()
+				realterrain.input2.bits = realterrain.settings.input2bits
+			end
+			print("[IN2] depth: "..realterrain.input2.bits..", width: "..realterrain.input2.width..", length: "..realterrain.input2.length)
 		else
-			realterrain.input2.width = realterrain.input2.image:get_width()
-			realterrain.input2.length = realterrain.input2.image:get_height()
-			realterrain.input2.bits = realterrain.settings.input2bits
+			print("your input 2 file is missing, maybe delete or edit world/realterrain_settings")
+			realterrain.input2 = {}
 		end
-		print("[IN2] depth: "..realterrain.input2.bits..", width: "..realterrain.input2.width..", length: "..realterrain.input2.length)
 	else
 		realterrain.input2 = {}
 	end
 	
 	if mode.get_input3 and realterrain.settings.fileinput3 and realterrain.settings.fileinput3 ~= "" then
 		realterrain.input3.image = imageload(RASTERS..realterrain.settings.fileinput3)
-		if gm then
-			realterrain.input3.width, realterrain.input3.length = realterrain.input3.image:size()
-			realterrain.input3.bits = realterrain.input3.image:depth()
+		if realterrain.input3.image then
+			if gm then
+				realterrain.input3.width, realterrain.input3.length = realterrain.input3.image:size()
+				realterrain.input3.bits = realterrain.input3.image:depth()
+			else
+				realterrain.input3.width = realterrain.input3.image:get_width()
+				realterrain.input3.length = realterrain.input3.image:get_height()
+				realterrain.input3.bits = realterrain.settings.input3bits
+			end
+			print("[IN3] depth: "..realterrain.input3.bits..", width: "..realterrain.input3.width..", length: "..realterrain.input3.length)
 		else
-			realterrain.input3.width = realterrain.input3.image:get_width()
-			realterrain.input3.length = realterrain.input3.image:get_height()
-			realterrain.input3.bits = realterrain.settings.input3bits
+			print("your input 3 file is missing, maybe delete or edit world/realterrain_settings")
+			realterrain.input3 = {}
 		end
-		print("[IN3] depth: "..realterrain.input3.bits..", width: "..realterrain.input3.width..", length: "..realterrain.input3.length)
 	else
 		realterrain.input3 = {}
 	end
@@ -1583,8 +1603,14 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			elseif fields.ground then
 				local setting = "b"..fields.ground.."ground"
 				realterrain.show_item_images(pname, realterrain.list_nodes(), setting)
+			elseif fields.ground2 then
+				local setting = "b"..fields.ground2.."ground2"
+				realterrain.show_item_images(pname, realterrain.list_nodes(), setting)
 			elseif fields.shrub then
 				local setting = "b"..fields.shrub.."shrub"
+				realterrain.show_item_images(pname, realterrain.list_plants(), setting)
+			elseif fields.shrub2 then
+				local setting = "b"..fields.shrub2.."shrub2"
 				realterrain.show_item_images(pname, realterrain.list_plants(), setting)
 			end
 			return true
