@@ -1,4 +1,4 @@
-PROCESSOR = "py" -- options are: "py", "gm", "magick", "imlib2", "pngLua"
+PROCESSOR = "magick" -- options are: "py", "gm", "magick", "imlib2", "pngLua"
 --gm does not work and requires graphicksmagick, py is buggy and requires lunatic-python to be built, and the PIL,
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand
 --convert uses commandline imagemagick "convert" or graphicsmagick "gm convert" ("convert.exe" or "gm.exe convert")
