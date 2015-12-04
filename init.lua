@@ -7,7 +7,6 @@ MODPATH = minetest.get_modpath("realterrain")
 WORLDPATH = minetest.get_worldpath()
 RASTERS = MODPATH .. "/rasters/"
 SCHEMS = MODPATH .. "/schems/"
-HEIGHTMAP = false --experimental mode to build entire heightmap at once not pixel-by-pixel (requires im or gm)
 
 local ie = minetest.request_insecure_environment()
 
@@ -55,8 +54,8 @@ realterrain.settings.zoffset = 0
 realterrain.settings.waterlevel = 0
 realterrain.settings.alpinelevel = 1000
 
-realterrain.settings.filedem   = 'demo/dem.tif'
-realterrain.settings.dembits = 8 --@todo remove this setting when magick autodetects bitdepth
+realterrain.settings.fileelev   = 'demo/dem.tif'
+realterrain.settings.elevbits = 8 --@todo remove this setting when magick autodetects bitdepth
 realterrain.settings.filecover = 'demo/biomes.tif'
 realterrain.settings.coverbits = 8 --@todo remove this setting when magick autodetects bitdepth
 
@@ -433,7 +432,7 @@ table.insert(realterrain.modes, {name="slope", buffer=1, fill_below=true, moving
 table.insert(realterrain.modes, {name="aspect", buffer=1, fill_below=true, moving_window=true})
 table.insert(realterrain.modes, {name="curvature", buffer=1, fill_below=true, moving_window=true})
 table.insert(realterrain.modes, {name="distance", get_input=true, buffer=realterrain.settings.dist_lim, fill_below=true})
-table.insert(realterrain.modes, {name="demchange", get_cover=true, get_input=true, buffer=1, fill_below=true })
+table.insert(realterrain.modes, {name="elevchange", get_cover=true, get_input=true, buffer=1, fill_below=true })
 table.insert(realterrain.modes, {name="coverchange", get_cover=true, get_input=true, buffer=1, fill_below=true})
 table.insert(realterrain.modes, {name="imageoverlay", get_input=true, get_input_color=true, buffer=1, fill_below=true})
 table.insert(realterrain.modes, {name="bandoverlay", get_input=true, get_input2=true, get_input3=true, buffer=1, fill_below=true})
@@ -551,8 +550,8 @@ function realterrain.get_idx(haystack, needle)
 	return 0
 end
 -- SELECT the mechanism for loading the image which is later uesed by get_pixel()
---@todo throw warning if image sizes do not match the dem size
-realterrain.dem = {}
+--@todo throw warning if image sizes do not match the elev size
+realterrain.elev = {}
 realterrain.cover = {}
 realterrain.input = {}
 realterrain.input2 = {}
@@ -565,7 +564,7 @@ function realterrain.init()
 	elseif imlib2 then imageload = imlib2.image.load
 	end
 	local rasternames = {}
-	table.insert(rasternames, "dem")
+	table.insert(rasternames, "elev")
 	if mode.get_cover then table.insert(rasternames, "cover") end
 	if mode.get_input then table.insert(rasternames, "input") end
 	if mode.get_input2 then	table.insert(rasternames, "input2")	end
@@ -674,7 +673,7 @@ function realterrain.generate(minp, maxp)
 	local mode = realterrain.get_mode()
 	--check to see if the current chunk is above (or below) the elevation range for this footprint
 	if realterrain.surface_cache[cz0] and realterrain.surface_cache[cz0][cx0] then
-		if realterrain.surface_cache[cz0][cx0].offdem then
+		if realterrain.surface_cache[cz0][cx0].offelev then
 			local chugent = math.ceil((os.clock() - t0) * 1000)
 			print ("[OFF] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
 			return
@@ -711,7 +710,7 @@ function realterrain.generate(minp, maxp)
 	local heightmap = {}
 	local entries = 0
 	local input_present = false
-	if HEIGHTMAP then
+	if gm then
 		heightmap = realterrain.build_heightmap(xstart,xend,zstart,zend, get_cover, get_input) --experiment
 	else
 		for z=zstart,zend do
@@ -719,7 +718,7 @@ function realterrain.generate(minp, maxp)
 			for x=xstart,xend do
 				local elev, cover, input, input2, input3
 				elev, cover, input, input2, input3 = realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input2, get_input_color)
-				--don't include any values if the elevation is not there (off-the dem)
+				--don't include any values if the elevation is not there (off-the elev)
 				if elev then 
 					entries = entries + 1
 					--modes that need cover
@@ -765,8 +764,8 @@ function realterrain.generate(minp, maxp)
 						maxelev = elev
 					end
 				end
-				--when comparing two dems we need both of their min/max elevs
-				if mode.name == "demchange" then
+				--when comparing two elevs we need both of their min/max elevs
+				if mode.name == "elevchange" then
 					local elev
 					elev = heightmap[z][x].input
 					if not minelev then
@@ -799,7 +798,7 @@ function realterrain.generate(minp, maxp)
 			realterrain.surface_cache[cz0] = {}
 		end
 		if not realterrain.surface_cache[cz0][cx0] then
-			realterrain.surface_cache[cz0][cx0] = {offdem=true}
+			realterrain.surface_cache[cz0][cx0] = {offelev=true}
 		end
 		local chugent = math.ceil((os.clock() - t0) * 1000)
 		print ("[OFF] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
@@ -831,7 +830,7 @@ function realterrain.generate(minp, maxp)
 				else
 					cover = math.floor(cover)
 				end
-				if mode.name == "demchange" then
+				if mode.name == "elevchange" then
 					elev2 = heightmap[z][x].input
 				end
 				if mode.name == "coverchange" then
@@ -884,7 +883,7 @@ function realterrain.generate(minp, maxp)
 						if mode.name == "coverchange" and cover2 and cover ~= cover2 then
 							--print("cover1: "..cover..", cover2: "..cover2)
 							data[vi] = cids["symbol10"]
-						elseif mode.name == "demchange"	and (elev ~= elev2) then
+						elseif mode.name == "elevchange"	and (elev ~= elev2) then
 							local diff = elev2 - elev
 							if diff < 0 then
 								color = "symbol10"
@@ -922,8 +921,7 @@ function realterrain.generate(minp, maxp)
 							else
 								data[vi] = shrub
 							end
-						end
-						if tprob > 0 and tree and y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5) and math.random(0,100) <= tprob then
+						elseif tprob > 0 and tree and y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5) and math.random(0,100) <= tprob then
 							if tprob2 and tprob2 > 0 and tree2 and math.random(0,100) <= tprob2 then
 								table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree2})
 							else
@@ -1151,14 +1149,14 @@ function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3
     row = math.floor(row / tonumber(realterrain.settings.zscale))
     col = math.floor(col / tonumber(realterrain.settings.xscale))
     
-    --off the dem return false unless no dem is set in which case flat maps and gibberish are expected
-	--hint there is always a dem unless realterrain_settings is hand-edited due to form validation
-    if realterrain.dem.image
-		and ((col < 0) or (col > realterrain.dem.width) or (row < 0) or (row > realterrain.dem.length)) then
+    --off the elev return false unless no elev is set in which case flat maps and gibberish are expected
+	--hint there is always a elev unless realterrain_settings is hand-edited due to form validation
+    if realterrain.elev.image
+		and ((col < 0) or (col > realterrain.elev.width) or (row < 0) or (row > realterrain.elev.length)) then
 		return false
 	end
     
-	e = realterrain.get_raw_pixel(col,row, "dem") or 0
+	e = realterrain.get_raw_pixel(col,row, "elev") or 0
 	
 	--print("raw e: "..e)
 	--adjust for offset and scale
@@ -1203,34 +1201,19 @@ function realterrain.parse_enumeration(line)
 	local value = tonumber(string.sub(line, firstcolon + 3, secondcomma -1))
 	return value, right, down 
 end
-function realterrain.get_enumeration(raster, xstart, width, zstart, length) --raster is a string so py can use it
+function realterrain.get_enumeration(rastername, xstart, width, zstart, length) --raster is a string so py can use it
 	local enumeration
 	if py then
-		enumeration = py.eval(raster..".getpixels(("..x..","..z.."))")
+		enumeration = py.eval(rastername..".getpixels(("..x..","..z.."))")
+		print(enumeration)
+		
 		--v = tonumber(tostring(v))
 	else
-		local bits
-		if raster == "dem" then
-			raster = realterrain.dem.image
-			bits = realterrain.dem.bits
-		elseif raster == "cover" then
-			raster = realterrain.cover.image
-			bits = realterrain.cover.bits
-		elseif raster == "input" then
-			raster = realterrain.input.image
-			bits = realterrain.input.bits
-		elseif raster == "input2" then
-			raster = realterrain.input2.image
-			bits = realterrain.input2.bits
-		elseif raster == "input3" then
-			raster = realterrain.input3.image
-			bits = realterrain.input3.bits
-		end
 		if gm then
-			enumeration = realterrain.dem.image:clone():crop(width,length,xstart,zstart):format("txt"):toString()
+			enumeration = realterrain[rastername].image:clone():crop(width,length,xstart,zstart):format("txt"):toString()
 		elseif magick then
 			local tmpimg
-			tmpimg = realterrain.dem.image:clone()
+			tmpimg = realterrain[rastername].image:clone()
 			tmpimg:crop(width,length,xstart,zstart)
 			tmpimg:set_format("txt")
 			enumeration = tmpimg:get_blob()
@@ -1239,12 +1222,13 @@ function realterrain.get_enumeration(raster, xstart, width, zstart, length) --ra
 			--no method for this in imlib2
 		end
 	end
-	--local cmd = convert..' "'..RASTERS..realterrain.settings.filedem..'"'..' -crop 80x80+'..col..'+'..row..' txt:-'
+	--local cmd = convert..' "'..RASTERS..realterrain.settings.fileelev..'"'..' -crop 80x80+'..col..'+'..row..' txt:-'
 	return enumeration
 end
 
 --experimental function to enumerate 80x80 crop of raster at once using IM or GM
 function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_input)
+	local mode = realterrain.get_mode()
 	print("request range: x:"..xstart..","..xend.."; z:"..zstart..","..zend)	
 	local pixels = {}
 	local width = xend-xstart+1
@@ -1252,14 +1236,16 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 	--print("width: "..width ..", length: "..length)
 	print("request entries: "..width*length)
 	zstart = 0 - zstart
-	if py then
-
-		v = py.eval(raster..".getpixel(("..x..","..z.."))") --no bit depth conversion required
-		v = tonumber(tostring(v))
-		--print(e)
-
-	else
-		local enumeration = realterrain.get_enumeration("dem", xstart, width, zstart, length)
+	
+	local rasternames = {}
+	table.insert(rasternames, "elev")
+	if mode.get_cover then table.insert(rasternames, "cover") end
+	if mode.get_input then table.insert(rasternames, "input") end
+	if mode.get_input2 then	table.insert(rasternames, "input2")	end
+	if mode.get_input3 then	table.insert(rasternames, "input3")	end
+	for k,rastername in next, rasternames do
+			
+		local enumeration = realterrain.get_enumeration(rastername, xstart, width, zstart, length)
 		
 		--print("entire enumeration: "..enumeration)
 		local entries = 0
@@ -1294,46 +1280,10 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 				end--]]
 				--print ("x: "..x..", z: "..z..", elev: "..value)
 				if not pixels[z] then pixels[z] = {} end
-				pixels[z][x] = {elev=value}
+				pixels[z][x] = {rastername=value}
 			end
 		end
-		local firstline = true
-		if get_cover then
-			local enumeration = realterrain.get_enumeration("cover", xstart, width, zstart, length)
-			for k,line in next, string.split(enumeration, "\n") do                         
-				if magick and firstline then
-					firstline = false --first line is a head in IM but not GM
-				else
-					value, right, down = realterrain.parse_enumeration(line)
-					
-					value = math.floor((value / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
-					
-					local x = xstart + right -1
-					local z = 0- zstart + down
-					if not pixels[z] then pixels[z] = {} end
-					pixels[z][x] = {cover=value}
-				end
-			end
-		end
-		local firstline = true
-		if get_input then
-			local enumeration = realterrain.get_enumeration("input", xstart, width, zstart, length)
-			for k,line in next, string.split(enumeration, "\n") do                         
-				if magick and firstline then
-				firstline = false --first line is a head in IM but not GM
-				else
-					value, right, down = realterrain.parse_enumeration(line)
-					
-					value = math.floor((value / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
-					
-					local x = xstart + right -1
-					local z = 0- zstart + down
-					if not pixels[z] then pixels[z] = {} end
-					pixels[z][x] = {input=value}
-				end
-			end
-		end
-		--print(dump(pixels))
+		
 		print("result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
 		print("result entries: "..entries)
 	end
@@ -1503,15 +1453,15 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		end
 		
 		--check to make sure that a DEM file is selected, this is essential
-		if fields.filedem == "" then
+		if fields.fileelev == "" then
 			realterrain.show_popup(pname,"You MUST have an Elevation (DEM) file!")
 			return
 		end
 		--check to make sure that if a raster mode that needs an input file is used, it is there
-		if ((fields.output == "distance" or fields.output == "demchange" or fields.output == "coverchange")
+		if ((fields.output == "distance" or fields.output == "elevchange" or fields.output == "coverchange")
 				and realterrain.settings.fileinput == "" )
 			or (fields.fileinput == "" and (realterrain.settings.output == "distance"
-											or realterrain.settings.output == "demchange"
+											or realterrain.settings.output == "elevchange"
 											or realterrain.settings.output == "coverchange")) then
 			realterrain.show_popup(pname, "For this raster mode you must have an input file selected")
 			return
@@ -1524,8 +1474,8 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		--@todo still need to validate the various numerical values for scale and offsets...
 		
 		--check to see if the source rasters were changed, if so re-initialize
-		local old_dem, old_cover, old_input
-		old_dem = realterrain.settings.filedem
+		local old_elev, old_cover, old_input
+		old_elev = realterrain.settings.fileelev
 		old_cover = realterrain.settings.filecover
 		old_input = realterrain.settings.fileinput
 		-- otherwise save form fields
@@ -1533,7 +1483,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			realterrain.settings[k] = v --we will preserve field entries exactly as entered 
 		end
 		realterrain.save_settings()
-		if old_dem ~= realterrain.settings.filedem
+		if old_elev ~= realterrain.settings.fileelev
 			or old_cover ~= realterrain.settings.filecover
 			or old_input ~= realterrain.settings.fileinput then
 			realterrain.init()
@@ -1680,10 +1630,10 @@ function realterrain.show_rc_form(pname)
                                     realterrain.esc(realterrain.get_setting("zoffset")).."]" ..
 								
 								"label["..col[1]..",3.1;Elevation File]"..
-								"dropdown["..col[2]..",3;4,1;filedem;"..f_images..";"..
-                                    realterrain.get_idx(images, realterrain.get_setting("filedem")) .."]" ..
-								"dropdown["..col[3]..",3;1,1;dembits;8,16;"..
-									bits[realterrain.esc(realterrain.get_setting("dembits"))].."]" ..
+								"dropdown["..col[2]..",3;4,1;fileelev;"..f_images..";"..
+                                    realterrain.get_idx(images, realterrain.get_setting("fileelev")) .."]" ..
+								"dropdown["..col[3]..",3;1,1;elevbits;8,16;"..
+									bits[realterrain.esc(realterrain.get_setting("elevbits"))].."]" ..
 								
 								"label["..col[1]..",4.1;Biome File]"..
 								"dropdown["..col[2]..",4;4,1;filecover;"..f_images..";"..
