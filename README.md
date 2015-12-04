@@ -58,6 +58,7 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact red ch
 - OR download DEM and USGS landcover/landuse tiles for same the same extent. Note, for true 16-bit DEMs you must use magick, not imlib2
 - after you change settings exit the world and delete the map.sqlite in the world folder
 - relaunch the map and enjoy!
+- note windows users may have to edit line 162 (or so) of magick/init.lua from "MagickWand" to "C:/Program Files/ImageMagick-6.9.2-Q16/CORE_RL_wand_" or whatever the version and location of your MagickWand install might be.
 
 ### Upgrading:
 - delete the realterrain.settings file in the world folder, or just create a new world
