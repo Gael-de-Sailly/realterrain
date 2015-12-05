@@ -16,7 +16,7 @@ package.path = (MODPATH.."/lib/lua-imagesize-1.2/?.lua;"..package.path)
 local imagesize = ie.require "imagesize"
 
 --[[package.path = (MODPATH.."/lib/luasocket/?.lua;"..MODPATH.."/lib/luasocket/?/init.lua;"..package.path)
-socket = ie.require "socket"--]]
+local socket = ie.require "socket"--]]
 local py, gm, magick, imlib2, convert, png
 if PROCESSOR == "py" then
 	package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*") --may not need to explicitly state this
