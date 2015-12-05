@@ -2,7 +2,7 @@ PROCESSOR = "magick" -- options are: "py", "gm", "magick", "imlib2", "pngLua"
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand
 --convert uses commandline imagemagick "convert" or graphicsmagick "gm convert" ("convert.exe" or "gm.exe convert")
---png locks up and does not work...
+--png locks up and does not work... tiff8 is for uncompressed grayscale 8-bit tiffs only
 MODPATH = minetest.get_modpath("realterrain")
 WORLDPATH = minetest.get_worldpath()
 RASTERS = MODPATH .. "/rasters/"
@@ -41,6 +41,8 @@ elseif PROCESSOR == "png" then
 	package.path = (MODPATH.."/lib/pngLua/?.lua;"..MODPATH.."/lib/pngLua/?/init.lua;"..package.path)
 	ie.require "png"
 	png = true
+elseif PROCESSOR == "tiff8" then
+	tiff8 = true
 end
 local realterrain = {}
 realterrain.settings = {}
@@ -557,6 +559,7 @@ realterrain.cover = {}
 realterrain.input = {}
 realterrain.input2 = {}
 realterrain.input3 = {}
+offset = nil
 function realterrain.init()
 	local mode = realterrain.get_mode()
 	local imageload
@@ -573,8 +576,26 @@ function realterrain.init()
 	for k,rastername in next, rasternames do
 			
 		if realterrain.settings["file"..rastername] ~= ""  then 
-			if png then
-				
+			if tiff8 then
+				--use imagesize to get the dimensions and header offset
+				local width, length, format = imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
+				print("image info: w: "..width.." l: "..length.." format: "..format.." header offset: "..offset)
+				if format == "image/tiff" then
+					local file = io.open(RASTERS..realterrain.settings["file"..rastername], "rb")
+					if file then
+						realterrain[rastername].image = file
+					else
+						print("tiff8 problem getting file handle")
+					end
+					realterrain[rastername].width = width
+					realterrain[rastername].length = length
+					realterrain[rastername].headeroffset = offset
+				else
+					print("tiff8 processor requires an uncompressed 8-bit grayscale tiff file")
+					return
+				end
+			elseif png then
+				--@todo use imagesize to determine format
 				local function get_png(filename)
 					local ok, r = pcall(pngImage, filename)
 					if not ok then return nil, r end  -- NOTE: r == error message
@@ -586,7 +607,7 @@ function realterrain.init()
 					print(e)
 					return nil, e
 				end
-				--check if the image is a png and if so load it
+				--@todocheck if the image is a png and if so load it
 				realterrain[rastername].image = img
 				img = nil
 				if realterrain[rastername].image then
@@ -1121,7 +1142,29 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 	if ( x >= 0 and x < realterrain[rastername].width )
 		and ( z >= 0 and z < realterrain[rastername].length ) then
 		--print(rastername..": x "..x..", z "..z)
-		if png then
+		if tiff8 then
+			local file = realterrain[rastername].image
+			if not file then
+				print("tiff8 problem retrieving file handle")
+			end
+			--print(file)
+			local width, length
+			width = realterrain[rastername].width
+			length = realterrain[rastername].length
+			
+			file:seek("set", ( realterrain[rastername].headeroffset / 256 + (width * z) + x ))
+			r = file:read(1)
+			--print("r: "..r)
+			if r then
+				r = r:byte() -- -32?
+				--print("r:"..r)
+				r = tonumber(r)
+			else
+				print("nil value encountered at x: "..x..", z: "..z)
+				r = nil
+			end
+			
+		elseif png then
 			local pixel = img.scanLines[y].pixels[x]
 			r=pixel.R
 			g=pixel.G
