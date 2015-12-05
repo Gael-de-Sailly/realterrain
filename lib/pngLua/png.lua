@@ -133,8 +133,8 @@ ScanLine.pixels = {}
 ScanLine.filterType = 0
 
 function ScanLine:__init(stream, depth, colorType, palette, length)
-	bpp = math.floor(depth/8) * self:bitFromColorType(colorType)
-	bpl = bpp*length
+	local bpp = math.floor(depth/8) * self:bitFromColorType(colorType)
+	local bpl = bpp*length
 	self.filterType = stream:readByte()
 	stream:seek(-1)
 	stream:writeByte(0)
@@ -248,7 +248,7 @@ function pngImage:__init(path, progCallback)
 	local idat = {}
 	local num = 1
 	while true do
-		ch = Chunk(str)
+		local ch = Chunk(str)
 		if ch.name == "IHDR" then ihdr = IHDR(ch) end
 		if ch.name == "PLTE" then plte = PLTE(ch) end
 		if ch.name == "IDAT" then idat[num] = IDAT(ch) num = num+1 end
@@ -263,7 +263,7 @@ function pngImage:__init(path, progCallback)
 	for k,v in pairs(idat) do dataStr = dataStr .. v.data end
 	local output = {}
 	deflate.inflate_zlib {input = dataStr, output = function(byte) output[#output+1] = string.char(byte) end, disable_crc = true}
-	imStr = Stream({input = table.concat(output)})
+	local imStr = Stream({input = table.concat(output)})
 
 	for i = 1, self.height do
 		self.scanLines[i] = ScanLine(imStr, self.depth, self.colorType, plte, self.width)

@@ -2,7 +2,7 @@ PROCESSOR = "magick" -- options are: "py", "gm", "magick", "imlib2", "pngLua"
 --gm does not work and requires graphicksmagick, py is buggy and requires lunatic-python to be built, and the PIL,
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand
 --convert uses commandline imagemagick "convert" or graphicsmagick "gm convert" ("convert.exe" or "gm.exe convert")
---png loads the entire image into memory so has size limitations based on your resources, but needs no libs
+--png locks up and does not work...
 MODPATH = minetest.get_modpath("realterrain")
 WORLDPATH = minetest.get_worldpath()
 RASTERS = MODPATH .. "/rasters/"
@@ -38,7 +38,7 @@ elseif PROCESSOR == "gm" then
 elseif PROCESSOR == "convert" then
 	convert = "convert" -- could also be convert.exe, "gm convert" or "gm.exe convert"
 elseif PROCESSOR == "png" then
-	package.path = (MODPATH.."/lib/pngLua/?.lua;"..MOPATH.."/lib/pngLua/?/init.lua;"..package.path)
+	package.path = (MODPATH.."/lib/pngLua/?.lua;"..MODPATH.."/lib/pngLua/?/init.lua;"..package.path)
 	ie.require "png"
 end
 local realterrain = {}
@@ -572,7 +572,31 @@ function realterrain.init()
 	for k,rastername in next, rasternames do
 			
 		if realterrain.settings["file"..rastername] ~= ""  then 
-			if py then
+			if PROCESSOR == "png" then
+				
+				local function get_png(filename)
+					local ok, r = pcall(pngImage, filename)
+					if not ok then return nil, r end  -- NOTE: r == error message
+					return r
+				end
+
+				local img, e = get_png(RASTERS..realterrain.settings["file"..rastername]) --@todo locks up, no error!
+				if not img then
+					print(e)
+					return nil, e
+				end
+				--check if the image is a png and if so load it
+				realterrain[rastername].image = img
+				img = nil
+				if realterrain[rastername].image then
+					realterrain[rastername].width = realterrain[rastername].image.width
+					realterrain[rastername].length = realterrain[rastername].image.height
+				else
+					print("your "..rastername.." file is missing or is not a PNG (should be: "..realterrain.settings["file"..rastername].."), maybe delete or edit world/realterrain_settings")
+					realterrain[rastername] = {}
+				end
+				
+			elseif py then
 				py.execute(rastername.." = Image.open('"..RASTERS..realterrain.settings["file"..rastername] .."')")
 				py.execute(rastername.."_w, "..rastername.."_l = "..rastername..".size")
 				realterrain[rastername].width = tonumber(tostring(py.eval(rastername.."_w")))
@@ -586,6 +610,7 @@ function realterrain.init()
 					py.execute(rastername.." = "..rastername..".convert('L')")
 					realterrain[rastername].mode = "L"
 				end
+				py.execute(rastername.."_pixels = "..rastername..".load()")
 			else 
 				realterrain[rastername].image = imageload(RASTERS..realterrain.settings["file"..rastername])
 				if realterrain[rastername].image then
@@ -710,7 +735,7 @@ function realterrain.generate(minp, maxp)
 	local heightmap = {}
 	local entries = 0
 	local input_present = false
-	if gm then
+	if gm then --@todo this isn't working but would be the only way to use gm (magick will also work once gm does)
 		heightmap = realterrain.build_heightmap(xstart,xend,zstart,zend, get_cover, get_input) --experiment
 	else
 		for z=zstart,zend do
@@ -1095,36 +1120,24 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 	if ( x >= 0 and x < realterrain[rastername].width )
 		and ( z >= 0 and z < realterrain[rastername].length ) then
 		--print(rastername..": x "..x..", z "..z)
-		if py then
+		if png then
+			local pixel = img.scanLines[y].pixels[x]
+			r=pixel.R
+			g=pixel.G
+			b=pixel.B 
+		elseif py then
 			if realterrain[rastername].mode == "RGB" then
-				py.execute(rastername.."_r, "..rastername.."_g,"..rastername.."_b = "..rastername..".getpixel(("..x..", "..z.."))")
+				py.execute(rastername.."_r, "..rastername.."_g,"..rastername.."_b = "..rastername.."_pixels["..x..", "..z.."]")
 				r = tonumber(tostring(py.eval(rastername.."_r")))
 				g = tonumber(tostring(py.eval(rastername.."_g")))
 				b = tonumber(tostring(py.eval(rastername.."_b")))
 			else
-				r = tonumber(tostring(py.eval(rastername..".getpixel(("..x..","..z.."))"))) --no bit depth conversion required
+				r = tonumber(tostring(py.eval(rastername.."_pixels["..x..","..z.."]"))) --no bit depth conversion required
 			end
 			--print(r)
 		else
 			if realterrain[rastername].image then
-				if gm then --this method is unusably slow until direct pixel access is exposed in gm!
-					--[[
-					line = realterrain[rastername].image:clone():crop(1,1,x,z):format("txt"):toString()
-					--print(line)
-					--parse the output pixels
-					--local firstcomma = string.find(line, ",")
-					--local right = tonumber(string.sub(line, 1 , firstcomma - 1)) + 1
-					--print("right: "..right)
-					local firstcolon = string.find(line, ":")
-					--local down = (tonumber(string.sub(line, firstcomma + 1 , firstcolon - 1)) + 1 ) * (-1)
-					--print("down: "..down)
-					local secondcomma = string.find(line, ",", firstcolon)
-					r = string.sub(line, firstcolon + 3, secondcomma -1)
-					--print(r)
-					r = tonumber(r)
-					--print(r)
-					--]]
-				elseif magick then
+				if magick then
 					r,g,b = realterrain[rastername].image:get_pixel(x, z) --@todo change when magick autodetects bit depth
 					r = math.floor(r * (2^realterrain[rastername].bits))
 					g = math.floor(g * (2^realterrain[rastername].bits))
@@ -1203,25 +1216,18 @@ function realterrain.parse_enumeration(line)
 end
 function realterrain.get_enumeration(rastername, xstart, width, zstart, length) --raster is a string so py can use it
 	local enumeration
-	if py then
-		enumeration = py.eval(rastername..".getpixels(("..x..","..z.."))")
-		print(enumeration)
-		
-		--v = tonumber(tostring(v))
-	else
-		if gm then
-			enumeration = realterrain[rastername].image:clone():crop(width,length,xstart,zstart):format("txt"):toString()
-		elseif magick then
-			local tmpimg
-			tmpimg = realterrain[rastername].image:clone()
-			tmpimg:crop(width,length,xstart,zstart)
-			tmpimg:set_format("txt")
-			enumeration = tmpimg:get_blob()
-			tmpimg:destroy()
-		elseif imlib2 then
-			--no method for this in imlib2
-		end
+	
+	if gm then
+		enumeration = realterrain[rastername].image:clone():crop(width,length,xstart,zstart):format("txt"):toString()
+	elseif magick then
+		local tmpimg
+		tmpimg = realterrain[rastername].image:clone()
+		tmpimg:crop(width,length,xstart,zstart)
+		tmpimg:set_format("txt")
+		enumeration = tmpimg:get_blob()
+		tmpimg:destroy()
 	end
+
 	--local cmd = convert..' "'..RASTERS..realterrain.settings.fileelev..'"'..' -crop 80x80+'..col..'+'..row..' txt:-'
 	return enumeration
 end
@@ -1245,51 +1251,72 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 	if mode.get_input3 then	table.insert(rasternames, "input3")	end
 	for k,rastername in next, rasternames do
 			
-		local enumeration = realterrain.get_enumeration(rastername, xstart, width, zstart, length)
-		
-		--print("entire enumeration: "..enumeration)
-		local entries = 0
-		
-		local mincol, maxcol, minrow, maxrow
-		local firstline = true
-		for k,line in next, string.split(enumeration, "\n") do                         
-			if magick and firstline then
-				firstline = false --first line is a head in IM but not GM
-			else
-				entries = entries + 1
-				--print(entries .." :: " .. v)
-		
-				local value, right, down = realterrain.parse_enumeration(line)
-				
-				--print("elev: "..e)
-				value = math.floor((value / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
-				
-				local x = xstart + right -1
-				local z = 0- zstart + down
-				
-				if not mincol then
-					mincol = x
-					maxcol = x
-					minrow = z
-					maxrow = z
-				else
-					if x < mincol then mincol = x end
-					if x > maxcol then maxcol = x end
-					if z < minrow then minrow = z end
-					if z > maxrow then maxrow = z end
-				end--]]
-				--print ("x: "..x..", z: "..z..", elev: "..value)
+		if py then
+			--py.execute(rastername.."_pixels = "..rastername..".load()")
+			for z = zstart, zend, 1  do
 				if not pixels[z] then pixels[z] = {} end
-				pixels[z][x] = {rastername=value}
+				if z >= 0 and z <= realterrain[rastername].length then
+					for x = xstart, xend, 1 do
+						if x >= 0 and x <= realterrain[rastername].width then
+							print("x: "..x..", z: "..z)
+							py.execute("pixel = "..rastername.."_pixels["..x..","..z.."]")
+							local pixel = tonumber(tostring(py.eval("pixel"))) --@todo pixel is not defined!
+							print(pixel)
+							if not pixels[z][x] then pixels[z][x] = {} end
+							pixels[z][x][rastername] = pixel
+						end
+					end
+				end
 			end
 		end
+		local enumeration
+		if gm or magick then
+			enumeration = realterrain.get_enumeration(rastername, xstart, width, zstart, length)
+			--print("entire enumeration: "..enumeration)
+			local entries = 0
+			
+			local mincol, maxcol, minrow, maxrow
+			local firstline = true
+			for k,line in next, string.split(enumeration, "\n") do                         
+				if magick and firstline then
+					firstline = false --first line is a head in IM but not GM
+				else
+					entries = entries + 1
+					--print(entries .." :: " .. v)
+			
+					local value, right, down = realterrain.parse_enumeration(line)
+					
+					--print("elev: "..e)
+					value = math.floor((value / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
+					
+					local x = xstart + right -1
+					local z = 0- zstart + down
+					
+					if not mincol then
+						mincol = x
+						maxcol = x
+						minrow = z
+						maxrow = z
+					else
+						if x < mincol then mincol = x end
+						if x > maxcol then maxcol = x end
+						if z < minrow then minrow = z end
+						if z > maxrow then maxrow = z end
+					end--]]
+					--print ("x: "..x..", z: "..z..", elev: "..value)
+					if not pixels[z] then pixels[z] = {} end
+					pixels[z][x] = {rastername=value}
+				end
+			end
+			print("result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
+			print("result entries: "..entries)
+		end
+
 		
-		print("result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
-		print("result entries: "..entries)
 	end
 	
 	return pixels
-end--]]
+end
 
 --this funcion gets the hieght needed to fill below a node for surface-only modes
 function realterrain.fill_below(x,z,heightmap)
