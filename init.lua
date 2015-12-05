@@ -17,7 +17,7 @@ local imagesize = ie.require "imagesize"
 
 --[[package.path = (MODPATH.."/lib/luasocket/?.lua;"..MODPATH.."/lib/luasocket/?/init.lua;"..package.path)
 socket = ie.require "socket"--]]
-local py, gm, magick, imlib2, convert
+local py, gm, magick, imlib2, convert, png
 if PROCESSOR == "py" then
 	package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*") --may not need to explicitly state this
 	package.path = (MODPATH.."/lib/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
@@ -40,6 +40,7 @@ elseif PROCESSOR == "convert" then
 elseif PROCESSOR == "png" then
 	package.path = (MODPATH.."/lib/pngLua/?.lua;"..MODPATH.."/lib/pngLua/?/init.lua;"..package.path)
 	ie.require "png"
+	png = true
 end
 local realterrain = {}
 realterrain.settings = {}
@@ -572,7 +573,7 @@ function realterrain.init()
 	for k,rastername in next, rasternames do
 			
 		if realterrain.settings["file"..rastername] ~= ""  then 
-			if PROCESSOR == "png" then
+			if png then
 				
 				local function get_png(filename)
 					local ok, r = pcall(pngImage, filename)
