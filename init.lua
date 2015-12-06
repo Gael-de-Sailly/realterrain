@@ -1,4 +1,4 @@
-PROCESSOR = "magick" -- options are: "py", "gm", "magick", "imlib2", "pngLua"
+PROCESSOR = "tiff8" -- options are: "py", "gm", "magick", "imlib2", "pngLua"
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand
 --convert uses commandline imagemagick "convert" or graphicsmagick "gm convert" ("convert.exe" or "gm.exe convert")
@@ -559,7 +559,6 @@ realterrain.cover = {}
 realterrain.input = {}
 realterrain.input2 = {}
 realterrain.input3 = {}
-offset = nil
 function realterrain.init()
 	local mode = realterrain.get_mode()
 	local imageload
@@ -579,17 +578,13 @@ function realterrain.init()
 			if tiff8 then
 				--use imagesize to get the dimensions and header offset
 				local width, length, format = imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
-				print("image info: w: "..width.." l: "..length.." format: "..format.." header offset: "..offset)
+				
 				if format == "image/tiff" then
 					local file = io.open(RASTERS..realterrain.settings["file"..rastername], "rb")
-					if file then
-						realterrain[rastername].image = file
-					else
-						print("tiff8 problem getting file handle")
-					end
+					realterrain[rastername].image = file
 					realterrain[rastername].width = width
 					realterrain[rastername].length = length
-					realterrain[rastername].headeroffset = offset
+					realterrain[rastername].bits = tonumber(realterrain.settings[rastername.."bits"])
 				else
 					print("tiff8 processor requires an uncompressed 8-bit grayscale tiff file")
 					return
@@ -1152,17 +1147,31 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 			width = realterrain[rastername].width
 			length = realterrain[rastername].length
 			
-			file:seek("set", ( realterrain[rastername].headeroffset / 256 + (width * z) + x ))
-			r = file:read(1)
-			--print("r: "..r)
-			if r then
-				r = r:byte() -- -32?
-				--print("r:"..r)
-				r = tonumber(r)
+			
+			if realterrain[rastername].bits == 8 then
+				file:seek("set", ((z) * width) + x)
+				r = file:read(1)
+				if r then
+					r = r:byte() -- -32?
+					
+					r = tonumber(r)
+					--print(r)
+				else
+					print(rastername..": nil value encountered at x: "..x..", z: "..z)
+					r = nil
+				end
 			else
-				print("nil value encountered at x: "..x..", z: "..z)
-				r = nil
+				file:seek("set", ((z) * width * 2) + (x*2)+1)
+				local r1 = file:read(1)
+				local r2 = file:read(1)
+				if r1 and r2 then
+					r = tonumber(r1:byte()) + tonumber(r2:byte())
+					--print(r)
+				else
+					print(rastername..": one of two bytes is nil")
+				end
 			end
+			
 			
 		elseif png then
 			local pixel = img.scanLines[y].pixels[x]

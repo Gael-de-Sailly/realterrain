@@ -40,7 +40,7 @@ local function size (stream, options)
     if not header or header:len() ~= 4 then
         return nil, nil, "incomplete header in TIFF file"
     end
-    offset = get_uint32(header, 1) --removed "local" so this can be used by realterrain/init.lua
+    local offset = get_uint32(header, 1)
 
     -- Get number of directory entries
     local ok, err = stream:seek("set", offset)
