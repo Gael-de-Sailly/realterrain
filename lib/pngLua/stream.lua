@@ -3,7 +3,6 @@ Stream = class()
 Stream.data = ""
 Stream.position = 1
 Stream.__name = "Stream"
-
 function Stream:bsRight(num, pow)
     return math.floor(num / 2^pow)
 end
@@ -21,7 +20,7 @@ function Stream:bytesToNum(bytes)
 	return n
 end
 
-function Stream:__init(param)
+function Stream:__init(param) --@todo realterrain note: gets this far 3 times then does nothing...
 	if (param.inputF ~= nil) then
 		self.data = io.open(param.inputF, "rb"):read("*all")
 	end

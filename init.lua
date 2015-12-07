@@ -1,8 +1,8 @@
-PROCESSOR = "tiff8" -- options are: "py", "gm", "magick", "imlib2", "pngLua"
+PROCESSOR = "native" -- options are: "native", "py", "gm", "magick", "imlib2"
+--imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
---imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand
 --convert uses commandline imagemagick "convert" or graphicsmagick "gm convert" ("convert.exe" or "gm.exe convert")
---png locks up and does not work... tiff8 is for uncompressed grayscale 8-bit tiffs only
+--native handles png, tiff, and bmp files but none currently only bmp works and only on 24 bit images with good headers
 MODPATH = minetest.get_modpath("realterrain")
 WORLDPATH = minetest.get_worldpath()
 RASTERS = MODPATH .. "/rasters/"
@@ -17,7 +17,7 @@ local imagesize = ie.require "imagesize"
 
 --[[package.path = (MODPATH.."/lib/luasocket/?.lua;"..MODPATH.."/lib/luasocket/?/init.lua;"..package.path)
 local socket = ie.require "socket"--]]
-local py, gm, magick, imlib2, convert, png
+local native, py, gm, magick, imlib2, convert
 if PROCESSOR == "py" then
 	package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*") --may not need to explicitly state this
 	package.path = (MODPATH.."/lib/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
@@ -37,12 +37,9 @@ elseif PROCESSOR == "gm" then
 	gm = ie.require "graphicsmagick"
 elseif PROCESSOR == "convert" then
 	convert = "convert" -- could also be convert.exe, "gm convert" or "gm.exe convert"
-elseif PROCESSOR == "png" then
-	package.path = (MODPATH.."/lib/pngLua/?.lua;"..MODPATH.."/lib/pngLua/?/init.lua;"..package.path)
-	ie.require "png"
-	png = true
-elseif PROCESSOR == "tiff8" then
-	tiff8 = true
+elseif PROCESSOR == "native" then
+	dofile(MODPATH.."/lib/iohelpers.lua")
+	dofile(MODPATH.."/lib/imageloader.lua")
 end
 local realterrain = {}
 realterrain.settings = {}
@@ -57,9 +54,9 @@ realterrain.settings.zoffset = 0
 realterrain.settings.waterlevel = 0
 realterrain.settings.alpinelevel = 1000
 
-realterrain.settings.fileelev   = 'demo/dem.tif'
+realterrain.settings.fileelev   = 'demo/dem.bmp'
 realterrain.settings.elevbits = 8 --@todo remove this setting when magick autodetects bitdepth
-realterrain.settings.filecover = 'demo/biomes.tif'
+realterrain.settings.filecover = 'demo/biomes.bmp'
 realterrain.settings.coverbits = 8 --@todo remove this setting when magick autodetects bitdepth
 
 realterrain.settings.fileinput = ''
@@ -562,9 +559,9 @@ realterrain.input3 = {}
 function realterrain.init()
 	local mode = realterrain.get_mode()
 	local imageload
-	if gm then imageload = gm.Image
-	elseif magick then imageload = magick.load_image
-	elseif imlib2 then imageload = imlib2.image.load
+	if PROCESSOR == "gm" then imageload = gm.Image
+	elseif PROCESSOR == "magick" then imageload = magick.load_image
+	elseif PROCESSOR == "imlib2" then imageload = imlib2.image.load
 	end
 	local rasternames = {}
 	table.insert(rasternames, "elev")
@@ -575,45 +572,38 @@ function realterrain.init()
 	for k,rastername in next, rasternames do
 			
 		if realterrain.settings["file"..rastername] ~= ""  then 
-			if tiff8 then
+			if PROCESSOR == "native" then
 				--use imagesize to get the dimensions and header offset
 				local width, length, format = imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
-				
-				if format == "image/tiff" then
+				print(rastername..": format: "..format)
+				if string.sub(format, -3) == "bmp" or string.sub(format, -6) == "bitmap" then
+					dofile(MODPATH.."/lib/loader_bmp.lua")
+					local bitmap, e = imageloader.load(RASTERS..realterrain.settings["file"..rastername])
+					if e then print(e) end
+					realterrain[rastername].image = bitmap
+					realterrain[rastername].width = width
+					realterrain[rastername].length = length
+					realterrain[rastername].bits = tonumber(realterrain.settings[rastername.."bits"])
+					realterrain[rastername].format = "bmp"
+				elseif format == "image/png" then
+					dofile(MODPATH.."/lib/loader_png.lua")
+					local bitmap, e = imageloader.load(RASTERS..realterrain.settings["file"..rastername])
+					if e then print(e) end
+					realterrain[rastername].image = bitmap
+					realterrain[rastername].width = realterrain[rastername].image.width
+					realterrain[rastername].length = realterrain[rastername].image.height
+					realterrain[rastername].format = "png"
+				elseif format == "image/tiff" then
 					local file = io.open(RASTERS..realterrain.settings["file"..rastername], "rb")
 					realterrain[rastername].image = file
 					realterrain[rastername].width = width
 					realterrain[rastername].length = length
 					realterrain[rastername].bits = tonumber(realterrain.settings[rastername.."bits"])
+					realterrain[rastername].format = "tiff"
 				else
-					print("tiff8 processor requires an uncompressed 8-bit grayscale tiff file")
-					return
+					print("your file should be an uncompressed tiff, png or bmp")
 				end
-			elseif png then
-				--@todo use imagesize to determine format
-				local function get_png(filename)
-					local ok, r = pcall(pngImage, filename)
-					if not ok then return nil, r end  -- NOTE: r == error message
-					return r
-				end
-
-				local img, e = get_png(RASTERS..realterrain.settings["file"..rastername]) --@todo locks up, no error!
-				if not img then
-					print(e)
-					return nil, e
-				end
-				--@todocheck if the image is a png and if so load it
-				realterrain[rastername].image = img
-				img = nil
-				if realterrain[rastername].image then
-					realterrain[rastername].width = realterrain[rastername].image.width
-					realterrain[rastername].length = realterrain[rastername].image.height
-				else
-					print("your "..rastername.." file is missing or is not a PNG (should be: "..realterrain.settings["file"..rastername].."), maybe delete or edit world/realterrain_settings")
-					realterrain[rastername] = {}
-				end
-				
-			elseif py then
+			elseif PROCESSOR == "py" then
 				py.execute(rastername.." = Image.open('"..RASTERS..realterrain.settings["file"..rastername] .."')")
 				py.execute(rastername.."_w, "..rastername.."_l = "..rastername..".size")
 				realterrain[rastername].width = tonumber(tostring(py.eval(rastername.."_w")))
@@ -631,12 +621,12 @@ function realterrain.init()
 			else 
 				realterrain[rastername].image = imageload(RASTERS..realterrain.settings["file"..rastername])
 				if realterrain[rastername].image then
-					if gm then
+					if PROCESSOR == "gm" then
 						realterrain[rastername].width, realterrain[rastername].length = realterrain[rastername].image:size()
 					else--imagick or imlib2
 						realterrain[rastername].width = realterrain[rastername].image:get_width()
 						realterrain[rastername].length = realterrain[rastername].image:get_height()
-						if magick then
+						if PROCESSOR == "magick" then
 							realterrain[rastername].bits = realterrain.settings[rastername.."bits"]
 						end
 					end
@@ -692,6 +682,7 @@ function realterrain.generate(minp, maxp)
 	local x1 = maxp.x
 	local y1 = maxp.y
 	local z1 = maxp.z
+
 	local x0 = minp.x
 	local y0 = minp.y
 	local z0 = minp.z
@@ -1133,52 +1124,63 @@ end
 --the raw get pixel method that uses the selected method and accounts for bit depth
 function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 	local r,g,b
+	local width, length
+	width = realterrain[rastername].width
+	length = realterrain[rastername].length
 	--check to see if the image is even on the raster, otherwise skip
-	if ( x >= 0 and x < realterrain[rastername].width )
-		and ( z >= 0 and z < realterrain[rastername].length ) then
+	if ( x >= 0 and x < width ) and ( z >= 0 and z < length ) then
 		--print(rastername..": x "..x..", z "..z)
-		if tiff8 then
-			local file = realterrain[rastername].image
-			if not file then
-				print("tiff8 problem retrieving file handle")
-			end
-			--print(file)
-			local width, length
-			width = realterrain[rastername].width
-			length = realterrain[rastername].length
-			
-			
-			if realterrain[rastername].bits == 8 then
-				file:seek("set", ((z) * width) + x)
-				r = file:read(1)
-				if r then
-					r = r:byte() -- -32?
-					
-					r = tonumber(r)
-					--print(r)
-				else
-					print(rastername..": nil value encountered at x: "..x..", z: "..z)
-					r = nil
+		if PROCESSOR == "native" then
+			if realterrain[rastername].format == "bmp" then
+				local bitmap = realterrain[rastername].image
+				local c
+				if bitmap.pixels[z] and bitmap.pixels[z][x] then
+					c = bitmap.pixels[z][x]
+					r = c.r
+					g = c.g
+					b = c.b
 				end
-			else
-				file:seek("set", ((z) * width * 2) + (x*2)+1)
-				local r1 = file:read(1)
-				local r2 = file:read(1)
-				if r1 and r2 then
-					r = tonumber(r1:byte()) + tonumber(r2:byte())
-					--print(r)
+			elseif realterrain[rastername].format == "png" then
+				local bitmap = realterrain[rastername].image
+				local c
+				if bitmap.pixels[z] and bitmap.pixels[z][x] then
+					c = bitmap.pixels[z][x]
+					r = c.r
+					g = c.g
+					b = c.b
+				end
+			elseif realterrain[rastername].format == "tiff" then
+				local file = realterrain[rastername].image
+				if not file then
+					print("tiff mode problem retrieving file handle")
+				end
+				--print(file)
+				
+				if realterrain[rastername].bits == 8 then
+					file:seek("set", ((z) * width) + x)
+					r = file:read(1)
+					if r then
+						r = r:byte() -- -32?
+						
+						r = tonumber(r)
+						--print(r)
+					else
+						print(rastername..": nil value encountered at x: "..x..", z: "..z)
+						r = nil
+					end
 				else
-					print(rastername..": one of two bytes is nil")
+					file:seek("set", ((z) * width * 2) + (x*2)+1)
+					local r1 = file:read(1)
+					local r2 = file:read(1)
+					if r1 and r2 then
+						r = tonumber(r1:byte()) + tonumber(r2:byte())
+						--print(r)
+					else
+						print(rastername..": one of two bytes is nil")
+					end
 				end
 			end
-			
-			
-		elseif png then
-			local pixel = img.scanLines[y].pixels[x]
-			r=pixel.R
-			g=pixel.G
-			b=pixel.B 
-		elseif py then
+		elseif PROCESSOR == "py" then
 			if realterrain[rastername].mode == "RGB" then
 				py.execute(rastername.."_r, "..rastername.."_g,"..rastername.."_b = "..rastername.."_pixels["..x..", "..z.."]")
 				r = tonumber(tostring(py.eval(rastername.."_r")))
@@ -1190,12 +1192,12 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 			--print(r)
 		else
 			if realterrain[rastername].image then
-				if magick then
+				if PROCESSOR == "magick" then
 					r,g,b = realterrain[rastername].image:get_pixel(x, z) --@todo change when magick autodetects bit depth
 					r = math.floor(r * (2^realterrain[rastername].bits))
 					g = math.floor(g * (2^realterrain[rastername].bits))
 					b = math.floor(b * (2^realterrain[rastername].bits))
-				elseif imlib2 then
+				elseif PROCESSOR == "imlib2" then
 					r = realterrain[rastername].image:get_pixel(x, z).red
 					g = realterrain[rastername].image:get_pixel(x, z).green
 					b = realterrain[rastername].image:get_pixel(x, z).blue
@@ -1270,9 +1272,9 @@ end
 function realterrain.get_enumeration(rastername, xstart, width, zstart, length) --raster is a string so py can use it
 	local enumeration
 	
-	if gm then
+	if PROCESSOR == "gm" then
 		enumeration = realterrain[rastername].image:clone():crop(width,length,xstart,zstart):format("txt"):toString()
-	elseif magick then
+	elseif PROCESSOR == "magick" then
 		local tmpimg
 		tmpimg = realterrain[rastername].image:clone()
 		tmpimg:crop(width,length,xstart,zstart)
@@ -1304,7 +1306,7 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 	if mode.get_input3 then	table.insert(rasternames, "input3")	end
 	for k,rastername in next, rasternames do
 			
-		if py then
+		if PROCESSOR == "py" then
 			--py.execute(rastername.."_pixels = "..rastername..".load()")
 			for z = zstart, zend, 1  do
 				if not pixels[z] then pixels[z] = {} end
@@ -1323,7 +1325,7 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 			end
 		end
 		local enumeration
-		if gm or magick then
+		if PROCESSOR == "gm" or PROCESSOR == "magick" then
 			enumeration = realterrain.get_enumeration(rastername, xstart, width, zstart, length)
 			--print("entire enumeration: "..enumeration)
 			local entries = 0
@@ -1331,7 +1333,7 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 			local mincol, maxcol, minrow, maxrow
 			local firstline = true
 			for k,line in next, string.split(enumeration, "\n") do                         
-				if magick and firstline then
+				if PROCESSOR == "magick" and firstline then
 					firstline = false --first line is a head in IM but not GM
 				else
 					entries = entries + 1
