@@ -39,8 +39,9 @@ Overlay a color image or raster bands for false-color mapping of landsat imagery
 ![screenshot_20151129_200807](https://cloud.githubusercontent.com/assets/12679496/11463363/2ecb5c24-96d5-11e5-8cf3-2b305198eac3.png)
 
 ### Dependencies:
-- You must have imageMagick and MagickWand , OR imlib2 (8-bit limit) installed on your system
-- Mod security disabled
+- this mod works out of the box with no libraries when using color BMP source rasters
+- otherwise you must have imageMagick and MagickWand , OR imlib2 (8-bit limit) installed on your system
+- and Mod Security disabled
 -optional dependencies include lunatic-python, python, graphicsmagick (experimental, commented-out-features)
 
 ### Instructions
