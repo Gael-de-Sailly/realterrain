@@ -1115,16 +1115,16 @@ function realterrain.generate(minp, maxp)
 					local elev = heightmap[z][x].elev
 					if y == 0 then
 						if modename == "mandelbrot" then
-							local color1 = math.floor( ( elev/256 ) * 5 + 0.5) * 51
-							--[[local color2 = math.floor( ( input2 / 255 ) * 5 + 0.5) * 51
-							local color3 = math.floor( ( input3 / 255 ) * 5 + 0.5) * 51--]]
-							color1 = string.format("%x", color1)
-							if color1 == "0" then color1 = "00" end
-							--[[color2 = string.format("%x", color2)
-							if color2 == "0" then color2 = "00" end
-							color3 = string.format("%x", color3)
-							if color3 == "0" then color3 = "00" end--]]
-							color = color1..color1..color1
+							if elev < 25 then color = "symbol1"
+							elseif elev < 50 then color = "symbol2"
+							elseif elev < 75 then color = "symbol3"
+							elseif elev < 100 then color = "symbol4"
+							elseif elev < 125 then color = "symbol5"
+							elseif elev < 150 then color = "symbol6"
+							elseif elev < 175 then color = "symbol7"
+							elseif elev < 200 then color = "symbol8"
+							elseif elev < 225 then color = "symbol9"
+							elseif elev >= 226 then color = "symbol10" end
 							data[vi] = cids[color]
 						end
 					end
