@@ -1287,6 +1287,7 @@ function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3
     return e, c, i, i2, i3
 end
 function realterrain.get_brot_pixel(x,z)
+	--taken from https://plus.maths.org/content/computing-mandelbrot-set
 	--Where do we want to center the brot?
 	local cx = tonumber(realterrain.settings.xoffset)
 	local cz = tonumber(realterrain.settings.zoffset)	
