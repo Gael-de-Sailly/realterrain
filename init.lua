@@ -436,7 +436,7 @@ table.insert(realterrain.modes, {name="elevchange", get_cover=true, get_input=tr
 table.insert(realterrain.modes, {name="coverchange", get_cover=true, get_input=true, buffer=1, fill_below=true})
 table.insert(realterrain.modes, {name="imageoverlay", get_input=true, get_input_color=true, buffer=1, fill_below=true})
 table.insert(realterrain.modes, {name="bandoverlay", get_input=true, get_input2=true, get_input3=true, buffer=1, fill_below=true})
-
+table.insert(realterrain.modes, {name="mandelbrot", computed=true, buffer=1, fill_below=true})
 function realterrain.get_mode_idx(modename)
 	for k,v in next, realterrain.modes do
 		if v.name == modename then
@@ -558,87 +558,89 @@ realterrain.input2 = {}
 realterrain.input3 = {}
 function realterrain.init()
 	local mode = realterrain.get_mode()
-	local imageload
-	if PROCESSOR == "gm" then imageload = gm.Image
-	elseif PROCESSOR == "magick" then imageload = magick.load_image
-	elseif PROCESSOR == "imlib2" then imageload = imlib2.image.load
-	end
-	local rasternames = {}
-	table.insert(rasternames, "elev")
-	if mode.get_cover then table.insert(rasternames, "cover") end
-	if mode.get_input then table.insert(rasternames, "input") end
-	if mode.get_input2 then	table.insert(rasternames, "input2")	end
-	if mode.get_input3 then	table.insert(rasternames, "input3")	end
-	for k,rastername in next, rasternames do
-			
-		if realterrain.settings["file"..rastername] ~= ""  then 
-			if PROCESSOR == "native" then
-				--use imagesize to get the dimensions and header offset
-				local width, length, format = imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
-				print(rastername..": format: "..format)
-				if string.sub(format, -3) == "bmp" or string.sub(format, -6) == "bitmap" then
-					dofile(MODPATH.."/lib/loader_bmp.lua")
-					local bitmap, e = imageloader.load(RASTERS..realterrain.settings["file"..rastername])
-					if e then print(e) end
-					realterrain[rastername].image = bitmap
-					realterrain[rastername].width = width
-					realterrain[rastername].length = length
-					realterrain[rastername].bits = tonumber(realterrain.settings[rastername.."bits"])
-					realterrain[rastername].format = "bmp"
-				elseif format == "image/png" then
-					dofile(MODPATH.."/lib/loader_png.lua")
-					local bitmap, e = imageloader.load(RASTERS..realterrain.settings["file"..rastername])
-					if e then print(e) end
-					realterrain[rastername].image = bitmap
-					realterrain[rastername].width = realterrain[rastername].image.width
-					realterrain[rastername].length = realterrain[rastername].image.height
-					realterrain[rastername].format = "png"
-				elseif format == "image/tiff" then
-					local file = io.open(RASTERS..realterrain.settings["file"..rastername], "rb")
-					realterrain[rastername].image = file
-					realterrain[rastername].width = width
-					realterrain[rastername].length = length
-					realterrain[rastername].bits = tonumber(realterrain.settings[rastername.."bits"])
-					realterrain[rastername].format = "tiff"
-				else
-					print("your file should be an uncompressed tiff, png or bmp")
-				end
-			elseif PROCESSOR == "py" then
-				py.execute(rastername.." = Image.open('"..RASTERS..realterrain.settings["file"..rastername] .."')")
-				py.execute(rastername.."_w, "..rastername.."_l = "..rastername..".size")
-				realterrain[rastername].width = tonumber(tostring(py.eval(rastername.."_w")))
-				realterrain[rastername].length = tonumber(tostring(py.eval(rastername.."_l")))
-				realterrain[rastername].mode = tostring(py.eval(rastername..".mode"))
-				print(rastername.." mode: "..realterrain[rastername].mode)
-				if mode.get_input_color and realterrain[rastername].mode ~= "RGB" then
-					py.execute(rastername.." = "..rastername..".convert('RGB')")
-					realterrain[rastername].mode = "RGB"
-				elseif not mode.get_input_color and realterrain[rastername].mode == "RGB" then
-					py.execute(rastername.." = "..rastername..".convert('L')")
-					realterrain[rastername].mode = "L"
-				end
-				py.execute(rastername.."_pixels = "..rastername..".load()")
-			else 
-				realterrain[rastername].image = imageload(RASTERS..realterrain.settings["file"..rastername])
-				if realterrain[rastername].image then
-					if PROCESSOR == "gm" then
-						realterrain[rastername].width, realterrain[rastername].length = realterrain[rastername].image:size()
-					else--imagick or imlib2
-						realterrain[rastername].width = realterrain[rastername].image:get_width()
-						realterrain[rastername].length = realterrain[rastername].image:get_height()
-						if PROCESSOR == "magick" then
-							realterrain[rastername].bits = realterrain.settings[rastername.."bits"]
-						end
+	if not mode.computed then
+		local imageload
+		if PROCESSOR == "gm" then imageload = gm.Image
+		elseif PROCESSOR == "magick" then imageload = magick.load_image
+		elseif PROCESSOR == "imlib2" then imageload = imlib2.image.load
+		end
+		local rasternames = {}
+		table.insert(rasternames, "elev")
+		if mode.get_cover then table.insert(rasternames, "cover") end
+		if mode.get_input then table.insert(rasternames, "input") end
+		if mode.get_input2 then	table.insert(rasternames, "input2")	end
+		if mode.get_input3 then	table.insert(rasternames, "input3")	end
+		for k,rastername in next, rasternames do
+				
+			if realterrain.settings["file"..rastername] ~= ""  then 
+				if PROCESSOR == "native" then
+					--use imagesize to get the dimensions and header offset
+					local width, length, format = imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
+					print(rastername..": format: "..format)
+					if string.sub(format, -3) == "bmp" or string.sub(format, -6) == "bitmap" then
+						dofile(MODPATH.."/lib/loader_bmp.lua")
+						local bitmap, e = imageloader.load(RASTERS..realterrain.settings["file"..rastername])
+						if e then print(e) end
+						realterrain[rastername].image = bitmap
+						realterrain[rastername].width = width
+						realterrain[rastername].length = length
+						realterrain[rastername].bits = tonumber(realterrain.settings[rastername.."bits"])
+						realterrain[rastername].format = "bmp"
+					elseif format == "image/png" then
+						dofile(MODPATH.."/lib/loader_png.lua")
+						local bitmap, e = imageloader.load(RASTERS..realterrain.settings["file"..rastername])
+						if e then print(e) end
+						realterrain[rastername].image = bitmap
+						realterrain[rastername].width = realterrain[rastername].image.width
+						realterrain[rastername].length = realterrain[rastername].image.height
+						realterrain[rastername].format = "png"
+					elseif format == "image/tiff" then
+						local file = io.open(RASTERS..realterrain.settings["file"..rastername], "rb")
+						realterrain[rastername].image = file
+						realterrain[rastername].width = width
+						realterrain[rastername].length = length
+						realterrain[rastername].bits = tonumber(realterrain.settings[rastername.."bits"])
+						realterrain[rastername].format = "tiff"
+					else
+						print("your file should be an uncompressed tiff, png or bmp")
 					end
-				else
-					print("your "..rastername.." file is missing (should be: "..realterrain.settings["file"..rastername].."), maybe delete or edit world/realterrain_settings")
-					realterrain[rastername] = {}
+				elseif PROCESSOR == "py" then
+					py.execute(rastername.." = Image.open('"..RASTERS..realterrain.settings["file"..rastername] .."')")
+					py.execute(rastername.."_w, "..rastername.."_l = "..rastername..".size")
+					realterrain[rastername].width = tonumber(tostring(py.eval(rastername.."_w")))
+					realterrain[rastername].length = tonumber(tostring(py.eval(rastername.."_l")))
+					realterrain[rastername].mode = tostring(py.eval(rastername..".mode"))
+					print(rastername.." mode: "..realterrain[rastername].mode)
+					if mode.get_input_color and realterrain[rastername].mode ~= "RGB" then
+						py.execute(rastername.." = "..rastername..".convert('RGB')")
+						realterrain[rastername].mode = "RGB"
+					elseif not mode.get_input_color and realterrain[rastername].mode == "RGB" then
+						py.execute(rastername.." = "..rastername..".convert('L')")
+						realterrain[rastername].mode = "L"
+					end
+					py.execute(rastername.."_pixels = "..rastername..".load()")
+				else 
+					realterrain[rastername].image = imageload(RASTERS..realterrain.settings["file"..rastername])
+					if realterrain[rastername].image then
+						if PROCESSOR == "gm" then
+							realterrain[rastername].width, realterrain[rastername].length = realterrain[rastername].image:size()
+						else--imagick or imlib2
+							realterrain[rastername].width = realterrain[rastername].image:get_width()
+							realterrain[rastername].length = realterrain[rastername].image:get_height()
+							if PROCESSOR == "magick" then
+								realterrain[rastername].bits = realterrain.settings[rastername.."bits"]
+							end
+						end
+					else
+						print("your "..rastername.." file is missing (should be: "..realterrain.settings["file"..rastername].."), maybe delete or edit world/realterrain_settings")
+						realterrain[rastername] = {}
+					end
 				end
+				print("["..PROCESSOR.."-"..rastername.."] file: "..realterrain.settings["file"..rastername].." width: "..realterrain[rastername].width..", length: "..realterrain[rastername].length)
+			else
+				print("no "..rastername.." selected")
+				realterrain[rastername] = {}
 			end
-			print("["..PROCESSOR.."-"..rastername.."] file: "..realterrain.settings["file"..rastername].." width: "..realterrain[rastername].width..", length: "..realterrain[rastername].length)
-		else
-			print("no "..rastername.." selected")
-			realterrain[rastername] = {}
 		end
 	end
 end
@@ -704,6 +706,7 @@ function realterrain.generate(minp, maxp)
 	
 	
 	local mode = realterrain.get_mode()
+	local modename = mode.name
 	--check to see if the current chunk is above (or below) the elevation range for this footprint
 	if realterrain.surface_cache[cz0] and realterrain.surface_cache[cz0][cx0] then
 		if realterrain.surface_cache[cz0][cx0].offelev then
@@ -732,6 +735,7 @@ function realterrain.generate(minp, maxp)
 	buffer = mode.buffer or 0
 	zstart, zend, xstart, xend = z0-buffer, z1+buffer, x0-buffer, x1+buffer
 	
+	computed = mode.computed
 	get_cover = mode.get_cover
 	get_input = mode.get_input
 	get_input2 = mode.get_input2
@@ -749,30 +753,37 @@ function realterrain.generate(minp, maxp)
 		for z=zstart,zend do
 			if not heightmap[z] then heightmap[z] = {} end
 			for x=xstart,xend do
-				local elev, cover, input, input2, input3
-				elev, cover, input, input2, input3 = realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input2, get_input_color)
-				--don't include any values if the elevation is not there (off-the elev)
-				if elev then 
-					entries = entries + 1
-					--modes that need cover
-					if get_cover and get_input then
-						heightmap[z][x] = {elev=elev, cover=cover, input=input}
-					elseif get_cover then
-						heightmap[z][x] = {elev=elev, cover=cover }
-					--modes that need only elevation
-					elseif get_input then
-						if get_input_color then
+				if not computed then
+					local elev, cover, input, input2, input3
+					elev, cover, input, input2, input3 = realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input2, get_input_color)
+					--don't include any values if the elevation is not there (off-the elev)
+					if elev then 
+						entries = entries + 1
+						--modes that need cover
+						if get_cover and get_input then
+							heightmap[z][x] = {elev=elev, cover=cover, input=input}
+						elseif get_cover then
+							heightmap[z][x] = {elev=elev, cover=cover }
+						--modes that need only elevation
+						elseif get_input then
+							if get_input_color then
+								heightmap[z][x] = {elev=elev, cover=cover, input=input, input2=input2, input3=input3}
+							elseif get_input and get_input2 and get_input3 then
 							heightmap[z][x] = {elev=elev, cover=cover, input=input, input2=input2, input3=input3}
-						elseif get_input and get_input2 and get_input3 then
-						heightmap[z][x] = {elev=elev, cover=cover, input=input, input2=input2, input3=input3}
-						else
-							heightmap[z][x] = {elev=elev, input=input}
-							if mode.name == "distance" and input > 0 then
-								input_present = true --makes distance more efficient, skips distant chunks
+							else
+								heightmap[z][x] = {elev=elev, input=input}
+								if modename == "distance" and input > 0 then
+									input_present = true --makes distance more efficient, skips distant chunks
+								end
 							end
+						else
+							heightmap[z][x] = {elev=elev}
 						end
-					else
-						heightmap[z][x] = {elev=elev}
+					end
+				else --if computed implied
+					if modename == "mandelbrot" then
+						local value = realterrain.get_brot_pixel(x,z)
+						heightmap[z][x] = {elev=value}
 					end
 				end
 			end
@@ -798,7 +809,7 @@ function realterrain.generate(minp, maxp)
 					end
 				end
 				--when comparing two elevs we need both of their min/max elevs
-				if mode.name == "elevchange" then
+				if modename == "elevchange" then
 					local elev
 					elev = heightmap[z][x].input
 					if not minelev then
@@ -848,256 +859,278 @@ function realterrain.generate(minp, maxp)
 	for z = z0, z1 do
 	for x = x0, x1 do
 		if heightmap[z] and heightmap[z][x] then
-			--modes that use biomes:
-			if get_cover then
-				local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
-				local cover = heightmap[z][x].cover
-				local cover2, elev2
-				--print(cover)
-				if not cover or cover < 1 then
-					cover = 0
-				elseif cover > 99 then
-					cover = math.floor(cover/100) -- USGS tier3 now tier1
-				elseif cover > 9 then
-					cover = math.floor(cover/10) -- USGS tier2 now tier1
-				else
-					cover = math.floor(cover)
-				end
-				if mode.name == "elevchange" then
-					elev2 = heightmap[z][x].input
-				end
-				if mode.name == "coverchange" then
-					cover2 = heightmap[z][x].input
-					if not cover2 or cover2 < 1 then
-						cover2 = 0
-					elseif cover2 > 99 then
-						cover2 = math.floor(cover2/100) -- USGS tier3 now tier1
-					elseif cover2 > 9 then
-						cover2 = math.floor(cover2/10) -- USGS tier2 now tier1
+			if not computed then
+				--modes that use biomes:
+				if get_cover then
+					local elev = heightmap[z][x].elev -- elevation in meters from DEM and water true/false
+					local cover = heightmap[z][x].cover
+					local cover2, elev2
+					--print(cover)
+					if not cover or cover < 1 then
+						cover = 0
+					elseif cover > 99 then
+						cover = math.floor(cover/100) -- USGS tier3 now tier1
+					elseif cover > 9 then
+						cover = math.floor(cover/10) -- USGS tier2 now tier1
 					else
-						cover2 = math.floor(cover2)
+						cover = math.floor(cover)
 					end
-				end
-				--print("elev: "..elev..", cover: "..cover)
-				
-				local ground, ground2, gprob, tree, tprob, tree2, tprob2, shrub, sprob, shrub2, sprob2
-				
-				ground = cids[cover].ground
-				ground2 = cids[cover].ground2
-				gprob = tonumber(realterrain.get_setting("b"..cover.."gprob"))
-				tree = realterrain.get_setting("b"..cover.."tree")
-				tprob = tonumber(realterrain.get_setting("b"..cover.."tprob"))
-				tree2 = realterrain.get_setting("b"..cover.."tree2")
-				tprob2 = tonumber(realterrain.get_setting("b"..cover.."tprob2"))
-				shrub = cids[cover].shrub
-				sprob = tonumber(realterrain.get_setting("b"..cover.."sprob"))
-				shrub2 =cids[cover].shrub2
-				sprob2 = tonumber(realterrain.get_setting("b"..cover.."sprob2")) 
-				--[[if tree then print("cover: "..cover..", ground: "..ground..", tree: "..tree..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
-				else print("cover: "..cover..", ground: "..ground..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
-				end]]
-				local vi = area:index(x, y0, z) -- voxelmanip index
-				for y = y0, y1 do
-					--underground layers
-					if y < elev and (mode.name == "normal") then 
-						--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
-						if y < elev-(math.random(10,15)) then
-							local d1 = math.random(1,6)
-							local d2 = math.random(1,6)
-							local d3 = math.random(1,6)
-							local d18 = d1+d2+d3 --classic d&d bell curve
-							data[vi] = cids.ores[d18]
+					if modename == "elevchange" then
+						elev2 = heightmap[z][x].input
+					end
+					if modename == "coverchange" then
+						cover2 = heightmap[z][x].input
+						if not cover2 or cover2 < 1 then
+							cover2 = 0
+						elseif cover2 > 99 then
+							cover2 = math.floor(cover2/100) -- USGS tier3 now tier1
+						elseif cover2 > 9 then
+							cover2 = math.floor(cover2/10) -- USGS tier2 now tier1
 						else
-							data[vi] = ground
+							cover2 = math.floor(cover2)
 						end
-					--the surface layer, determined by cover value
-					elseif  y == elev and ( (cover ~= 5 or fill_below)
-						or mode.name == "coverchange" ) then
-						if mode.name == "coverchange" and cover2 and cover ~= cover2 then
-							--print("cover1: "..cover..", cover2: "..cover2)
-							data[vi] = cids["symbol10"]
-						elseif mode.name == "elevchange"	and (elev ~= elev2) then
-							local diff = elev2 - elev
-							if diff < 0 then
-								color = "symbol10"
-							else
-								color = "symbol1"
-							end
-							data[vi] = cids[color]						
-						elseif y < tonumber(realterrain.settings.waterlevel) then
-							data[vi] = cids["water_bottom"]
-						--alpine level
-						elseif y > tonumber(realterrain.settings.alpinelevel) + math.random(1,5) then 
-							data[vi] = cids["alpine"]
-						--default
-						else
-							--print("ground2: "..ground2..", gprob: "..gprob)
-							if gprob and gprob > 0 and ground2 and math.random(0,100) <= gprob then
-								data[vi] = ground2
+					end
+					--print("elev: "..elev..", cover: "..cover)
+					
+					local ground, ground2, gprob, tree, tprob, tree2, tprob2, shrub, sprob, shrub2, sprob2
+					
+					ground = cids[cover].ground
+					ground2 = cids[cover].ground2
+					gprob = tonumber(realterrain.get_setting("b"..cover.."gprob"))
+					tree = realterrain.get_setting("b"..cover.."tree")
+					tprob = tonumber(realterrain.get_setting("b"..cover.."tprob"))
+					tree2 = realterrain.get_setting("b"..cover.."tree2")
+					tprob2 = tonumber(realterrain.get_setting("b"..cover.."tprob2"))
+					shrub = cids[cover].shrub
+					sprob = tonumber(realterrain.get_setting("b"..cover.."sprob"))
+					shrub2 =cids[cover].shrub2
+					sprob2 = tonumber(realterrain.get_setting("b"..cover.."sprob2")) 
+					--[[if tree then print("cover: "..cover..", ground: "..ground..", tree: "..tree..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
+					else print("cover: "..cover..", ground: "..ground..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
+					end]]
+					local vi = area:index(x, y0, z) -- voxelmanip index
+					for y = y0, y1 do
+						--underground layers
+						if y < elev and (mode.name == "normal") then 
+							--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
+							if y < elev-(math.random(10,15)) then
+								local d1 = math.random(1,6)
+								local d2 = math.random(1,6)
+								local d3 = math.random(1,6)
+								local d18 = d1+d2+d3 --classic d&d bell curve
+								data[vi] = cids.ores[d18]
 							else
 								data[vi] = ground
 							end
+						--the surface layer, determined by cover value
+						elseif  y == elev and ( (cover ~= 5 or fill_below)
+							or modename == "coverchange" ) then
+							if modename == "coverchange" and cover2 and cover ~= cover2 then
+								--print("cover1: "..cover..", cover2: "..cover2)
+								data[vi] = cids["symbol10"]
+							elseif modename == "elevchange"	and (elev ~= elev2) then
+								local diff = elev2 - elev
+								if diff < 0 then
+									color = "symbol10"
+								else
+									color = "symbol1"
+								end
+								data[vi] = cids[color]						
+							elseif y < tonumber(realterrain.settings.waterlevel) then
+								data[vi] = cids["water_bottom"]
+							--alpine level
+							elseif y > tonumber(realterrain.settings.alpinelevel) + math.random(1,5) then 
+								data[vi] = cids["alpine"]
+							--default
+							else
+								--print("ground2: "..ground2..", gprob: "..gprob)
+								if gprob and gprob > 0 and ground2 and math.random(0,100) <= gprob then
+									data[vi] = ground2
+								else
+									data[vi] = ground
+								end
+							end
+							if fill_below then
+								local height = realterrain.fill_below(x,z,heightmap)
+								if height > 0 then
+									for i=1, height, 1 do
+										data[vi-(i*ystridevm)] = data[vi]
+									end
+								end
+							end
+						--shrubs and trees one block above the ground
+						elseif y == elev + 1 then
+							if sprob > 0 and shrub and math.random(0,100) <= sprob then
+								if sprob2 and sprob2 > 0 and shrub2 and math.random(0,100) <= sprob2 then
+									data[vi] = shrub2
+								else
+									data[vi] = shrub
+								end
+							elseif tprob > 0 and tree and y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5) and math.random(0,100) <= tprob then
+								if tprob2 and tprob2 > 0 and tree2 and math.random(0,100) <= tprob2 then
+									table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree2})
+								else
+									table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree})
+								end
+							end
+						elseif y <= tonumber(realterrain.settings.waterlevel) then
+							data[vi] = cids["water"] --normal minetest water source
 						end
-						if fill_below then
-							local height = realterrain.fill_below(x,z,heightmap)
-							if height > 0 then
-								for i=1, height, 1 do
-									data[vi-(i*ystridevm)] = data[vi]
+						vi = vi + ystridevm
+					end --end y iteration
+				else --raster output mode implied if cover is not set
+					local vi = area:index(x, y0, z) -- voxelmanip index
+					for y = y0, y1 do
+						local elev
+						elev = heightmap[z][x].elev
+						if y == elev then
+							local neighbors = {}
+							local edge_case = false
+							--moving window mode.names need neighborhood built
+							if moving_window then
+								neighbors["e"] = y
+								for dir, offset in next, neighborhood do
+									--get elev for all surrounding nodes
+									local nelev
+									if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x]then
+										nelev = heightmap[z+offset.z][x+offset.x].elev
+									end
+									if nelev then
+										neighbors[dir] = nelev
+									else --edge case, need to abandon this pixel for slope
+										edge_case = true
+									end
+								end
+							end
+							if not edge_case then
+								local color
+								if modename == "elevation" then
+									if elev < 10 then color = "symbol1"
+									elseif elev < 20 then color = "symbol2"
+									elseif elev < 50 then color = "symbol3"
+									elseif elev < 100 then color = "symbol4"
+									elseif elev < 150 then color = "symbol5"
+									elseif elev < 200 then color = "symbol6"
+									elseif elev < 300 then color = "symbol7"
+									elseif elev < 450 then color = "symbol8"
+									elseif elev < 600 then color = "symbol9"
+									elseif elev >= 600 then color = "symbol10" end
+									--print("elev: "..elev)
+									data[vi] = cids[color]				
+								elseif modename == "slope" then
+									local slope = realterrain.get_slope(neighbors)
+									if slope < 1 then color = "symbol1"
+									elseif slope < 2 then color = "symbol2"
+									elseif slope < 5 then color = "symbol3"
+									elseif slope < 10 then color = "symbol4"
+									elseif slope < 15 then color = "symbol5"
+									elseif slope < 20 then color = "symbol6"
+									elseif slope < 30 then color = "symbol7"
+									elseif slope < 45 then color = "symbol8"
+									elseif slope < 60 then color = "symbol9"
+									elseif slope >= 60 then color = "symbol10" end
+									--print("slope: "..slope)
+									data[vi] = cids[color]							
+								elseif modename == "aspect" then
+									local aspect = realterrain.get_aspect(neighbors)
+									local slice = 22.5
+									if aspect > 360 - slice or aspect <= slice then color = "aspect1"
+									elseif aspect <= slice * 3 then color = "aspect2"
+									elseif aspect <= slice * 5 then color = "aspect3"
+									elseif aspect <= slice * 7 then color = "aspect4"
+									elseif aspect <= slice * 9 then color = "aspect5"
+									elseif aspect <= slice * 11 then color = "aspect6"
+									elseif aspect <= slice * 13 then color = "aspect7"
+									elseif aspect <= slice * 15 then color = "aspect8" end
+									--print(aspect..":"..color)
+									data[vi] = cids[color]
+								elseif modename == "curvature" then
+									local curve = realterrain.get_curvature(neighbors)
+									--print("raw curvature: "..curve)
+									if curve < -4 then color = "symbol1"
+									elseif curve < -3 then color = "symbol2"
+									elseif curve < -2 then color = "symbol3"
+									elseif curve < -1 then color = "symbol4"
+									elseif curve < 0 then color = "symbol5"
+									elseif curve > 4 then color = "symbol10"
+									elseif curve > 3 then color = "symbol9"
+									elseif curve > 2 then color = "symbol8"
+									elseif curve > 1 then color = "symbol7"
+									elseif curve >= 0 then color = "symbol6" end
+									data[vi] = cids[color]
+								elseif modename == "distance" then
+									local limit = realterrain.settings.dist_lim
+									--if there is no input present in the full search extent skip
+									if input_present then 
+										local distance = realterrain.get_distance(x,y,z, heightmap)
+										if distance < (limit/10) then color = "symbol1"
+										elseif distance < (limit/10)*2 then color = "symbol2"
+										elseif distance < (limit/10)*3 then color = "symbol3"
+										elseif distance < (limit/10)*4 then color = "symbol4"
+										elseif distance < (limit/10)*5 then color = "symbol5"
+										elseif distance < (limit/10)*6 then color = "symbol6"
+										elseif distance < (limit/10)*7 then color = "symbol7"
+										elseif distance < (limit/10)*8 then color = "symbol8"
+										elseif distance < (limit/10)*9 then color = "symbol9"
+										else color = "symbol10"
+										end
+									else
+										color = "symbol10"
+									end
+									data[vi] = cids[color]
+								elseif modename == "imageoverlay" or mode.name == "bandoverlay" then
+									local input = heightmap[z][x].input
+									local input2 = heightmap[z][x].input2
+									local input3 = heightmap[z][x].input3
+									local color1 = math.floor( ( input / 255 ) * 5 + 0.5) * 51
+									local color2 = math.floor( ( input2 / 255 ) * 5 + 0.5) * 51
+									local color3 = math.floor( ( input3 / 255 ) * 5 + 0.5) * 51
+									--print("r: "..color1..", g: "..color2..", b: "..color3)
+									color1 = string.format("%x", color1)
+									if color1 == "0" then color1 = "00" end
+									color2 = string.format("%x", color2)
+									if color2 == "0" then color2 = "00" end
+									color3 = string.format("%x", color3)
+									if color3 == "0" then color3 = "00" end
+									color = color1..color2..color3
+									data[vi] = cids[color]
+								end
+								--could check for fill_below here but it is implied in these modes
+								local height = realterrain.fill_below(x,z,heightmap)
+								if height > 0 then
+									for i=1, height, 1 do
+										data[vi-(i*ystridevm)] = cids[color]
+									end
+									
+									--table.insert(fillmap, {x=x, y=y, z=z, height=height, nodename=color})
 								end
 							end
 						end
-					--shrubs and trees one block above the ground
-					elseif y == elev + 1 then
-						if sprob > 0 and shrub and math.random(0,100) <= sprob then
-							if sprob2 and sprob2 > 0 and shrub2 and math.random(0,100) <= sprob2 then
-								data[vi] = shrub2
-							else
-								data[vi] = shrub
-							end
-						elseif tprob > 0 and tree and y < tonumber(realterrain.settings.alpinelevel) + math.random(1,5) and math.random(0,100) <= tprob then
-							if tprob2 and tprob2 > 0 and tree2 and math.random(0,100) <= tprob2 then
-								table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree2})
-							else
-								table.insert(treemap, {pos={x=x,y=y,z=z}, type=tree})
-							end
-						end
-					elseif y <= tonumber(realterrain.settings.waterlevel) then
-						data[vi] = cids["water"] --normal minetest water source
-					end
-					vi = vi + ystridevm
-				end --end y iteration
-			--if raster output then display only that
-			else
+						vi = vi + ystridevm
+					end -- end y iteration
+				end --end mode options for non-computed modes
+			else --computed mode implied
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
-					local elev
-					elev = heightmap[z][x].elev
-					if y == elev then
-						local neighbors = {}
-						local edge_case = false
-						--moving window mode.names need neighborhood built
-						if moving_window then
-							neighbors["e"] = y
-							for dir, offset in next, neighborhood do
-								--get elev for all surrounding nodes
-								local nelev
-								if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x]then
-									nelev = heightmap[z+offset.z][x+offset.x].elev
-								end
-								if nelev then
-									neighbors[dir] = nelev
-								else --edge case, need to abandon this pixel for slope
-									edge_case = true
-								end
-							end
-						end
-						if not edge_case then
-							local color
-							if mode.name == "elevation" then
-								if elev < 10 then color = "symbol1"
-								elseif elev < 20 then color = "symbol2"
-								elseif elev < 50 then color = "symbol3"
-								elseif elev < 100 then color = "symbol4"
-								elseif elev < 150 then color = "symbol5"
-								elseif elev < 200 then color = "symbol6"
-								elseif elev < 300 then color = "symbol7"
-								elseif elev < 450 then color = "symbol8"
-								elseif elev < 600 then color = "symbol9"
-								elseif elev >= 600 then color = "symbol10" end
-								--print("elev: "..elev)
-								data[vi] = cids[color]				
-							elseif mode.name == "slope" then
-								local slope = realterrain.get_slope(neighbors)
-								if slope < 1 then color = "symbol1"
-								elseif slope < 2 then color = "symbol2"
-								elseif slope < 5 then color = "symbol3"
-								elseif slope < 10 then color = "symbol4"
-								elseif slope < 15 then color = "symbol5"
-								elseif slope < 20 then color = "symbol6"
-								elseif slope < 30 then color = "symbol7"
-								elseif slope < 45 then color = "symbol8"
-								elseif slope < 60 then color = "symbol9"
-								elseif slope >= 60 then color = "symbol10" end
-								--print("slope: "..slope)
-								data[vi] = cids[color]							
-							elseif mode.name == "aspect" then
-								local aspect = realterrain.get_aspect(neighbors)
-								local slice = 22.5
-								if aspect > 360 - slice or aspect <= slice then color = "aspect1"
-								elseif aspect <= slice * 3 then color = "aspect2"
-								elseif aspect <= slice * 5 then color = "aspect3"
-								elseif aspect <= slice * 7 then color = "aspect4"
-								elseif aspect <= slice * 9 then color = "aspect5"
-								elseif aspect <= slice * 11 then color = "aspect6"
-								elseif aspect <= slice * 13 then color = "aspect7"
-								elseif aspect <= slice * 15 then color = "aspect8" end
-								--print(aspect..":"..color)
-								data[vi] = cids[color]
-							elseif mode.name == "curvature" then
-								local curve = realterrain.get_curvature(neighbors)
-								--print("raw curvature: "..curve)
-								if curve < -4 then color = "symbol1"
-								elseif curve < -3 then color = "symbol2"
-								elseif curve < -2 then color = "symbol3"
-								elseif curve < -1 then color = "symbol4"
-								elseif curve < 0 then color = "symbol5"
-								elseif curve > 4 then color = "symbol10"
-								elseif curve > 3 then color = "symbol9"
-								elseif curve > 2 then color = "symbol8"
-								elseif curve > 1 then color = "symbol7"
-								elseif curve >= 0 then color = "symbol6" end
-								data[vi] = cids[color]
-							elseif mode.name == "distance" then
-								local limit = realterrain.settings.dist_lim
-								--if there is no input present in the full search extent skip
-								if input_present then 
-									local distance = realterrain.get_distance(x,y,z, heightmap)
-									if distance < (limit/10) then color = "symbol1"
-									elseif distance < (limit/10)*2 then color = "symbol2"
-									elseif distance < (limit/10)*3 then color = "symbol3"
-									elseif distance < (limit/10)*4 then color = "symbol4"
-									elseif distance < (limit/10)*5 then color = "symbol5"
-									elseif distance < (limit/10)*6 then color = "symbol6"
-									elseif distance < (limit/10)*7 then color = "symbol7"
-									elseif distance < (limit/10)*8 then color = "symbol8"
-									elseif distance < (limit/10)*9 then color = "symbol9"
-									else color = "symbol10"
-									end
-								else
-									color = "symbol10"
-								end
-								data[vi] = cids[color]
-							elseif mode.name == "imageoverlay" or mode.name == "bandoverlay" then
-								local input = heightmap[z][x].input
-								local input2 = heightmap[z][x].input2
-								local input3 = heightmap[z][x].input3
-								local color1 = math.floor( ( input / 255 ) * 5 + 0.5) * 51
-								local color2 = math.floor( ( input2 / 255 ) * 5 + 0.5) * 51
-								local color3 = math.floor( ( input3 / 255 ) * 5 + 0.5) * 51
-								--print("r: "..color1..", g: "..color2..", b: "..color3)
-								color1 = string.format("%x", color1)
-								if color1 == "0" then color1 = "00" end
-								color2 = string.format("%x", color2)
-								if color2 == "0" then color2 = "00" end
-								color3 = string.format("%x", color3)
-								if color3 == "0" then color3 = "00" end
-								color = color1..color2..color3
-								data[vi] = cids[color]
-							end
-							--could check for fill_below here but it is implied in these modes
-							local height = realterrain.fill_below(x,z,heightmap)
-							if height > 0 then
-								for i=1, height, 1 do
-									data[vi-(i*ystridevm)] = cids[color]
-								end
-								
-								--table.insert(fillmap, {x=x, y=y, z=z, height=height, nodename=color})
-							end
+					local elev = heightmap[z][x].elev
+					if y == 0 then
+						if modename == "mandelbrot" then
+							local color1 = math.floor( ( elev/256 ) * 5 + 0.5) * 51
+							--[[local color2 = math.floor( ( input2 / 255 ) * 5 + 0.5) * 51
+							local color3 = math.floor( ( input3 / 255 ) * 5 + 0.5) * 51--]]
+							color1 = string.format("%x", color1)
+							if color1 == "0" then color1 = "00" end
+							--[[color2 = string.format("%x", color2)
+							if color2 == "0" then color2 = "00" end
+							color3 = string.format("%x", color3)
+							if color3 == "0" then color3 = "00" end--]]
+							color = color1..color1..color1
+							data[vi] = cids[color]
 						end
 					end
-					vi = vi + ystridevm
-				end -- end y iteration
-			end --end mode options
+				end --end y iteration
+				vi = vi + ystridevm
+			end --end modes
 		end --end if pixel is in heightmap
 	end
 	end
@@ -1252,6 +1285,36 @@ function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3
 	end
 	--print("elev: "..e..", cover: "..b)
     return e, c, i, i2, i3
+end
+function realterrain.get_brot_pixel(x,z)
+	--Where do we want to center the brot?
+	local cx = tonumber(realterrain.settings.xoffset)
+	local cz = tonumber(realterrain.settings.zoffset)	
+	--This is the "zoom" factor.
+	local xscale = tonumber(realterrain.settings.xscale)
+	local zscale = tonumber(realterrain.settings.zscale)
+	local limit = 4		--Divergence check value.
+	local lp = 0		--Convergence check value.
+	local a1,b1,a2,b2 	--For calculating the iterations.
+	local ax,az 		--The actual position of (x,z) in relation to the Mandelbrot set.
+	--What is the *mathematical* value of this point?
+	ax=cx+x*xscale
+	az=cz+z*zscale
+	--And now for the magic formula!
+	a1=ax
+	b1=az
+	--The first condition is satisfied if we have convergence. The second is satisfied if we have divergence.
+	while (lp<=255) and ((a1*a1)+(b1*b1)<=limit) do
+		--Do one iteration
+		lp=lp+1
+		a2=a1*a1-b1*b1+ax
+		b2=2*a1*b1+az
+		--This is indeed the square of a+bi, done component-wise.
+		a1=a2
+		b1=b2
+	end
+	if lp > 256 then print(">256:"..lp) end
+	return lp
 end
 --this function parses a line of IM or GM pixel enumeration without any scaling or adjustment
 function realterrain.parse_enumeration(line)
