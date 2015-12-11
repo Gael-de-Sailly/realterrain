@@ -1787,7 +1787,6 @@ function realterrain.show_rc_form(pname)
 								"dropdown["..col[2]..",1;4,1;output;"..f_modes..";"..
 									realterrain.get_mode_idx(realterrain.settings.output).."]"..
 									
-                                "label["..col[3]+0.2 ..",2;Bits]"..
 								"label["..col[4]-.2 ..",2;Scales]"..
 								"label["..col[7]-.2 ..",2;Offsets]"..					
 								
@@ -1813,56 +1812,60 @@ function realterrain.show_rc_form(pname)
 								"field["..col[9]..",3.25;1,1;zoffset;;"..
                                     realterrain.esc(realterrain.get_setting("zoffset")).."]"
 	if modename == "polynomial" then							
-	f_settings = f_settings ..	--(a*(x^2)*(z^2))+(b*(x^2)*(z))+(c*(x)*(z^2))+(d*(x^2))+(e*(z^2))+(f*(x))+(g*(z))+h11
-								"label["..col[4]..",4.5;Polynomial Co-efficients]"..
-								"field["..col[4]..",5.25;1,1;polya;;"..
-                                    realterrain.esc(realterrain.get_setting("polya")).."]" ..
-								"field["..col[5]..",5.25;1,1;polyb;;"..
-                                    realterrain.esc(realterrain.get_setting("polyb")).."]" ..
-								"field["..col[6]..",5.25;1,1;polyc;;"..
-                                    realterrain.esc(realterrain.get_setting("polyc")).."]" ..
-								"field["..col[7]..",5.25;1,1;polyd;;"..
-                                    realterrain.esc(realterrain.get_setting("polyd")).."]" ..
-								"field["..col[8]..",5.25;1,1;polye;;"..
-                                    realterrain.esc(realterrain.get_setting("polye")).."]"
-									
-	f_settings = f_settings ..	"field["..col[9]..",5.25;1,1;polyf;;"..
-                                    realterrain.esc(realterrain.get_setting("polyf")).."]"	
-	f_settings = f_settings ..	"field["..col[4]..",6.25;1,1;polyg;;"..
-                                   realterrain.esc(realterrain.get_setting("polyg")).."]"
-	f_settings = f_settings ..	"field["..col[5]..",6.25;1,1;polyh;;"..
-                                    realterrain.esc(realterrain.get_setting("polyh")).."]"
+		f_settings = f_settings ..	--(a*(x^2)*(z^2))+(b*(x^2)*(z))+(c*(x)*(z^2))+(d*(x^2))+(e*(z^2))+(f*(x))+(g*(z))+h11
+		"label["..col[4]..",4.5;Polynomial Co-efficients]"..
+		"field["..col[4]..",5.25;1,1;polya;;"..
+			realterrain.esc(realterrain.get_setting("polya")).."]" ..
+		"field["..col[5]..",5.25;1,1;polyb;;"..
+			realterrain.esc(realterrain.get_setting("polyb")).."]" ..
+		"field["..col[6]..",5.25;1,1;polyc;;"..
+			realterrain.esc(realterrain.get_setting("polyc")).."]" ..
+		"field["..col[7]..",5.25;1,1;polyd;;"..
+			realterrain.esc(realterrain.get_setting("polyd")).."]" ..
+		"field["..col[8]..",5.25;1,1;polye;;"..
+			realterrain.esc(realterrain.get_setting("polye")).."]"..
+		"field["..col[9]..",5.25;1,1;polyf;;"..
+			realterrain.esc(realterrain.get_setting("polyf")).."]"..
+		"field["..col[4]..",6.25;1,1;polyg;;"..
+		   realterrain.esc(realterrain.get_setting("polyg")).."]"..
+		"field["..col[5]..",6.25;1,1;polyh;;"..
+			realterrain.esc(realterrain.get_setting("polyh")).."]"
 	end							
 	f_settings = f_settings ..	"label["..col[1]..",3.1;Elevation File]"..
 								"dropdown["..col[2]..",3;4,1;fileelev;"..f_images..";"..
                                     realterrain.get_idx(images, realterrain.get_setting("fileelev")) .."]" ..
-								"dropdown["..col[3]..",3;1,1;elevbits;8,16;"..
-									bits[realterrain.esc(realterrain.get_setting("elevbits"))].."]" ..
-								
+																
 								"label["..col[1]..",4.1;Biome File]"..
 								"dropdown["..col[2]..",4;4,1;filecover;"..f_images..";"..
                                     realterrain.get_idx(images, realterrain.get_setting("filecover")) .."]" ..
-								"dropdown["..col[3]..",4;1,1;coverbits;8,16;"..
-									bits[realterrain.esc(realterrain.get_setting("coverbits"))].."]" ..
-								
+																
 								"label["..col[1]..",5.1;Input File 1 (R)]"..
 								"dropdown["..col[2]..",5;4,1;fileinput;"..f_images..";"..
 									realterrain.get_idx(images, realterrain.get_setting("fileinput")) .."]"..
-								"dropdown["..col[3]..",5;1,1;inputbits;8,16;"..
-									bits[realterrain.esc(realterrain.get_setting("inputbits"))].."]"..
-									
+																	
 								"label["..col[1]..",6.1;Input File 2 (G)]"..
 								"dropdown["..col[2]..",6;4,1;fileinput2;"..f_images..";"..
 									realterrain.get_idx(images, realterrain.get_setting("fileinput2")) .."]"..
-								"dropdown["..col[3]..",6;1,1;input2bits2;8,16;"..
-									bits[realterrain.esc(realterrain.get_setting("input2bits"))].."]"..
-									
+																
 								"label["..col[1]..",7.1;Input File 3 (B)]"..
 								"dropdown["..col[2]..",7;4,1;fileinput3;"..f_images..";"..
-									realterrain.get_idx(images, realterrain.get_setting("fileinput3")) .."]"..
-								"dropdown["..col[3]..",7;1,1;input3bits;8,16;"..
-									bits[realterrain.esc(realterrain.get_setting("input3bits"))].."]"..
-
+									realterrain.get_idx(images, realterrain.get_setting("fileinput3")) .."]"
+								
+	if PROCESSOR ~= "py" and PROCESSOR ~="gm" then --these modes know the bits
+		f_settings = f_settings ..
+		"label["..col[3]+0.2 ..",2;Bits]"..
+		"dropdown["..col[3]..",3;1,1;elevbits;8,16;"..
+			bits[realterrain.esc(realterrain.get_setting("elevbits"))].."]" ..
+		"dropdown["..col[3]..",4;1,1;coverbits;8,16;"..
+			bits[realterrain.esc(realterrain.get_setting("coverbits"))].."]" ..
+		"dropdown["..col[3]..",5;1,1;inputbits;8,16;"..
+			bits[realterrain.esc(realterrain.get_setting("inputbits"))].."]"..
+		"dropdown["..col[3]..",6;1,1;input2bits2;8,16;"..
+			bits[realterrain.esc(realterrain.get_setting("input2bits"))].."]"..
+		"dropdown["..col[3]..",7;1,1;input3bits;8,16;"..
+			bits[realterrain.esc(realterrain.get_setting("input3bits"))].."]"
+	end
+	f_settings = f_settings ..	
 								"field[1,9;2,1;waterlevel;Water Level;"..
                                     realterrain.esc(realterrain.get_setting("waterlevel")).."]"..
                                 "field[3,9;2,1;alpinelevel;Alpine Level;"..
