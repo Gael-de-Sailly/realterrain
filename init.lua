@@ -69,6 +69,15 @@ realterrain.settings.input3bits = 8
 realterrain.settings.dist_lim = 80
 realterrain.settings.dist_mode = "3D" --3D or 3Dp
 
+realterrain.settings.polya = 0
+realterrain.settings.polyb = 0
+realterrain.settings.polyc = 0
+realterrain.settings.polyd = 0
+realterrain.settings.polye = 0
+realterrain.settings.polyf = 0
+realterrain.settings.polyg = 0
+realterrain.settings.polyh = 0
+
 --default cover (no cover)
 realterrain.settings.b0ground = "default:dirt_with_dry_grass"
 realterrain.settings.b0ground2 = "default:sand"
@@ -437,6 +446,7 @@ table.insert(realterrain.modes, {name="coverchange", get_cover=true, get_input=t
 table.insert(realterrain.modes, {name="imageoverlay", get_input=true, get_input_color=true, buffer=1, fill_below=true})
 table.insert(realterrain.modes, {name="bandoverlay", get_input=true, get_input2=true, get_input3=true, buffer=1, fill_below=true})
 table.insert(realterrain.modes, {name="mandelbrot", computed=true, buffer=1, fill_below=true})
+table.insert(realterrain.modes, {name="polynomial", computed=true, buffer=1, fill_below=true})
 function realterrain.get_mode_idx(modename)
 	for k,v in next, realterrain.modes do
 		if v.name == modename then
@@ -781,10 +791,13 @@ function realterrain.generate(minp, maxp)
 						end
 					end
 				else --if computed implied
+					local value
 					if modename == "mandelbrot" then
-						local value = realterrain.get_brot_pixel(x,z)
-						heightmap[z][x] = {elev=value}
+						value = realterrain.get_brot_pixel(x,z)
+					elseif modename == "polynomial" then
+						value = realterrain.polynomial(x,z)
 					end
+					heightmap[z][x] = {elev=value}
 				end
 			end
 		end
@@ -1113,23 +1126,25 @@ function realterrain.generate(minp, maxp)
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					local elev = heightmap[z][x].elev
-					if y == 0 then
-						if modename == "mandelbrot" then
-							if elev < 1 then color = "symbol1"
-							elseif elev < 2 then color = "symbol2"
-							elseif elev < 3 then color = "symbol3"
-							elseif elev < 5 then color = "symbol4"
-							elseif elev < 8 then color = "symbol5"
-							elseif elev < 13 then color = "symbol6"
-							elseif elev < 21 then color = "symbol7"
-							elseif elev < 34 then color = "symbol8"
-							elseif elev < 55 then color = "symbol9"
-							elseif elev < 256 then color = "symbol10"
-							else color = "000000"
-							end
-							data[vi] = cids[color]
+					
+					if y == 0 and modename == "mandelbrot" then
+						if elev < 1 then color = "symbol1"
+						elseif elev < 2 then color = "symbol2"
+						elseif elev < 3 then color = "symbol3"
+						elseif elev < 5 then color = "symbol4"
+						elseif elev < 8 then color = "symbol5"
+						elseif elev < 13 then color = "symbol6"
+						elseif elev < 21 then color = "symbol7"
+						elseif elev < 34 then color = "symbol8"
+						elseif elev < 55 then color = "symbol9"
+						elseif elev < 256 then color = "symbol10"
+						else color = "000000"
 						end
+						data[vi] = cids[color]
+					elseif y == elev then
+						data[vi] = cids.ores[9]
 					end
+					
 				end --end y iteration
 				vi = vi + ystridevm
 			end --end modes
@@ -1318,6 +1333,20 @@ function realterrain.get_brot_pixel(x,z)
 	end
 	if lp > 256 then print(">256:"..lp) end
 	return lp
+end
+function realterrain.polynomial(x,z)
+	local a,b,c,d,e,f,g,h
+	a = realterrain.settings.polya
+	b = realterrain.settings.polyb
+	c = realterrain.settings.polyc
+	d = realterrain.settings.polyd
+	e = realterrain.settings.polye
+	f = realterrain.settings.polyf
+	g = realterrain.settings.polyg
+	h = realterrain.settings.polyh
+	
+	local value = (a*(x^2)*(z^2))+(b*(x^2)*(z))+(c*(x)*(z^2))+(d*(x^2))+(e*(z^2))+(f*(x))+(g*(z))+h
+	return math.floor(value)
 end
 --this function parses a line of IM or GM pixel enumeration without any scaling or adjustment
 function realterrain.parse_enumeration(line)
@@ -1660,6 +1689,10 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			elseif fields.exit == "Symbols" then
 				realterrain.show_symbology(pname)
 				return true
+			elseif fields.output then
+				--redisplay the form so that mode-specific stuff is shown/hidden
+				realterrain.show_rc_form(pname)
+				return true
 			end
 			return true
 		end
@@ -1722,6 +1755,9 @@ function realterrain.show_rc_form(pname)
 	elseif degree <= 225 then dir = "South"
 	else   dir = "South" end
 	
+	local mode = realterrain.get_mode()
+	local modename = mode.name
+	
 	local images = realterrain.list_images()
 	local f_images = ""
 	for k,v in next, images do
@@ -1751,7 +1787,7 @@ function realterrain.show_rc_form(pname)
 								"dropdown["..col[2]..",1;4,1;output;"..f_modes..";"..
 									realterrain.get_mode_idx(realterrain.settings.output).."]"..
 									
-                                "label["..col[3]+0.2 ..",2;bits]"..
+                                "label["..col[3]+0.2 ..",2;Bits]"..
 								"label["..col[4]-.2 ..",2;Scales]"..
 								"label["..col[7]-.2 ..",2;Offsets]"..					
 								
@@ -1775,9 +1811,29 @@ function realterrain.show_rc_form(pname)
                                 "field["..col[8]..",3.25;1,1;xoffset;;"..
                                     realterrain.esc(realterrain.get_setting("xoffset")).."]" ..
 								"field["..col[9]..",3.25;1,1;zoffset;;"..
-                                    realterrain.esc(realterrain.get_setting("zoffset")).."]" ..
-								
-								"label["..col[1]..",3.1;Elevation File]"..
+                                    realterrain.esc(realterrain.get_setting("zoffset")).."]"
+	if modename == "polynomial" then							
+	f_settings = f_settings ..	--(a*(x^2)*(z^2))+(b*(x^2)*(z))+(c*(x)*(z^2))+(d*(x^2))+(e*(z^2))+(f*(x))+(g*(z))+h11
+								"label["..col[4]..",4.5;Polynomial Co-efficients]"..
+								"field["..col[4]..",5.25;1,1;polya;;"..
+                                    realterrain.esc(realterrain.get_setting("polya")).."]" ..
+								"field["..col[5]..",5.25;1,1;polyb;;"..
+                                    realterrain.esc(realterrain.get_setting("polyb")).."]" ..
+								"field["..col[6]..",5.25;1,1;polyc;;"..
+                                    realterrain.esc(realterrain.get_setting("polyc")).."]" ..
+								"field["..col[7]..",5.25;1,1;polyd;;"..
+                                    realterrain.esc(realterrain.get_setting("polyd")).."]" ..
+								"field["..col[8]..",5.25;1,1;polye;;"..
+                                    realterrain.esc(realterrain.get_setting("polye")).."]"
+									
+	f_settings = f_settings ..	"field["..col[9]..",5.25;1,1;polyf;;"..
+                                    realterrain.esc(realterrain.get_setting("polyf")).."]"	
+	f_settings = f_settings ..	"field["..col[4]..",6.25;1,1;polyg;;"..
+                                   realterrain.esc(realterrain.get_setting("polyg")).."]"
+	f_settings = f_settings ..	"field["..col[5]..",6.25;1,1;polyh;;"..
+                                    realterrain.esc(realterrain.get_setting("polyh")).."]"
+	end							
+	f_settings = f_settings ..	"label["..col[1]..",3.1;Elevation File]"..
 								"dropdown["..col[2]..",3;4,1;fileelev;"..f_images..";"..
                                     realterrain.get_idx(images, realterrain.get_setting("fileelev")) .."]" ..
 								"dropdown["..col[3]..",3;1,1;elevbits;8,16;"..
