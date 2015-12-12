@@ -69,11 +69,11 @@ realterrain.settings.input3bits = 8
 realterrain.settings.dist_lim = 80
 realterrain.settings.dist_mode = "3D" --3D or 3Dp
 
-realterrain.settings.polya = 0
-realterrain.settings.polyb = 0
-realterrain.settings.polyc = 0
-realterrain.settings.polyd = 0
-realterrain.settings.polye = 0
+realterrain.settings.polya = 0.00001
+realterrain.settings.polyb = 0.001
+realterrain.settings.polyc = 0.001
+realterrain.settings.polyd = 0.01
+realterrain.settings.polye = 0.01
 realterrain.settings.polyf = 0
 realterrain.settings.polyg = 0
 realterrain.settings.polyh = 0
@@ -1141,12 +1141,19 @@ function realterrain.generate(minp, maxp)
 						else color = "000000"
 						end
 						data[vi] = cids[color]
-					elseif y == elev then
-						data[vi] = cids.ores[9]
+					elseif y == elev and modename == "polynomial" then
+						data[vi] = cids[0].ground
+						--[[local height = realterrain.fill_below(x,z,heightmap)
+						if height > 0 then
+							for i=1, height, 1 do
+								data[vi-(i*ystridevm)] = data[vi]
+							end
+							
+							--table.insert(fillmap, {x=x, y=y, z=z, height=height, nodename=color})
+						end--]]
 					end
-					
+					vi = vi + ystridevm
 				end --end y iteration
-				vi = vi + ystridevm
 			end --end modes
 		end --end if pixel is in heightmap
 	end
@@ -1178,7 +1185,7 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 	width = realterrain[rastername].width
 	length = realterrain[rastername].length
 	--check to see if the image is even on the raster, otherwise skip
-	if ( x >= 0 and x < width ) and ( z >= 0 and z < length ) then
+	if width and length and ( x >= 0 and x < width ) and ( z >= 0 and z < length ) then
 		--print(rastername..": x "..x..", z "..z)
 		if PROCESSOR == "native" then
 			if realterrain[rastername].format == "bmp" then
@@ -1300,8 +1307,13 @@ function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3
 	if get_input3 and realterrain.settings.fileinput3 ~= "" then
 		i3 = realterrain.get_raw_pixel(col,row, "input3") or 0
 	end
-	--print("elev: "..e..", cover: "..b)
-    return e, c, i, i2, i3
+	-- we never want to return nil so that rasters can actually be empty
+	e = e or 0
+	c = c or 0
+	i = i or 0
+	i2 = i2 or 0
+	i3 = i3 or 0
+	return e, c, i, i2, i3
 end
 function realterrain.get_brot_pixel(x,z)
 	--taken from https://plus.maths.org/content/computing-mandelbrot-set
@@ -1346,6 +1358,7 @@ function realterrain.polynomial(x,z)
 	h = realterrain.settings.polyh
 	
 	local value = (a*(x^2)*(z^2))+(b*(x^2)*(z))+(c*(x)*(z^2))+(d*(x^2))+(e*(z^2))+(f*(x))+(g*(z))+h
+	--print(value)
 	return math.floor(value)
 end
 --this function parses a line of IM or GM pixel enumeration without any scaling or adjustment
@@ -1618,7 +1631,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if string.sub(formname, 1, 12) == "realterrain:" then
 		local wait = os.clock()
 		while os.clock() - wait < 0.05 do end --popups don't work without this
-		--print("form, "..formname.." submitted: "..dump(fields))
+		print("form, "..formname.." submitted: "..dump(fields))
 		local pname = player:get_player_name()
 		
 		--the popup form never has settings so process that first
@@ -1628,47 +1641,49 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				return true
 			end
 		end
-		
-		--check to make sure that a DEM file is selected, this is essential
-		if fields.fileelev == "" then
-			realterrain.show_popup(pname,"You MUST have an Elevation (DEM) file!")
-			return
-		end
-		--check to make sure that if a raster mode that needs an input file is used, it is there
-		if ((fields.output == "distance" or fields.output == "elevchange" or fields.output == "coverchange")
-				and realterrain.settings.fileinput == "" )
-			or (fields.fileinput == "" and (realterrain.settings.output == "distance"
-											or realterrain.settings.output == "elevchange"
-											or realterrain.settings.output == "coverchange")) then
-			realterrain.show_popup(pname, "For this raster mode you must have an input file selected")
-			return
-		end
-		if (fields.output == "coverchange" and realterrain.settings.filecover == "")
-			or (fields.filecover == "" and realterrain.settings.output == "coverchange") then
-			realterrain.show_popup(pname, "For this raster mode you must have a cover file selected")
-			return
-		end
-		--@todo still need to validate the various numerical values for scale and offsets...
-		
-		--check to see if the source rasters were changed, if so re-initialize
-		local old_elev, old_cover, old_input
-		old_elev = realterrain.settings.fileelev
-		old_cover = realterrain.settings.filecover
-		old_input = realterrain.settings.fileinput
-		-- otherwise save form fields
-		for k,v in next, fields do
-			realterrain.settings[k] = v --we will preserve field entries exactly as entered 
-		end
-		realterrain.save_settings()
-		if old_elev ~= realterrain.settings.fileelev
-			or old_cover ~= realterrain.settings.filecover
-			or old_input ~= realterrain.settings.fileinput then
-			realterrain.init()
-		end
-		
 		--the main form
 		if formname == "realterrain:rc_form" then 
 			--actual form submissions
+			
+			if fields.output or fields.fileelev or fields.filecover or fields.fileinput
+				or fields.fileinput2 or fields.fileinput3 then
+				--check to see if the source rasters were changed, if so re-initialize
+				local old_output, old_elev, old_cover, old_input
+				old_output = realterrain.settings.output
+				old_elev = realterrain.settings.fileelev
+				old_cover = realterrain.settings.filecover
+				old_input = realterrain.settings.fileinput
+				
+				-- @todo validation for mode and raster selection changes
+				
+				-- save form fields
+				for k,v in next, fields do
+					realterrain.settings[k] = v
+				end
+				realterrain.save_settings()
+				minetest.chat_send_player(pname, "You changed the mapgen settings!")
+				if old_elev ~= realterrain.settings.fileelev
+					or old_cover ~= realterrain.settings.filecover
+					or old_input ~= realterrain.settings.fileinput then
+					realterrain.init()
+				end
+				if old_output ~= realterrain.settings.output then
+					--redisplay the form so that mode-specific stuff is shown/hidden
+					realterrain.show_rc_form(pname)
+					return true
+				end
+				
+            elseif fields.exit then --Apply or any other button
+				-- @todo validated all non dropdown fields (numbers as numbers)
+				
+				-- save form fields
+				for k,v in next, fields do
+					realterrain.settings[k] = v
+				end
+				
+				realterrain.save_settings()
+				minetest.chat_send_player(pname, "You changed the mapgen settings!")
+			end
 			if fields.exit == "Delete" then --@todo use the popup form do display a confirmation dialog box
                 --kick all players and delete the map file
                 local players = minetest.get_connected_players()
@@ -1676,9 +1691,6 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 					minetest.kick_player(player:get_player_name(), "map.sqlite deleted by admin, reload level")	
 				end
 				os.remove(WORLDPATH.."/map.sqlite")
-                return true
-            elseif fields.exit == "Apply" then
-				minetest.chat_send_player(pname, "You changed the mapgen settings!")
                 return true
 			elseif fields.exit == "Biomes" then
 				realterrain.show_cover_form(pname)
@@ -1689,16 +1701,21 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			elseif fields.exit == "Symbols" then
 				realterrain.show_symbology(pname)
 				return true
-			elseif fields.output then
-				--redisplay the form so that mode-specific stuff is shown/hidden
-				realterrain.show_rc_form(pname)
-				return true
 			end
 			return true
 		end
 		
 		--cover config form
 		if formname == "realterrain:cover_config" then
+			-- @todo validated all non dropdown fields (numbers as numbers)
+				
+			-- save form fields
+			for k,v in next, fields do
+				realterrain.settings[k] = v
+			end
+			
+			realterrain.save_settings()
+			minetest.chat_send_player(pname, "You changed the biome settings!")
 			if fields.exit == "Apply" then
 				realterrain.show_rc_form(pname)
 				return true
@@ -1719,11 +1736,27 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		end
 		--item image selection form
 		if formname == "realterrain:image_items" then
+			-- save form fields
+			for k,v in next, fields do
+				realterrain.settings[k] = v
+			end
+			
+			realterrain.save_settings()
+			minetest.chat_send_player(pname, "You changed the biome settings!")
 			realterrain.show_cover_form(pname)
 			return true
 		end
 		--raster symbology selection form
 		if formname == "realterrain:symbology" then
+			-- @todo validated all non dropdown fields (numbers as numbers)
+				
+			-- save form fields
+			for k,v in next, fields do
+				realterrain.settings[k] = v
+			end
+			
+			realterrain.save_settings()
+			minetest.chat_send_player(pname, "You changed the symbology settings!")
 			if fields.exit == "Apply" then
 				realterrain.show_rc_form(pname)
 				return true
@@ -1736,6 +1769,13 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		end
 		--symbology selection form
 		if formname == "realterrain:all_symbols" then
+			-- save form fields
+			for k,v in next, fields do
+				realterrain.settings[k] = v
+			end
+			
+			realterrain.save_settings()
+			minetest.chat_send_player(pname, "You changed the symbology settings!")
 			realterrain.show_symbology(pname)
 			return true
 		end
@@ -1785,85 +1825,109 @@ function realterrain.show_rc_form(pname)
 	--Scale settings
 	local f_settings =			"label["..col[1]..",1.1;Raster Mode]"..
 								"dropdown["..col[2]..",1;4,1;output;"..f_modes..";"..
-									realterrain.get_mode_idx(realterrain.settings.output).."]"..
-									
-								"label["..col[4]-.2 ..",2;Scales]"..
-								"label["..col[7]-.2 ..",2;Offsets]"..					
-								
-								"label["..col[4]..",2.5;Y]"..
-								"label["..col[5]..",2.5;X]"..
-								"label["..col[6]..",2.5;Z]"..
-								
-								"field["..col[4]..",3.25;1,1;yscale;;"..
-                                    realterrain.esc(realterrain.get_setting("yscale")).."]" ..
-                                "field["..col[5]..",3.25;1,1;xscale;;"..
-                                    realterrain.esc(realterrain.get_setting("xscale")).."]" ..
-								"field["..col[6]..",3.25;1,1;zscale;;"..
-                                    realterrain.esc(realterrain.get_setting("zscale")).."]" ..
-								
-								"label["..col[7]..",2.5;Y]"..
-								"label["..col[8]..",2.5;X]"..
-								"label["..col[9]..",2.5;Z]"..
-								
-								"field["..col[7]..",3.25;1,1;yoffset;;"..
-                                    realterrain.esc(realterrain.get_setting("yoffset")).."]" ..
-                                "field["..col[8]..",3.25;1,1;xoffset;;"..
-                                    realterrain.esc(realterrain.get_setting("xoffset")).."]" ..
-								"field["..col[9]..",3.25;1,1;zoffset;;"..
-                                    realterrain.esc(realterrain.get_setting("zoffset")).."]"
+									realterrain.get_mode_idx(realterrain.settings.output).."]"
+	if modename ~= "polynomial" then
+		f_settings = f_settings ..
+		"label["..col[4]-.2 ..",2;Scales]"..
+		"label["..col[7]-.2 ..",2;Offsets]"..					
+		
+		"label["..col[4]..",2.5;Y]"..
+		"label["..col[5]..",2.5;X]"..
+		"label["..col[6]..",2.5;Z]"..
+		
+		"field["..col[4]..",3.25;1,1;yscale;;"..
+			realterrain.esc(realterrain.get_setting("yscale")).."]" ..
+		"field["..col[5]..",3.25;1,1;xscale;;"..
+			realterrain.esc(realterrain.get_setting("xscale")).."]" ..
+		"field["..col[6]..",3.25;1,1;zscale;;"..
+			realterrain.esc(realterrain.get_setting("zscale")).."]" ..
+		
+		"label["..col[7]..",2.5;Y]"..
+		"label["..col[8]..",2.5;X]"..
+		"label["..col[9]..",2.5;Z]"..
+		
+		"field["..col[7]..",3.25;1,1;yoffset;;"..
+			realterrain.esc(realterrain.get_setting("yoffset")).."]" ..
+		"field["..col[8]..",3.25;1,1;xoffset;;"..
+			realterrain.esc(realterrain.get_setting("xoffset")).."]" ..
+		"field["..col[9]..",3.25;1,1;zoffset;;"..
+			realterrain.esc(realterrain.get_setting("zoffset")).."]"
+	end
 	if modename == "polynomial" then							
-		f_settings = f_settings ..	--(a*(x^2)*(z^2))+(b*(x^2)*(z))+(c*(x)*(z^2))+(d*(x^2))+(e*(z^2))+(f*(x))+(g*(z))+h11
-		"label["..col[4]..",4.5;Polynomial Co-efficients]"..
-		"field["..col[4]..",5.25;1,1;polya;;"..
+		f_settings = f_settings ..
+		"label["..col[4]..",4;Polynomial Co-efficients]"..
+		"field["..col[4]..",5.25;2,1;polya;(a*(x^2)*(z^2));"..
 			realterrain.esc(realterrain.get_setting("polya")).."]" ..
-		"field["..col[5]..",5.25;1,1;polyb;;"..
+		"field["..col[6]..",5.25;2,1;polyb;+(b*(x^2)*(z));"..
 			realterrain.esc(realterrain.get_setting("polyb")).."]" ..
-		"field["..col[6]..",5.25;1,1;polyc;;"..
+		"field["..col[8]..",5.25;2,1;polyc;+(c*(x)*(z^2));"..
 			realterrain.esc(realterrain.get_setting("polyc")).."]" ..
-		"field["..col[7]..",5.25;1,1;polyd;;"..
+		"field["..col[4]..",6.25;2,1;polyd;+(d*(x^2));"..
 			realterrain.esc(realterrain.get_setting("polyd")).."]" ..
-		"field["..col[8]..",5.25;1,1;polye;;"..
+		"field["..col[6]..",6.25;2,1;polye;+(e*(z^2));"..
 			realterrain.esc(realterrain.get_setting("polye")).."]"..
-		"field["..col[9]..",5.25;1,1;polyf;;"..
+		"field["..col[8]..",6.25;2,1;polyf;+(f*(x));"..
 			realterrain.esc(realterrain.get_setting("polyf")).."]"..
-		"field["..col[4]..",6.25;1,1;polyg;;"..
+		"field["..col[4]..",7.25;2,1;polyg;+(g*(z));"..
 		   realterrain.esc(realterrain.get_setting("polyg")).."]"..
-		"field["..col[5]..",6.25;1,1;polyh;;"..
+		"field["..col[6]..",7.25;2,1;polyh;+h;"..
 			realterrain.esc(realterrain.get_setting("polyh")).."]"
 	end							
-	f_settings = f_settings ..	"label["..col[1]..",3.1;Elevation File]"..
-								"dropdown["..col[2]..",3;4,1;fileelev;"..f_images..";"..
-                                    realterrain.get_idx(images, realterrain.get_setting("fileelev")) .."]" ..
-																
-								"label["..col[1]..",4.1;Biome File]"..
-								"dropdown["..col[2]..",4;4,1;filecover;"..f_images..";"..
-                                    realterrain.get_idx(images, realterrain.get_setting("filecover")) .."]" ..
-																
-								"label["..col[1]..",5.1;Input File 1 (R)]"..
-								"dropdown["..col[2]..",5;4,1;fileinput;"..f_images..";"..
-									realterrain.get_idx(images, realterrain.get_setting("fileinput")) .."]"..
-																	
-								"label["..col[1]..",6.1;Input File 2 (G)]"..
-								"dropdown["..col[2]..",6;4,1;fileinput2;"..f_images..";"..
-									realterrain.get_idx(images, realterrain.get_setting("fileinput2")) .."]"..
-																
-								"label["..col[1]..",7.1;Input File 3 (B)]"..
-								"dropdown["..col[2]..",7;4,1;fileinput3;"..f_images..";"..
-									realterrain.get_idx(images, realterrain.get_setting("fileinput3")) .."]"
-								
-	if PROCESSOR ~= "py" and PROCESSOR ~="gm" then --these modes know the bits
+	if not mode.computed then
+		f_settings = f_settings ..
+		"label["..col[1]..",3.1;Elevation File]"..
+		"dropdown["..col[2]..",3;4,1;fileelev;"..f_images..";"..
+			realterrain.get_idx(images, realterrain.get_setting("fileelev")) .."]"
+	end
+	if mode.get_cover then															
+		f_settings = f_settings ..
+		"label["..col[1]..",4.1;Biome File]"..
+		"dropdown["..col[2]..",4;4,1;filecover;"..f_images..";"..
+			realterrain.get_idx(images, realterrain.get_setting("filecover")) .."]" 
+	end
+	if mode.get_input then
+		f_settings = f_settings ..
+		"label["..col[1]..",5.1;Input File 1 (R)]"..
+		"dropdown["..col[2]..",5;4,1;fileinput;"..f_images..";"..
+			realterrain.get_idx(images, realterrain.get_setting("fileinput")) .."]"
+	end
+	if mode.get_input2 then
+		f_settings = f_settings ..
+		"label["..col[1]..",6.1;Input File 2 (G)]"..
+		"dropdown["..col[2]..",6;4,1;fileinput2;"..f_images..";"..
+			realterrain.get_idx(images, realterrain.get_setting("fileinput2")) .."]"
+	end
+	if mode.get_input3 then
+		f_settings = f_settings ..
+		"label["..col[1]..",7.1;Input File 3 (B)]"..
+		"dropdown["..col[2]..",7;4,1;fileinput3;"..f_images..";"..
+			realterrain.get_idx(images, realterrain.get_setting("fileinput3")) .."]"
+	end
+	if not mode.computed and PROCESSOR ~= "py" and PROCESSOR ~="gm" then --these modes know the bits
 		f_settings = f_settings ..
 		"label["..col[3]+0.2 ..",2;Bits]"..
 		"dropdown["..col[3]..",3;1,1;elevbits;8,16;"..
-			bits[realterrain.esc(realterrain.get_setting("elevbits"))].."]" ..
-		"dropdown["..col[3]..",4;1,1;coverbits;8,16;"..
-			bits[realterrain.esc(realterrain.get_setting("coverbits"))].."]" ..
-		"dropdown["..col[3]..",5;1,1;inputbits;8,16;"..
-			bits[realterrain.esc(realterrain.get_setting("inputbits"))].."]"..
-		"dropdown["..col[3]..",6;1,1;input2bits2;8,16;"..
-			bits[realterrain.esc(realterrain.get_setting("input2bits"))].."]"..
-		"dropdown["..col[3]..",7;1,1;input3bits;8,16;"..
-			bits[realterrain.esc(realterrain.get_setting("input3bits"))].."]"
+				bits[realterrain.esc(realterrain.get_setting("elevbits"))].."]"
+		if mode.get_cover then
+			f_settings = f_settings ..
+			"dropdown["..col[3]..",4;1,1;coverbits;8,16;"..
+				bits[realterrain.esc(realterrain.get_setting("coverbits"))].."]"
+		end
+		if mode.get_input then
+			f_settings = f_settings ..
+			"dropdown["..col[3]..",5;1,1;inputbits;8,16;"..
+				bits[realterrain.esc(realterrain.get_setting("inputbits"))].."]"
+		end
+		if mode.get_input2 then
+			f_settings = f_settings ..
+			"dropdown["..col[3]..",6;1,1;input2bits2;8,16;"..
+				bits[realterrain.esc(realterrain.get_setting("input2bits"))].."]"
+		end
+		if mode.get_input3 then
+			f_settings = f_settings ..
+			"dropdown["..col[3]..",7;1,1;input3bits;8,16;"..
+				bits[realterrain.esc(realterrain.get_setting("input3bits"))].."]"
+		end
 	end
 	f_settings = f_settings ..	
 								"field[1,9;2,1;waterlevel;Water Level;"..
