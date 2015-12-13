@@ -81,6 +81,7 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact red ch
 - overlay color image onto map
 - overlay color bands individually (landsat false-color)
 - some code refactoring and performance improvements
+- easter eggs mandelbrot and polynomial explorers
 
 #### 0.0.7
 - performance improvements to distance analysis mode, new default (demo) raster for distance mode ("points.tif")
