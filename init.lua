@@ -1839,7 +1839,10 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				for k, player in next, players do
 					minetest.kick_player(player:get_player_name(), "map.sqlite deleted by admin, reload level")	
 				end
-				os.remove(WORLDPATH.."/map.sqlite")
+				minetest.register_on_shutdown(function()
+					os.remove(WORLDPATH.."/map.sqlite")
+				end)
+				
                 return true
 			elseif fields.exit == "Biomes" then
 				realterrain.show_cover_form(pname)
@@ -2130,11 +2133,11 @@ function realterrain.show_rc_form(pname)
 								"button_exit[10,8;2,1;exit;Ores]"..
 								"button_exit[12,8;2,1;exit;Symbols]"..
 								
-								"label[5.5,9;After applying, exit world and delete map.sqlite]"..
-								"label[5.5,9.5;in the world folder before restarting the map]"..
-								--"button_exit[2,9;2,1;exit;Delete]"..
-                                --"label[10,8.5;Apply changes]"..
-								"button_exit[12,9;2,1;exit;Apply]"
+								"label[5.5,9;Apply and]"..
+								"label[5.5,9.4;delete map:]"..
+								"button_exit[7.1,9;2,1;exit;Delete]"..
+                                "label[10,9.25;Apply only: ]"..
+								"button_exit[11.5,9;2,1;exit;Apply]"
 								
     
     minetest.show_formspec(pname, "realterrain:rc_form", 
