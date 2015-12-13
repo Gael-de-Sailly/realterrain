@@ -1,4 +1,4 @@
-PROCESSOR = "native" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "convert" -- options are: "native", "py", "gm", "magick", "imlib2"
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
 --convert uses commandline imagemagick "convert" or graphicsmagick "gm convert" ("convert.exe" or "gm.exe convert")
@@ -64,16 +64,21 @@ realterrain.settings.alpinelevel = 1000
 realterrain.validate.alpinelevel = "number"
 
 realterrain.settings.fileelev = 'demo/dem.bmp'
-realterrain.settings.elevbits = 8 --@todo remove this setting when magick autodetects bitdepth
+realterrain.settings.elevbits = 8
+realterrain.validate.elevbits = "number"
 realterrain.settings.filecover = 'demo/biomes.bmp'
-realterrain.settings.coverbits = 8 --@todo remove this setting when magick autodetects bitdepth
+realterrain.settings.coverbits = 8
+realterrain.validate.coverbits = "number"
 
 realterrain.settings.fileinput = ''
 realterrain.settings.inputbits = 8
+realterrain.validate.inputbits = "number"
 realterrain.settings.fileinput2 = ''
 realterrain.settings.input2bits = 8
+realterrain.validate.input2bits = "number"
 realterrain.settings.fileinput3 = ''
 realterrain.settings.input3bits = 8
+realterrain.validate.input3bits = "number"
 
 realterrain.settings.dist_lim = 80
 realterrain.validate.dist_lim = "number"
@@ -662,7 +667,7 @@ function realterrain.init()
 						realterrain[rastername].image = bitmap
 						realterrain[rastername].width = width
 						realterrain[rastername].length = length
-						realterrain[rastername].bits = tonumber(realterrain.settings[rastername.."bits"])
+						realterrain[rastername].bits = realterrain.settings[rastername.."bits"]
 						realterrain[rastername].format = "bmp"
 					elseif format == "image/png" then
 						dofile(MODPATH.."/lib/loader_png.lua")
@@ -677,11 +682,15 @@ function realterrain.init()
 						realterrain[rastername].image = file
 						realterrain[rastername].width = width
 						realterrain[rastername].length = length
-						realterrain[rastername].bits = tonumber(realterrain.settings[rastername.."bits"])
+						realterrain[rastername].bits = realterrain.settings[rastername.."bits"]
 						realterrain[rastername].format = "tiff"
 					else
 						print("your file should be an uncompressed tiff, png or bmp")
 					end
+				elseif PROCESSOR == "convert" then
+					local width, length, format = imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
+					realterrain[rastername].width = width
+					realterrain[rastername].length = length
 				elseif PROCESSOR == "py" then
 					py.execute(rastername.." = Image.open('"..RASTERS..realterrain.settings["file"..rastername] .."')")
 					py.execute(rastername.."_w, "..rastername.."_l = "..rastername..".size")
@@ -825,8 +834,8 @@ function realterrain.generate(minp, maxp)
 	local heightmap = {}
 	local entries = 0
 	local input_present = false
-	if gm then --@todo this isn't working but would be the only way to use gm (magick will also work once gm does)
-		heightmap = realterrain.build_heightmap(xstart,xend,zstart,zend, get_cover, get_input) --experiment
+	if PROCESSOR == "gm" or PROCESSOR == "convert" then 
+		heightmap = realterrain.build_heightmap(xstart,xend,zstart,zend, get_cover, get_input) --@todo this isn't working yet, experimental
 	else
 		for z=zstart,zend do
 			if not heightmap[z] then heightmap[z] = {} end
@@ -1339,10 +1348,10 @@ end
 --the main get pixel method that applies the scale and offsets
 function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3, get_input_color)
 	local e, c, i, i2, i3
-    local row,col = 0 - z + tonumber(realterrain.settings.zoffset), 0 + x - tonumber(realterrain.settings.xoffset)
+    local row,col = 0 - z + realterrain.settings.zoffset, 0 + x - realterrain.settings.xoffset
 	--adjust for x and z scales
-    row = math.floor(row / tonumber(realterrain.settings.zscale))
-    col = math.floor(col / tonumber(realterrain.settings.xscale))
+    row = math.floor(row / realterrain.settings.zscale)
+    col = math.floor(col / realterrain.settings.xscale)
     
     --off the elev return false unless no elev is set in which case flat maps and gibberish are expected
 	--hint there is always a elev unless realterrain_settings is hand-edited due to form validation
@@ -1355,7 +1364,7 @@ function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3
 	
 	--print("raw e: "..e)
 	--adjust for offset and scale
-    e = math.floor((e * tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
+    e = math.floor((e * realterrain.settings.yscale) + realterrain.settings.yoffset)
 	
     if get_cover  and realterrain.settings.filecover ~= "" then
 		c = realterrain.get_raw_pixel(col,row, "cover") or 0
@@ -1388,11 +1397,11 @@ end
 function realterrain.get_brot_pixel(x,z)
 	--taken from https://plus.maths.org/content/computing-mandelbrot-set
 	--Where do we want to center the brot?
-	local cx = tonumber(realterrain.settings.xoffset)
-	local cz = tonumber(realterrain.settings.zoffset)	
+	local cx = realterrain.settings.xoffset
+	local cz = realterrain.settings.zoffset
 	--This is the "zoom" factor.
-	local xscale = tonumber(realterrain.settings.xscale)
-	local zscale = tonumber(realterrain.settings.zscale)
+	local xscale = realterrain.settings.xscale
+	local zscale = realterrain.settings.zscale
 	local limit = 4		--Divergence check value.
 	local lp = 0		--Convergence check value.
 	local a1,b1,a2,b2 	--For calculating the iterations.
@@ -1447,11 +1456,12 @@ function realterrain.parse_enumeration(line)
 	local value = tonumber(string.sub(line, firstcolon + 3, secondcomma -1))
 	return value, right, down 
 end
-function realterrain.get_enumeration(rastername, xstart, width, zstart, length) --raster is a string so py can use it
+function realterrain.get_enumeration(rastername, xstart, width, zstart, length)
 	local enumeration
-	
+	local table_enum = {}
 	if PROCESSOR == "gm" then
 		enumeration = realterrain[rastername].image:clone():crop(width,length,xstart,zstart):format("txt"):toString()
+		table_enum = string.split(enumeration, "\n")
 	elseif PROCESSOR == "magick" then
 		local tmpimg
 		tmpimg = realterrain[rastername].image:clone()
@@ -1459,14 +1469,21 @@ function realterrain.get_enumeration(rastername, xstart, width, zstart, length) 
 		tmpimg:set_format("txt")
 		enumeration = tmpimg:get_blob()
 		tmpimg:destroy()
+		table_enum = string.split(enumeration, "\n")
+	elseif PROCESSOR == "convert" then
+		local cmd = convert..' "'..RASTERS..realterrain.settings.fileelev..'"'..' -crop '..width..'x'..length..'+'..xstart..'+'..zstart..' txt:-'
+		enumeration = io.popen(cmd)
+		--print(cmd)
+		for line in enumeration:lines() do
+			table.insert(table_enum, line)
+		end
 	end
 
-	--local cmd = convert..' "'..RASTERS..realterrain.settings.fileelev..'"'..' -crop 80x80+'..col..'+'..row..' txt:-'
-	return enumeration
+	return table_enum
 end
 
 --experimental function to enumerate 80x80 crop of raster at once using IM or GM
-function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_input)
+function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_input, get_input2, get_input3, get_input_color)
 	local mode = realterrain.get_mode()
 	print("request range: x:"..xstart..","..xend.."; z:"..zstart..","..zend)	
 	local pixels = {}
@@ -1483,45 +1500,29 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 	if mode.get_input2 then	table.insert(rasternames, "input2")	end
 	if mode.get_input3 then	table.insert(rasternames, "input3")	end
 	for k,rastername in next, rasternames do
+		if PROCESSOR == "gm" or PROCESSOR == "magick" or PROCESSOR == "convert" then
 			
-		if PROCESSOR == "py" then
-			--py.execute(rastername.."_pixels = "..rastername..".load()")
-			for z = zstart, zend, 1  do
-				if not pixels[z] then pixels[z] = {} end
-				if z >= 0 and z <= realterrain[rastername].length then
-					for x = xstart, xend, 1 do
-						if x >= 0 and x <= realterrain[rastername].width then
-							print("x: "..x..", z: "..z)
-							py.execute("pixel = "..rastername.."_pixels["..x..","..z.."]")
-							local pixel = tonumber(tostring(py.eval("pixel"))) --@todo pixel is not defined!
-							print(pixel)
-							if not pixels[z][x] then pixels[z][x] = {} end
-							pixels[z][x][rastername] = pixel
-						end
-					end
-				end
-			end
-		end
-		local enumeration
-		if PROCESSOR == "gm" or PROCESSOR == "magick" then
-			enumeration = realterrain.get_enumeration(rastername, xstart, width, zstart, length)
-			--print("entire enumeration: "..enumeration)
+			local enumeration = realterrain.get_enumeration(rastername, xstart, width, zstart, length)
+			--print(dump(enumeration))
+			
 			local entries = 0
 			
 			local mincol, maxcol, minrow, maxrow
 			local firstline = true
-			for k,line in next, string.split(enumeration, "\n") do                         
-				if PROCESSOR == "magick" and firstline then
-					firstline = false --first line is a head in IM but not GM
+			for k,line in next, enumeration do                         
+				if firstline and (PROCESSOR == "magick" or (PROCESSOR == "convert" and string.sub(convert, 1, 2) ~= "gm" )) then
+					firstline = false --first line is a header in IM but not GM
 				else
 					entries = entries + 1
 					--print(entries .." :: " .. v)
-			
+					
 					local value, right, down = realterrain.parse_enumeration(line)
 					
-					--print("elev: "..e)
-					value = math.floor((value / tonumber(realterrain.settings.yscale)) + tonumber(realterrain.settings.yoffset))
 					
+					--print("elev: "..e)
+					value = math.floor((value / realterrain.settings.yscale) + realterrain.settings.yoffset)
+					
+					--convert the cropped pixel row/column back to absolute map x,z
 					local x = xstart + right -1
 					local z = 0- zstart + down
 					
@@ -1538,10 +1539,13 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 					end--]]
 					--print ("x: "..x..", z: "..z..", elev: "..value)
 					if not pixels[z] then pixels[z] = {} end
-					pixels[z][x] = {rastername=value}
+					if not pixels[z][x] then pixels[z][x] = {} end
+					pixels[z][x][rastername] = value
 				end
 			end
-			print("result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
+			if entries > 0 then
+				print("result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
+			end
 			print("result entries: "..entries)
 		end
 
@@ -1873,7 +1877,7 @@ function realterrain.validate_and_save(fields)
 			local rule = realterrain.validate[k]
 			if rule == "number" then
 				if tonumber(v) then
-					realterrain.settings[k] = v
+					realterrain.settings[k] = tonumber(v)
 				else
 					if not errors then errors = {} end
 					table.insert(errors, k)
