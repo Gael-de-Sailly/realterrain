@@ -1,4 +1,4 @@
-PROCESSOR = "py" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "native" -- options are: "native", "py", "gm", "magick", "imlib2"
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
 --convert uses commandline imagemagick "convert" or graphicsmagick "gm convert" ("convert.exe" or "gm.exe convert")
@@ -337,7 +337,7 @@ for k,v in next, symbols do
 	minetest.register_node(
 		'realterrain:'..v, {
 			description = "Symbol: "..v,
-			tiles = { v..'.png' },
+			tiles = { "white.bmp^[colorize:#"..v },
 			light_source = 9,
 			groups = {oddly_breakable_by_hand=1, not_in_creative_inventory=1},
 			--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
