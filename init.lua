@@ -1227,7 +1227,7 @@ function realterrain.generate(minp, maxp)
 				local vi = area:index(x, y0, z) -- voxelmanip index
 				for y = y0, y1 do
 					local elev = heightmap[z][x].elev
-					
+					-- print at y = 0 for now, if we change this then get_surface needs to be updated
 					if y == 0 and modename == "mandelbrot" then
 						if elev < 1 then color = "symbol1"
 						elseif elev < 2 then color = "symbol2"
@@ -1721,6 +1721,8 @@ function realterrain.get_surface(x,z)
 		local line = enumeration_table[2] or enumeration_table[1]
 		local value = realterrain.parse_enumeration(line)
 		surface = value
+	elseif realterrain.settings.output == "polynomial" then
+		surface = realterrain.polynomial(x,z)
 	else
 		surface = realterrain.get_pixel(x,z)
 	end
