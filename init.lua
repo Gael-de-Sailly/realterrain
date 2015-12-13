@@ -1,4 +1,4 @@
-PROCESSOR = "native" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "py" -- options are: "native", "py", "gm", "magick", "imlib2"
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
 --convert uses commandline imagemagick "convert" or graphicsmagick "gm convert" ("convert.exe" or "gm.exe convert")
@@ -714,6 +714,26 @@ function realterrain.init()
 					--print("origin: "..realterrain[rastername].origin_x.."x"..realterrain[rastername].origin_y)
 					--print("pixel size: "..realterrain[rastername].pixel_x_size.."x"..realterrain[rastername].pixel_y_size)
 					
+					realterrain[rastername].metadata = tostring(py.eval("dataset.GetMetadata()"))
+					
+					print(realterrain[rastername].metadata)
+					
+					py.execute("dataset_band1 = dataset.GetRasterBand(1)")
+					realterrain[rastername].nodata = tostring(py.eval("dataset_band1.GetNoDataValue()"))
+					realterrain[rastername].min = tostring(py.eval("dataset_band1.GetMinimum()"))
+					realterrain[rastername].max = tostring(py.eval("dataset_band1.GetMaximum()"))
+					realterrain[rastername].scale = tostring(py.eval("dataset_band1.GetScale()"))
+					realterrain[rastername].unit = tostring(py.eval("dataset_band1.GetUnitType()"))
+					print("nodata: "..realterrain[rastername].nodata)
+					print("min: "..realterrain[rastername].min)
+					print("max: "..realterrain[rastername].max)
+					print("scale: "..realterrain[rastername].scale)
+					print("unit: "..realterrain[rastername].unit)
+					
+					
+					py.execute("dataset = None")
+					
+					
 					py.execute(rastername.." = Image.open('"..RASTERS..realterrain.settings["file"..rastername] .."')")
 					py.execute(rastername.."_w, "..rastername.."_l = "..rastername..".size")
 					realterrain[rastername].width = tonumber(tostring(py.eval(rastername.."_w")))
@@ -843,7 +863,7 @@ function realterrain.generate(minp, maxp)
 	end
 	
 	--build the heightmap and include different extents and values depending on mode
-	local zstart, zend, xstart, xend, get_cover, get_input, get_input2, get_input3, get_input_color, buffer, fill_below, moving_window
+	local zstart, zend, xstart, xend, get_cover, get_input, get_input2, get_input3, get_input_color, buffer, fill_below, moving_window, computed
 	buffer = mode.buffer or 0
 	zstart, zend, xstart, xend = z0-buffer, z1+buffer, x0-buffer, x1+buffer
 	
