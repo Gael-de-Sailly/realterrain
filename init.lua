@@ -25,7 +25,8 @@ if PROCESSOR == "py" then
 	py.execute("import Image")
 	--py.execute("import numpy")
 	--py.execute("import grass.script as gscript")
-	--py.execute("from osgeo import gdal")
+	py.execute("from osgeo import gdal")
+	py.execute("from gdalconst import *")
 elseif PROCESSOR == "magick" then
 	package.path = (MODPATH.."/lib/magick/?.lua;"..MODPATH.."/lib/magick/?/init.lua;"..package.path)
 	magick = ie.require "magick"
@@ -692,15 +693,38 @@ function realterrain.init()
 					realterrain[rastername].width = width
 					realterrain[rastername].length = length
 				elseif PROCESSOR == "py" then
+					--get metadata from the raster using GDAL
+					py.execute("dataset = gdal.Open( '"..RASTERS..realterrain.settings["file"..rastername].."', GA_ReadOnly )")
+					realterrain[rastername].driver_short = tostring(py.eval("dataset.GetDriver().ShortName"))
+					realterrain[rastername].driver_long = tostring(py.eval("dataset.GetDriver().LongName"))
+					realterrain[rastername].raster_x_size = tostring(py.eval("dataset.RasterXSize"))
+					realterrain[rastername].raster_y_size = tostring(py.eval("dataset.RasterYSize"))
+					realterrain[rastername].projection = tostring(py.eval("dataset.GetProjection()"))
+					--[[py.execute("geotransform = dataset.GetGeoTansform()")
+					realterrain[rastername].origin_x = tostring(py.eval("geotransform[0]") or "")
+					realterrain[rastername].origin_y = tostring(py.eval("geotransform[3]") or "")
+					realterrain[rastername].pixel_x_size = tostring(py.eval("geotransform[1]") or "")
+					realterrain[rastername].pixel_y_size = tostring(py.eval("geotransform[5]") or "")--]]
+					
+					print("driver short name: "..realterrain[rastername].driver_short)
+					print("driver long name: "..realterrain[rastername].driver_long)
+					print("size: "..realterrain[rastername].raster_x_size.."x"..realterrain[rastername].raster_y_size)
+					print("projection: "..realterrain[rastername].projection)
+					--print("origin: "..realterrain[rastername].origin_x.."x"..realterrain[rastername].origin_y)
+					--print("pixel size: "..realterrain[rastername].pixel_x_size.."x"..realterrain[rastername].pixel_y_size)
+					
 					py.execute(rastername.." = Image.open('"..RASTERS..realterrain.settings["file"..rastername] .."')")
 					py.execute(rastername.."_w, "..rastername.."_l = "..rastername..".size")
 					realterrain[rastername].width = tonumber(tostring(py.eval(rastername.."_w")))
 					realterrain[rastername].length = tonumber(tostring(py.eval(rastername.."_l")))
 					realterrain[rastername].mode = tostring(py.eval(rastername..".mode"))
 					print(rastername.." mode: "..realterrain[rastername].mode)
+					--if we are doing a color overlay and the raster is a grayscale then convert to color
+					--@todo this should only happen to the input raster
 					if mode.get_input_color and realterrain[rastername].mode ~= "RGB" then
 						py.execute(rastername.." = "..rastername..".convert('RGB')")
 						realterrain[rastername].mode = "RGB"
+					--if a color raster was supplied when a grayscale is needed, convert to grayscale (L mode)
 					elseif not mode.get_input_color and realterrain[rastername].mode == "RGB" then
 						py.execute(rastername.." = "..rastername..".convert('L')")
 						realterrain[rastername].mode = "L"
@@ -1688,7 +1712,37 @@ function realterrain.get_distance(x,y,z, heightmap)
 	--print("distance: "..shortest)
 	return shortest
 end
-
+--after the mapgen has run, this gets the surface level
+function realterrain.get_surface(x,z)
+	local surface
+	--these processors do not have pixel access so need to use build_heightmap on a single pixel
+	if PROCESSOR == "gm" or PROCESSOR == "convert" then
+		local enumeration_table = realterrain.get_enumeration("elev", x, 1, z, 1)
+		local line = enumeration_table[2] or enumeration_table[1]
+		local value = realterrain.parse_enumeration(line)
+		surface = value
+	else
+		surface = realterrain.get_pixel(x,z)
+	end
+	--print("surface: "..surface)
+	return surface or 0 --if the x,z is off-raster get_pixel will have returned false
+end
+minetest.register_on_joinplayer(function(player)
+	--give player privs and teleport to surface
+	local pname = player:get_player_name()
+	local privs = minetest.get_player_privs(pname)
+	privs.fly = true
+	privs.fast = true
+	privs.noclip = true
+	privs.time = true
+	privs.teleport = true
+	privs.worldedit = true
+	minetest.set_player_privs(pname, privs)
+	local ppos = player:getpos()
+	local surface = realterrain.get_surface(ppos.x, ppos.z)
+	player:setpos({x=ppos.x, y=surface+0.5, z=ppos.z})
+	return true
+end)
 -- the controller for changing map settings
 minetest.register_tool("realterrain:remote" , {
 	description = "Realterrain Settings",
@@ -1723,8 +1777,19 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		end
 		--the main form
 		if formname == "realterrain:rc_form" then 
-			--actual form submissions
+			--buttons that don't close the form:
+			if fields.gotosurface then
+				local ppos = player:getpos()
+				local surface = realterrain.get_surface(ppos.x, ppos.z)
+				player:setpos({x=ppos.x, y=surface+0.5, z=ppos.z})
+				--should refresh this form so that the position info updates
+				realterrain.show_rc_form(pname)
+				return true
+			elseif fields.resetday then
+				minetest.set_timeofday(0.25)
+			end
 			
+			--actual form submissions
 			if fields.output or fields.fileelev or fields.filecover or fields.fileinput
 				or fields.fileinput2 or fields.fileinput3 then
 				--check to see if the source rasters were changed, if so re-initialize
@@ -1910,6 +1975,9 @@ function realterrain.show_rc_form(pname)
 	elseif degree <= 225 then dir = "South"
 	else   dir = "South" end
 	
+	local surface = realterrain.get_surface(ppos.x, ppos.z)
+	local above_below = "below"
+	if ppos.y < surface then above_below = "above" end
 	local mode = realterrain.get_mode()
 	local modename = mode.name
 	
@@ -1935,8 +2003,12 @@ function realterrain.show_rc_form(pname)
 	
 	--form header
 	local f_header = 			"size[14,10]" ..
+								"button[0,0;3,1;gotosurface;Teleport to Surface]"..
+								"button[3,0;3,1;resetday;Reset Morning Sun]"..
 								"label[6,0;You are at x= "..math.floor(ppos.x)..
-								" y= "..math.floor(ppos.y).." z= "..math.floor(ppos.z).." and mostly facing "..dir.."]"
+								" y= "..math.floor(ppos.y).." z= "..math.floor(ppos.z).." and mostly facing "..dir.."]"..
+								"label[6,0.5;The surface is "..(math.floor(math.abs(ppos.y-surface))).." blocks "..
+									above_below.." you at "..surface.."]"
 	--Scale settings
 	local f_settings =			"label["..col[1]..",1.1;Raster Mode]"..
 								"dropdown["..col[2]..",1;4,1;output;"..f_modes..";"..
