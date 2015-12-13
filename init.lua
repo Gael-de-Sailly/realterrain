@@ -1310,14 +1310,14 @@ function realterrain.generate(minp, maxp)
 end
 --the raw get pixel method that uses the selected method and accounts for bit depth
 function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
-	--x=x+1
-	--z=z+1
+	x=x+1
+	z=z+1
 	local r,g,b
 	local width, length
 	width = realterrain[rastername].width
 	length = realterrain[rastername].length
 	--check to see if the image is even on the raster, otherwise skip
-	if width and length and ( x >= 0 and x < width ) and ( z >= 0 and z < length ) then
+	if width and length and ( x >= 1 and x <= width ) and ( z >= 1 and z <= length ) then
 		--print(rastername..": x "..x..", z "..z)
 		if PROCESSOR == "native" then
 			if realterrain[rastername].format == "bmp" then
@@ -1402,8 +1402,8 @@ end
 --the main get pixel method that applies the scale and offsets
 function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3, get_input_color)
 	local e, c, i, i2, i3
-    local row = 0 - z + realterrain.settings.zoffset
-	local col = 0 + x - realterrain.settings.xoffset
+    local row = 0 - z + realterrain.settings.zoffset -1
+	local col = 0 + x - realterrain.settings.xoffset -1
 	--adjust for x and z scales
     row = math.floor(row / realterrain.settings.zscale)
     col = math.floor(col / realterrain.settings.xscale)
@@ -1411,7 +1411,7 @@ function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3
     --off the elev return false unless no elev is set in which case flat maps and gibberish are expected
 	--hint there is always a elev unless realterrain_settings is hand-edited due to form validation
     if realterrain.elev.image
-		and ((col < 1) or (col >= realterrain.elev.width+1) or (row < 1) or (row >= realterrain.elev.length+1)) then
+		and ((col < 0) or (col >= realterrain.elev.width) or (row < 0) or (row >= realterrain.elev.length)) then
 		return false
 	end
     
