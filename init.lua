@@ -1211,13 +1211,16 @@ function realterrain.generate(minp, maxp)
 						data[vi] = cids[color]
 					elseif y == elev and modename == "polynomial" then
 						data[vi] = cids[0].ground
-						--[[local height = realterrain.fill_below(x,z,heightmap)
-						if height > 0 then
+						local height = realterrain.fill_below(x,z,heightmap)
+						--[[if height > 0 then
 							for i=1, height, 1 do
-								data[vi-(i*ystridevm)] = data[vi]
+								--make sure the fill-in is within the mapchunk, if not then slate for setnode
+								if y - i >= y0 then
+									data[vi-(i*ystridevm)] = data[vi]
+								else
+									table.insert(fillmap, {x=x, y=y-i, z=z, nodename=realterrain.settings.b0ground})
+								end
 							end
-							
-							--table.insert(fillmap, {x=x, y=y, z=z, height=height, nodename=color})
 						end--]]
 					end
 					vi = vi + ystridevm
@@ -1236,12 +1239,11 @@ function realterrain.generate(minp, maxp)
 	for k,v in next, treemap do
 		minetest.place_schematic({x=v.pos.x-3,y=v.pos.y,z=v.pos.z-3}, MODPATH.."/schems/"..v.type..".mts", (math.floor(math.random(0,3)) * 90), nil, false)
 	end
-	--fill all fills
-	--[[for k,v in next, fillmap do
-		for i=1,v.height, 1 do
-			minetest.set_node({x=v.x, y=v.y-i, z=v.z}, {name="realterrain:"..v.nodename})
-		end
-	end]]
+	--fill "overflow" fill_belows
+	--print(dump(fillmap))
+	for k,v in next, fillmap do
+		minetest.set_node({x=v.x, y=v.y, z=v.z}, {name=v.nodename})
+	end
 	
 	local chugent = math.ceil((os.clock() - t0) * 1000)
 	print ("[GEN] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
@@ -2038,14 +2040,13 @@ function realterrain.show_rc_form(pname)
 				bits[realterrain.esc(realterrain.get_setting("input3bits"))].."]"
 		end
 	end
-	f_settings = f_settings ..	
-								"field[1,9;2,1;waterlevel;Water Level;"..
-                                    realterrain.esc(realterrain.get_setting("waterlevel")).."]"..
-                                "field[3,9;2,1;alpinelevel;Alpine Level;"..
-                                    realterrain.esc(realterrain.get_setting("alpinelevel")).."]"
-								
-								
-									
+	if modename == "normal" or modename == "surface" then
+		f_settings = f_settings ..	
+		"field[1,9;2,1;waterlevel;Water Level;"..
+			realterrain.esc(realterrain.get_setting("waterlevel")).."]"..
+		"field[3,9;2,1;alpinelevel;Alpine Level;"..
+			realterrain.esc(realterrain.get_setting("alpinelevel")).."]"
+	end
 	--Action buttons
 	local f_footer =			"button_exit[8,8;2,1;exit;Biomes]"..
 								"button_exit[10,8;2,1;exit;Ores]"..
