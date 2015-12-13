@@ -397,12 +397,13 @@ function realterrain.build_cids()
 	cids.ores[17] = minetest.get_content_id("default:stone_with_gold")
 	cids.ores[18] = minetest.get_content_id("default:stone_with_mese")
 	
+	cids["dirt"] = minetest.get_content_id("default:dirt")
 	cids["alpine"] = minetest.get_content_id("default:gravel")
 	cids["water_bottom"] = minetest.get_content_id("default:sand")
-	
 	cids["water"] = minetest.get_content_id("water_source")
 	cids["air"] = minetest.get_content_id("air")
 	cids["lava"] = minetest.get_content_id("lava_source")
+	
 	cids[0] = {ground=minetest.get_content_id(realterrain.settings.b0ground),
 			   ground2=minetest.get_content_id(realterrain.settings.b0ground2),
 			   shrub=minetest.get_content_id(realterrain.settings.b0shrub),
@@ -968,7 +969,8 @@ function realterrain.generate(minp, maxp)
 	end
 	local cids = realterrain.cids
 	--print(dump(cids))
-		
+	local c_dirt_with_grass = minetest.get_content_id("default:dirt_with_grass")
+	local c_dirt_with_dry_grass = minetest.get_content_id("default:dirt_with_dry_grass")
 	--generate!
 	for z = z0, z1 do
 	for x = x0, x1 do
@@ -1034,7 +1036,12 @@ function realterrain.generate(minp, maxp)
 								local d18 = d1+d2+d3 --classic d&d bell curve
 								data[vi] = cids.ores[d18]
 							else
-								data[vi] = ground
+								--dirt with grass and dry grass fix
+								if ground == c_dirt_with_grass or ground == c_dirt_with_dry_grass then
+									data[vi] = cids["dirt"]
+								else
+									data[vi] = ground
+								end
 							end
 						--the surface layer, determined by cover value
 						elseif  y == elev and ( (cover ~= 5 or fill_below)
@@ -1840,6 +1847,8 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 					minetest.kick_player(player:get_player_name(), "map.sqlite deleted by admin, reload level")	
 				end
 				minetest.register_on_shutdown(function()
+					local wait = os.clock()
+					while os.clock() - wait < 0.5 do end --the following delete happens too fast otherwise @todo this doesn't help
 					os.remove(WORLDPATH.."/map.sqlite")
 				end)
 				
