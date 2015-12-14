@@ -1,4 +1,4 @@
-PROCESSOR = "native" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "py" -- options are: "native", "py", "gm", "magick", "imlib2"
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
 --convert uses commandline imagemagick "convert" or graphicsmagick "gm convert" ("convert.exe" or "gm.exe convert")
@@ -1423,7 +1423,7 @@ function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3
 	
     --off the elev return false unless no elev is set in which case flat maps and gibberish are expected
 	--hint there is always a elev unless realterrain_settings is hand-edited due to form validation
-    if realterrain.elev.image
+    if (realterrain.elev.image or PROCESSOR == "py")
 		and ((col < colstart) or (col >= realterrain.elev.width) or (row < rowstart) or (row >= realterrain.elev.length)) then
 		return false
 	end
