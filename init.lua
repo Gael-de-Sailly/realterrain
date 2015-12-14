@@ -1,4 +1,4 @@
-PROCESSOR = "native" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "convert" -- options are: "native", "py", "gm", "magick", "imlib2"
 print("PROCESSOR is "..PROCESSOR)
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
@@ -1512,44 +1512,58 @@ function realterrain.polynomial(x,z)
 end
 --this function parses a line of IM or GM pixel enumeration without any scaling or adjustment
 function realterrain.parse_enumeration(line)
-	--print("enumeration line: "..line)
-	--parse the output pixels
-	local firstcomma = string.find(line, ",")
-	--print("first comma: "..firstcomma)
-	local right = tonumber(string.sub(line, 1 , firstcomma - 1)) + 1
-	--print("right: "..right)
-	local firstcolon = string.find(line, ":")
-	--print("first colon: "..firstcolon)
-	local down = tonumber(string.sub(line, firstcomma + 1 , firstcolon - 1))
-	--print("down: "..down)
-	local secondcomma = string.find(line, ",", firstcolon)
-	local value = tonumber(string.sub(line, firstcolon + 3, secondcomma -1))
-	return value, right, down 
+	if line then
+		print("enumeration line: "..line)
+		--parse the output pixels
+		local firstcomma = string.find(line, ",")
+		--print("first comma: "..firstcomma)
+		local right = tonumber(string.sub(line, 1 , firstcomma - 1)) + 1
+		--print("right: "..right)
+		local firstcolon = string.find(line, ":")
+		--print("first colon: "..firstcolon)
+		local down = tonumber(string.sub(line, firstcomma + 1 , firstcolon - 1))
+		--print("down: "..down)
+		local secondcomma = string.find(line, ",", firstcolon)
+		local value = tonumber(string.sub(line, firstcolon + 3, secondcomma -1))
+		return value, right, down
+	else
+		return false
+		
+	end
 end
 function realterrain.get_enumeration(rastername, xstart, width, zstart, length)
-	local enumeration
+	print(rastername)
 	local table_enum = {}
-	if PROCESSOR == "gm" then
-		enumeration = realterrain[rastername].image:clone():crop(width,length,xstart,zstart):format("txt"):toString()
-		table_enum = string.split(enumeration, "\n")
-	elseif PROCESSOR == "magick" then
-		local tmpimg
-		tmpimg = realterrain[rastername].image:clone()
-		tmpimg:crop(width,length,xstart,zstart)
-		tmpimg:set_format("txt")
-		enumeration = tmpimg:get_blob()
-		tmpimg:destroy()
-		table_enum = string.split(enumeration, "\n")
-	elseif PROCESSOR == "convert" then
-		local cmd = convert..' "'..RASTERS..realterrain.settings.fileelev..'"'..' -crop '..width..'x'..length..'+'..xstart..'+'..zstart..' txt:-'
-		enumeration = io.popen(cmd)
-		--print(cmd)
-		for line in enumeration:lines() do
-			table.insert(table_enum, line)
+	--avoid null pixels if the crop is completely off the raster:
+	if((xstart+width < 0)
+		or (xstart > realterrain[rastername].width)
+		or (zstart+length < 0)
+		or (zstart > realterrain[rastername].length)) then
+		return table_enum
+	else
+		local enumeration
+		if PROCESSOR == "gm" then
+			enumeration = realterrain[rastername].image:clone():crop(width,length,xstart,zstart):format("txt"):toString()
+			table_enum = string.split(enumeration, "\n")
+		elseif PROCESSOR == "magick" then
+			local tmpimg
+			tmpimg = realterrain[rastername].image:clone()
+			tmpimg:crop(width,length,xstart,zstart)
+			tmpimg:set_format("txt")
+			enumeration = tmpimg:get_blob()
+			tmpimg:destroy()
+			table_enum = string.split(enumeration, "\n")
+		elseif PROCESSOR == "convert" then
+			local cmd = convert..' "'..RASTERS..realterrain.settings.fileelev..'"'..
+				' -crop '..width..'x'..length..'+'..xstart..'+'..zstart..' txt:-'
+			enumeration = io.popen(cmd)
+			--print(cmd)
+			for line in enumeration:lines() do
+				table.insert(table_enum, line)
+			end
 		end
+		return table_enum
 	end
-
-	return table_enum
 end
 
 --experimental function to enumerate 80x80 crop of raster at once using IM or GM
@@ -1562,14 +1576,28 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 	--print("width: "..width ..", length: "..length)
 	print("request entries: "..width*length)
 	zstart = 0 - zstart
+	zend = 0 - zend
 	
+			
 	local rasternames = {}
-	table.insert(rasternames, "elev")
-	if mode.get_cover then table.insert(rasternames, "cover") end
-	if mode.get_input then table.insert(rasternames, "input") end
-	if mode.get_input2 then	table.insert(rasternames, "input2")	end
-	if mode.get_input3 then	table.insert(rasternames, "input3")	end
+	if realterrain.settings.fileelev ~= "" then 
+		table.insert(rasternames, "elev")
+	end
+	if mode.get_cover  and realterrain.settings.filecover ~= "" then
+		table.insert(rasternames, "cover")
+	end
+	if mode.get_input and realterrain.settings.fileinput ~= "" then
+		table.insert(rasternames, "input")
+	end
+	if mode.get_input2  and realterrain.settings.fileinput2 ~= "" then
+		table.insert(rasternames, "input2")
+	end
+	if mode.get_input3  and realterrain.settings.fileinput3 ~= "" then
+		table.insert(rasternames, "input3")
+	end
+		
 	for k,rastername in next, rasternames do
+		
 		if PROCESSOR == "gm" or PROCESSOR == "magick" or PROCESSOR == "convert" then
 			
 			local enumeration = realterrain.get_enumeration(rastername, xstart, width, zstart, length)
@@ -1593,8 +1621,19 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 					value = math.floor((value / realterrain.settings.yscale) + realterrain.settings.yoffset)
 					
 					--convert the cropped pixel row/column back to absolute map x,z
-					local x = xstart + right -1
-					local z = 0- zstart + down
+					--@todo this will have to include consideration of whether the crop was in negative space
+					--or does not fill the output footprint completely (this latter may not matter)
+					local empty_cols
+					local empty_rows
+					if xstart < 0 then
+						empty_cols = 0 - xstart
+					end
+					if zstart < 0 then
+						empty_rows = 0 - zstart
+					end
+					
+					local x = xstart + right + empty_cols
+					local z = 0- zstart + down + empty_rows
 					
 					if not mincol then
 						mincol = x
@@ -1618,11 +1657,8 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 			end
 			print("result entries: "..entries)
 		end
-
-		
-	end
-	
 	return pixels
+	end	--end for rasternames	
 end
 
 --this funcion gets the hieght needed to fill below a node for surface-only modes
