@@ -1,4 +1,5 @@
 PROCESSOR = "native" -- options are: "native", "py", "gm", "magick", "imlib2"
+print("PROCESSOR is "..PROCESSOR)
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
 --convert uses commandline imagemagick "convert" or graphicsmagick "gm convert" ("convert.exe" or "gm.exe convert")
@@ -676,8 +677,8 @@ function realterrain.init()
 						local bitmap, e = imageloader.load(RASTERS..realterrain.settings["file"..rastername])
 						if e then print(e) end
 						realterrain[rastername].image = bitmap
-						realterrain[rastername].width = realterrain[rastername].image.width
-						realterrain[rastername].length = realterrain[rastername].image.height
+						realterrain[rastername].width = width
+						realterrain[rastername].length = length
 						realterrain[rastername].format = "png"
 					elseif format == "image/tiff" then
 						local file = io.open(RASTERS..realterrain.settings["file"..rastername], "rb")
