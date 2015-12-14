@@ -1513,7 +1513,7 @@ end
 --this function parses a line of IM or GM pixel enumeration without any scaling or adjustment
 function realterrain.parse_enumeration(line)
 	if line then
-		print("enumeration line: "..line)
+		--print("enumeration line: "..line)
 		--parse the output pixels
 		local firstcomma = string.find(line, ",")
 		--print("first comma: "..firstcomma)
@@ -1575,8 +1575,8 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 	local length = zend-zstart+1
 	--print("width: "..width ..", length: "..length)
 	print("request entries: "..width*length)
-	zstart = 0 - zstart
-	zend = 0 - zend
+	zstart = - zstart
+	zend = - zend
 	
 			
 	local rasternames = {}
@@ -1623,8 +1623,8 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 					--convert the cropped pixel row/column back to absolute map x,z
 					--@todo this will have to include consideration of whether the crop was in negative space
 					--or does not fill the output footprint completely (this latter may not matter)
-					local empty_cols
-					local empty_rows
+					local empty_cols = 0
+					local empty_rows = 0
 					if xstart < 0 then
 						empty_cols = 0 - xstart
 					end
@@ -1632,8 +1632,8 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 						empty_rows = 0 - zstart
 					end
 					
-					local x = xstart + right + empty_cols
-					local z = 0- zstart + down + empty_rows
+					local x = xstart + right + empty_cols -1
+					local z = -zstart + down + empty_rows
 					
 					if not mincol then
 						mincol = x
