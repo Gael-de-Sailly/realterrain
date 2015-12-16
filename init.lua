@@ -1,14 +1,14 @@
-PROCESSOR = "native" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "convert" -- options are: "native", "py", "gm", "magick", "imlib2"
 print("PROCESSOR is "..PROCESSOR)
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
---convert uses commandline imagemagick "convert" or graphicsmagick "gm convert" ("convert.exe" or "gm.exe convert")
+--CONVERT uses commandline imagemagick "convert" or graphicsmagick "gm CONVERT" ("CONVERT.exe" or "gm.exe CONVERT")
 --native handles png, tiff, and bmp files but none currently only bmp works and only on 24 bit images with good headers
 MODPATH = minetest.get_modpath("realterrain")
 WORLDPATH = minetest.get_worldpath()
 RASTERS = MODPATH .. "/rasters/"
 SCHEMS = MODPATH .. "/schems/"
-
+FORCE_HM = true
 local ie = minetest.request_insecure_environment()
 
 --ie.require "luarocks.loader" --if you use luarocks to install some of the packages below you may need this
@@ -18,7 +18,7 @@ local imagesize = ie.require "imagesize"
 
 --[[package.path = (MODPATH.."/lib/luasocket/?.lua;"..MODPATH.."/lib/luasocket/?/init.lua;"..package.path)
 local socket = ie.require "socket"--]]
-local native, py, gm, magick, imlib2, convert
+local native, py, gm, magick, imlib2, CONVERT
 if PROCESSOR == "py" then
 	package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*") --may not need to explicitly state this
 	package.path = (MODPATH.."/lib/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
@@ -38,11 +38,12 @@ elseif PROCESSOR == "gm" then
 	package.path = (MODPATH.."/lib/?.lua;"..MODPATH.."/lib/?/init.lua;"..package.path)
 	gm = ie.require "graphicsmagick"
 elseif PROCESSOR == "convert" then
-	convert = "convert" -- could also be convert.exe, "gm convert" or "gm.exe convert"
+	CONVERT = "convert" -- could also be CONVERT.exe, "gm CONVERT" or "gm.exe CONVERT"
 elseif PROCESSOR == "native" then
 	dofile(MODPATH.."/lib/iohelpers.lua")
 	dofile(MODPATH.."/lib/imageloader.lua")
 end
+
 local realterrain = {}
 realterrain.settings = {}
 realterrain.validate = {}
@@ -491,7 +492,7 @@ function realterrain.load_settings()
 end
 --retrieve individual form field --@todo haven't been using this much, been accesing the settings table directly
 function realterrain.get_setting(setting)
-	if realterrain.settings ~= {} then
+	if next(realterrain.settings) ~= nil then
 		if realterrain.settings[setting] then
 			if realterrain.settings[setting] ~= "" then
 				return realterrain.settings[setting]
@@ -741,14 +742,14 @@ function realterrain.init()
 					realterrain[rastername].length = tonumber(tostring(py.eval(rastername.."_l")))
 					realterrain[rastername].mode = tostring(py.eval(rastername..".mode"))
 					print(rastername.." mode: "..realterrain[rastername].mode)
-					--if we are doing a color overlay and the raster is a grayscale then convert to color
+					--if we are doing a color overlay and the raster is a grayscale then CONVERT to color
 					--@todo this should only happen to the input raster
 					if mode.get_input_color and realterrain[rastername].mode ~= "RGB" then
-						py.execute(rastername.." = "..rastername..".convert('RGB')")
+						py.execute(rastername.." = "..rastername..".CONVERT('RGB')")
 						realterrain[rastername].mode = "RGB"
-					--if a color raster was supplied when a grayscale is needed, convert to grayscale (L mode)
+					--if a color raster was supplied when a grayscale is needed, CONVERT to grayscale (L mode)
 					elseif not mode.get_input_color and realterrain[rastername].mode == "RGB" then
-						py.execute(rastername.." = "..rastername..".convert('L')")
+						py.execute(rastername.." = "..rastername..".CONVERT('L')")
 						realterrain[rastername].mode = "L"
 					end
 					py.execute(rastername.."_pixels = "..rastername..".load()")
@@ -876,56 +877,9 @@ function realterrain.generate(minp, maxp)
 	get_input_color = mode.get_input_color
 	fill_below = mode.fill_below
 	moving_window = mode.moving_window
-	
-	local heightmap = {}
-	local entries = 0
-	local input_present = false
-	if PROCESSOR == "gm" or PROCESSOR == "convert" then 
-		heightmap = realterrain.build_heightmap(xstart,xend,zstart,zend, get_cover, get_input) --@todo this isn't working yet, experimental
-	else
-		for z=zstart,zend do
-			if not heightmap[z] then heightmap[z] = {} end
-			for x=xstart,xend do
-				if not computed then
-					local elev, cover, input, input2, input3
-					elev, cover, input, input2, input3 = realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input2, get_input_color)
-					--don't include any values if the elevation is not there (off-the elev)
-					if elev then 
-						entries = entries + 1
-						--modes that need cover
-						if get_cover and get_input then
-							heightmap[z][x] = {elev=elev, cover=cover, input=input}
-						elseif get_cover then
-							heightmap[z][x] = {elev=elev, cover=cover }
-						--modes that need only elevation
-						elseif get_input then
-							if get_input_color then
-								heightmap[z][x] = {elev=elev, cover=cover, input=input, input2=input2, input3=input3}
-							elseif get_input and get_input2 and get_input3 then
-							heightmap[z][x] = {elev=elev, cover=cover, input=input, input2=input2, input3=input3}
-							else
-								heightmap[z][x] = {elev=elev, input=input}
-								if modename == "distance" and input > 0 then
-									input_present = true --makes distance more efficient, skips distant chunks
-								end
-							end
-						else
-							heightmap[z][x] = {elev=elev}
-						end
-					end
-				else --if computed implied
-					local value
-					if modename == "mandelbrot" then
-						value = realterrain.get_brot_pixel(x,z)
-					elseif modename == "polynomial" then
-						value = realterrain.polynomial(x,z)
-					end
-					heightmap[z][x] = {elev=value}
-				end
-			end
-		end
-	end
-	--print("heightmap entries for this chunk: "..entries)
+
+	local heightmap = realterrain.build_heightmap(xstart,xend,zstart,zend)
+	if next(heightmap) == nil then print("EMPTY HEIGHTMAP!!!") end
 	--calculate the min and max elevations for skipping certain blocks completely
 	local minelev, maxelev
 	for z=z0, z1 do
@@ -933,21 +887,7 @@ function realterrain.generate(minp, maxp)
 			local elev
 			if heightmap[z] and heightmap[z][x] then
 				elev = heightmap[z][x].elev
-				if not minelev then
-					minelev = elev
-					maxelev = elev
-				else
-					if elev < minelev then
-						minelev = elev
-					end
-					if elev > maxelev then
-						maxelev = elev
-					end
-				end
-				--when comparing two elevs we need both of their min/max elevs
-				if modename == "elevchange" then
-					local elev
-					elev = heightmap[z][x].input
+				if elev then
 					if not minelev then
 						minelev = elev
 						maxelev = elev
@@ -957,6 +897,24 @@ function realterrain.generate(minp, maxp)
 						end
 						if elev > maxelev then
 							maxelev = elev
+						end
+					end
+					--when comparing two elevs we need both of their min/max elevs
+					if modename == "elevchange" then
+						local elev
+						elev = heightmap[z][x].input
+						if elev then
+							if not minelev then
+								minelev = elev
+								maxelev = elev
+							else
+								if elev < minelev then
+									minelev = elev
+								end
+								if elev > maxelev then
+									maxelev = elev
+								end
+							end
 						end
 					end
 				end
@@ -995,7 +953,7 @@ function realterrain.generate(minp, maxp)
 	--generate!
 	for z = z0, z1 do
 	for x = x0, x1 do
-		if heightmap[z] and heightmap[z][x] then
+		if heightmap[z] and heightmap[z][x] and heightmap[z][x]["elev"] then
 			if not computed then
 				--modes that use biomes:
 				if get_cover then
@@ -1203,7 +1161,7 @@ function realterrain.generate(minp, maxp)
 								elseif modename == "distance" then
 									local limit = realterrain.settings.dist_lim
 									--if there is no input present in the full search extent skip
-									if input_present then 
+									if next(input) ~= nil then 
 										local distance = realterrain.get_distance(x,y,z, heightmap)
 										if distance < (limit/10) then color = "symbol1"
 										elseif distance < (limit/10)*2 then color = "symbol2"
@@ -1311,6 +1269,7 @@ function realterrain.generate(minp, maxp)
 end
 --the raw get pixel method that uses the selected method and accounts for bit depth
 function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
+	--print("x: "..x.." z: "..z..", rastername: "..rastername)
 	local colstart, rowstart = 0,0
 	if PROCESSOR == "native" then
 		x=x+1
@@ -1318,7 +1277,7 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 		colstart = 1
 		rowstart = 1
 	end
-	
+	z = -z
 	local r,g,b
 	local width, length
 	width = realterrain[rastername].width
@@ -1391,6 +1350,7 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 			if realterrain[rastername].image then
 				if PROCESSOR == "magick" then
 					r,g,b = realterrain[rastername].image:get_pixel(x, z) --@todo change when magick autodetects bit depth
+					--print(rastername.." raw r: "..r..", g: "..g..", b: "..b..", a: "..a)
 					r = math.floor(r * (2^realterrain[rastername].bits))
 					g = math.floor(g * (2^realterrain[rastername].bits))
 					b = math.floor(b * (2^realterrain[rastername].bits))
@@ -1405,7 +1365,7 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 		return r,g,b
 	end
 end
-
+--[[ --NO LONGER USED, NOW USING BUILD HEIGHTMAP
 --the main get pixel method that applies the scale and offsets
 function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3, get_input_color)
 	local e, c, i, i2, i3
@@ -1463,7 +1423,7 @@ function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3
 	i2 = i2 or 0
 	i3 = i3 or 0
 	return e, c, i, i2, i3
-end
+end--]]
 function realterrain.get_brot_pixel(x,z)
 	--taken from https://plus.maths.org/content/computing-mandelbrot-set
 	--Where do we want to center the brot?
@@ -1512,8 +1472,9 @@ function realterrain.polynomial(x,z)
 end
 --this function parses a line of IM or GM pixel enumeration without any scaling or adjustment
 function realterrain.parse_enumeration(line)
+	local value
 	if line then
-		--print("enumeration line: "..line)
+		print("enumeration line: "..line)
 		--parse the output pixels
 		local firstcomma = string.find(line, ",")
 		--print("first comma: "..firstcomma)
@@ -1523,39 +1484,51 @@ function realterrain.parse_enumeration(line)
 		--print("first colon: "..firstcolon)
 		local down = tonumber(string.sub(line, firstcomma + 1 , firstcolon - 1))
 		--print("down: "..down)
-		local secondcomma = string.find(line, ",", firstcolon)
-		local value = tonumber(string.sub(line, firstcolon + 3, secondcomma -1))
+		local secondcomma
+		local firstpercent = string.find(line, "%%")
+		-- if a percent is found then we know we are using IM and it is a 16bit value
+		if firstpercent then
+			value = tonumber(string.sub(line, firstcolon + 3, firstpercent -1))
+			--print("value: "..value)
+			value = value / 100 * (2^16)
+		else
+			secondcomma = string.find(line, ",", firstcolon)
+			value = tonumber(string.sub(line, firstcolon + 3, secondcomma -1))
+		end
+		
 		return value, right, down
 	else
+		--print("no line")
 		return false
 		
 	end
 end
-function realterrain.get_enumeration(rastername, xstart, width, zstart, length)
-	print(rastername)
+function realterrain.get_enumeration(rastername, firstcol, width, firstrow, length)
+	--print(rastername)
 	local table_enum = {}
 	--avoid null pixels if the crop is completely off the raster:
-	if((xstart+width < 0)
-		or (xstart > realterrain[rastername].width)
-		or (zstart+length < 0)
-		or (zstart > realterrain[rastername].length)) then
+	if((firstcol+width < 0)
+		or (firstcol > realterrain[rastername].width)
+		or (firstrow+length < 0)
+		or (firstrow > realterrain[rastername].length)) then
 		return table_enum
 	else
+		firstrow = -firstrow
 		local enumeration
 		if PROCESSOR == "gm" then
-			enumeration = realterrain[rastername].image:clone():crop(width,length,xstart,zstart):format("txt"):toString()
+			enumeration = realterrain[rastername].image:clone():crop(width,length,firstcol,firstrow):format("txt"):toString()
 			table_enum = string.split(enumeration, "\n")
 		elseif PROCESSOR == "magick" then
 			local tmpimg
 			tmpimg = realterrain[rastername].image:clone()
-			tmpimg:crop(width,length,xstart,zstart)
+			tmpimg:crop(width,length,firstcol,firstrow)
 			tmpimg:set_format("txt")
 			enumeration = tmpimg:get_blob()
 			tmpimg:destroy()
 			table_enum = string.split(enumeration, "\n")
 		elseif PROCESSOR == "convert" then
-			local cmd = convert..' "'..RASTERS..realterrain.settings.fileelev..'"'..
-				' -crop '..width..'x'..length..'+'..xstart..'+'..zstart..' txt:-'
+			local cmd = CONVERT..' "'..RASTERS..realterrain.settings.fileelev..'"'..
+				' -quiet -crop '..width..'x'..length..'+'..firstcol..'+'..firstrow..' txt:-'
 			enumeration = io.popen(cmd)
 			--print(cmd)
 			for line in enumeration:lines() do
@@ -1567,17 +1540,23 @@ function realterrain.get_enumeration(rastername, xstart, width, zstart, length)
 end
 
 --experimental function to enumerate 80x80 crop of raster at once using IM or GM
-function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_input, get_input2, get_input3, get_input_color)
+function realterrain.build_heightmap(xstart, xend, zstart, zend)
 	local mode = realterrain.get_mode()
-	print("request range: x:"..xstart..","..xend.."; z:"..zstart..","..zend)	
-	local pixels = {}
+	
+	local heightmap = {}
 	local width = xend-xstart+1
 	local length = zend-zstart+1
 	--print("width: "..width ..", length: "..length)
-	print("request entries: "..width*length)
-	zstart = - zstart
-	zend = - zend
 	
+	--adjust for offsets and scales
+	xstart = 0 + xstart - realterrain.settings.xoffset -1
+	xend = 0 + xend - realterrain.settings.xoffset -1
+	zstart = 0 + zstart - realterrain.settings.zoffset -1
+	zend = 0 + zend - realterrain.settings.zoffset -1
+    xstart = math.floor(xstart / realterrain.settings.xscale)
+    xend = math.floor(xend / realterrain.settings.xscale)	
+	zstart = math.floor(zstart / realterrain.settings.zscale)
+    zend = math.floor(zend / realterrain.settings.zscale)
 			
 	local rasternames = {}
 	if realterrain.settings.fileelev ~= "" then 
@@ -1595,12 +1574,14 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 	if mode.get_input3  and realterrain.settings.fileinput3 ~= "" then
 		table.insert(rasternames, "input3")
 	end
-		
+	
+	
+	
 	for k,rastername in next, rasternames do
-		
 		if PROCESSOR == "gm" or PROCESSOR == "magick" or PROCESSOR == "convert" then
-			
-			local enumeration = realterrain.get_enumeration(rastername, xstart, width, zstart, length)
+			print(rastername.." request range: x:"..xstart..","..xend.."; z:"..zstart..","..zend)
+			print(rastername.." request entries: "..width*length)
+			local enumeration = realterrain.get_enumeration(rastername, xstart, width, zend, length)
 			--print(dump(enumeration))
 			
 			local entries = 0
@@ -1608,7 +1589,7 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 			local mincol, maxcol, minrow, maxrow
 			local firstline = true
 			for k,line in next, enumeration do                         
-				if firstline and (PROCESSOR == "magick" or (PROCESSOR == "convert" and string.sub(convert, 1, 2) ~= "gm" )) then
+				if firstline and (PROCESSOR == "magick" or (PROCESSOR == "convert" and string.sub(CONVERT, 1, 2) ~= "gm" )) then
 					firstline = false --first line is a header in IM but not GM
 				else
 					entries = entries + 1
@@ -1620,7 +1601,7 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 					--print("elev: "..e)
 					value = math.floor((value / realterrain.settings.yscale) + realterrain.settings.yoffset)
 					
-					--convert the cropped pixel row/column back to absolute map x,z
+					--CONVERT the cropped pixel row/column back to absolute map x,z
 					--@todo this will have to include consideration of whether the crop was in negative space
 					--or does not fill the output footprint completely (this latter may not matter)
 					local empty_cols = 0
@@ -1628,12 +1609,12 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 					if xstart < 0 then
 						empty_cols = 0 - xstart
 					end
-					if zstart < 0 then
-						empty_rows = 0 - zstart
+					if zend > 0 then
+						empty_rows = 0 + zend
 					end
 					
-					local x = xstart + right + empty_cols -1
-					local z = -zstart + down + empty_rows
+					local x = xstart + right + empty_cols
+					local z = -zend - down - empty_rows -1
 					
 					if not mincol then
 						mincol = x
@@ -1647,18 +1628,43 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend, get_cover, get_
 						if z > maxrow then maxrow = z end
 					end--]]
 					--print ("x: "..x..", z: "..z..", elev: "..value)
-					if not pixels[z] then pixels[z] = {} end
-					if not pixels[z][x] then pixels[z][x] = {} end
-					pixels[z][x][rastername] = value
+					if not heightmap[z] then heightmap[z] = {} end
+					if not heightmap[z][x] then heightmap[z][x] = {} end
+					heightmap[z][x][rastername] = value
 				end
 			end
 			if entries > 0 then
-				print("result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
+				print(rastername.." result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
 			end
-			print("result entries: "..entries)
-		end
-	return pixels
-	end	--end for rasternames	
+			print(rastername.." result entries: "..entries)
+		elseif mode.computed then
+			for z=zstart,zend do
+				if not heightmap[z] then heightmap[z] = {} end
+				for x=xstart,xend do
+					if not heightmap[z][x] then heightmap[z][x] = {} end
+					if modename == "mandelbrot" then
+						heightmap[z][x][rastername] = realterrain.get_brot_pixel(x,z)
+					elseif modename == "polynomial" then
+						heightmap[z][x][rastername] = realterrain.polynomial(x,z)
+					end
+				end
+			end
+		else --all other processors and modes
+			for z=zstart,zend do
+				if not heightmap[z] then heightmap[z] = {} end
+				for x=xstart,xend do
+					if not heightmap[z][x] then heightmap[z][x] = {} end
+					if rastername == "input" and mode.get_input_color then
+						heightmap[z][x]["input"], heightmap[z][x]["input2"], heightmap[z][x]["input3"]
+							= realterrain.get_raw_pixel(x,z, "input")
+					else
+						heightmap[z][x][rastername] = realterrain.get_raw_pixel(x,z, rastername)
+					end
+				end
+			end
+		end --end processor decisions
+	end	--end for rasternames
+	return heightmap
 end
 
 --this funcion gets the hieght needed to fill below a node for surface-only modes
@@ -1796,20 +1802,8 @@ function realterrain.get_distance(x,y,z, heightmap)
 end
 --after the mapgen has run, this gets the surface level
 function realterrain.get_surface(x,z)
-	local surface
-	--these processors do not have pixel access so need to use build_heightmap on a single pixel
-	if PROCESSOR == "gm" or PROCESSOR == "convert" then
-		local enumeration_table = realterrain.get_enumeration("elev", x, 1, z, 1)
-		local line = enumeration_table[2] or enumeration_table[1]
-		local value = realterrain.parse_enumeration(line)
-		surface = value
-	elseif realterrain.settings.output == "polynomial" then
-		surface = realterrain.polynomial(x,z)
-	else
-		surface = realterrain.get_pixel(x,z)
-	end
-	--print("surface: "..surface)
-	return surface or 0 --if the x,z is off-raster get_pixel will have returned false
+	local heightmap = realterrain.build_heightmap(x,x,z,z)
+	return heightmap["elev"]
 end
 minetest.register_on_joinplayer(function(player)
 	--give player privs and teleport to surface
@@ -1824,7 +1818,9 @@ minetest.register_on_joinplayer(function(player)
 	minetest.set_player_privs(pname, privs)
 	local ppos = player:getpos()
 	local surface = realterrain.get_surface(ppos.x, ppos.z)
-	player:setpos({x=ppos.x, y=surface+0.5, z=ppos.z})
+	if surface and surface ~= 0 then
+		player:setpos({x=ppos.x, y=surface+0.5, z=ppos.z})
+	end
 	return true
 end)
 -- the controller for changing map settings
@@ -1865,9 +1861,13 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			if fields.gotosurface then
 				local ppos = player:getpos()
 				local surface = realterrain.get_surface(ppos.x, ppos.z)
-				player:setpos({x=ppos.x, y=surface+0.5, z=ppos.z})
-				--should refresh this form so that the position info updates
-				realterrain.show_rc_form(pname)
+				if surface then
+					player:setpos({x=ppos.x, y=surface+0.5, z=ppos.z})
+					--should refresh this form so that the position info updates
+					realterrain.show_rc_form(pname)
+				else
+					minetest.chat_send_player(pname, "surface is undetectable")
+				end
 				return true
 			elseif fields.resetday then
 				minetest.set_timeofday(0.25)
@@ -2063,10 +2063,19 @@ function realterrain.show_rc_form(pname)
 	elseif degree <= 135 then dir = "West"
 	elseif degree <= 225 then dir = "South"
 	else   dir = "South" end
-	
+	local howfar = "unknown"
 	local surface = realterrain.get_surface(ppos.x, ppos.z)
-	local above_below = "below"
-	if ppos.y < surface then above_below = "above" end
+	local above_below = "unknown"
+	if surface then
+		howfar = math.floor(math.abs(ppos.y-surface))
+		if ppos.y < surface then
+			above_below = "above"
+		else
+			above_below = "below"
+		end
+	else
+		surface = "unknown"
+	end
 	local mode = realterrain.get_mode()
 	local modename = mode.name
 	
@@ -2096,7 +2105,7 @@ function realterrain.show_rc_form(pname)
 								"button[3,0;3,1;resetday;Reset Morning Sun]"..
 								"label[6,0;You are at x= "..math.floor(ppos.x)..
 								" y= "..math.floor(ppos.y).." z= "..math.floor(ppos.z).." and mostly facing "..dir.."]"..
-								"label[6,0.5;The surface is "..(math.floor(math.abs(ppos.y-surface))).." blocks "..
+								"label[6,0.5;The surface is "..howfar.." blocks "..
 									above_below.." you at "..surface.."]"
 	--Scale settings
 	local f_settings =			"label["..col[1]..",1.1;Raster Mode]"..
@@ -2179,7 +2188,7 @@ function realterrain.show_rc_form(pname)
 		"dropdown["..col[2]..",7;4,1;fileinput3;"..f_images..";"..
 			realterrain.get_idx(images, realterrain.get_setting("fileinput3")) .."]"
 	end
-	if not mode.computed and PROCESSOR ~= "py" and PROCESSOR ~="gm" then --these modes know the bits
+	if not mode.computed and PROCESSOR ~= "py" and PROCESSOR ~="gm" and PROCESSOR ~= "convert" then --these modes know the bits
 		f_settings = f_settings ..
 		"label["..col[3]+0.2 ..",2;Bits]"..
 		"dropdown["..col[3]..",3;1,1;elevbits;8,16;"..
