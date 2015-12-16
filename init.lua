@@ -1,4 +1,4 @@
-PROCESSOR = "convert" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "imlib2" -- options are: "native", "py", "gm", "magick", "imlib2"
 print("PROCESSOR is "..PROCESSOR)
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
@@ -8,7 +8,7 @@ MODPATH = minetest.get_modpath("realterrain")
 WORLDPATH = minetest.get_worldpath()
 RASTERS = MODPATH .. "/rasters/"
 SCHEMS = MODPATH .. "/schems/"
-FORCE_HM = true
+
 local ie = minetest.request_insecure_environment()
 
 --ie.require "luarocks.loader" --if you use luarocks to install some of the packages below you may need this
@@ -18,7 +18,7 @@ local imagesize = ie.require "imagesize"
 
 --[[package.path = (MODPATH.."/lib/luasocket/?.lua;"..MODPATH.."/lib/luasocket/?/init.lua;"..package.path)
 local socket = ie.require "socket"--]]
-local native, py, gm, magick, imlib2, CONVERT
+local native, py, gm, magick, imlib2
 if PROCESSOR == "py" then
 	package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*") --may not need to explicitly state this
 	package.path = (MODPATH.."/lib/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
@@ -1528,7 +1528,7 @@ function realterrain.get_enumeration(rastername, firstcol, width, firstrow, leng
 			table_enum = string.split(enumeration, "\n")
 		elseif PROCESSOR == "convert" then
 			local cmd = CONVERT..' "'..RASTERS..realterrain.settings.fileelev..'"'..
-				' -quiet -crop '..width..'x'..length..'+'..firstcol..'+'..firstrow..' txt:-'
+				' -crop '..width..'x'..length..'+'..firstcol..'+'..firstrow..' txt:-'
 			enumeration = io.popen(cmd)
 			--print(cmd)
 			for line in enumeration:lines() do
@@ -1546,18 +1546,13 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend)
 	local heightmap = {}
 	local width = xend-xstart+1
 	local length = zend-zstart+1
-	--print("width: "..width ..", length: "..length)
+	local xscale = realterrain.settings.xscale
+	local zscale = realterrain.settings.zscale
+	local xoffset = realterrain.settings.xoffset
+	local zoffset = realterrain.settings.zoffset
+	local yscale = realterrain.settings.yscale
+	local yoffset = realterrain.settings.yoffset
 	
-	--adjust for offsets and scales
-	xstart = 0 + xstart - realterrain.settings.xoffset -1
-	xend = 0 + xend - realterrain.settings.xoffset -1
-	zstart = 0 + zstart - realterrain.settings.zoffset -1
-	zend = 0 + zend - realterrain.settings.zoffset -1
-    xstart = math.floor(xstart / realterrain.settings.xscale)
-    xend = math.floor(xend / realterrain.settings.xscale)	
-	zstart = math.floor(zstart / realterrain.settings.zscale)
-    zend = math.floor(zend / realterrain.settings.zscale)
-			
 	local rasternames = {}
 	if realterrain.settings.fileelev ~= "" then 
 		table.insert(rasternames, "elev")
@@ -1656,9 +1651,16 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend)
 					if not heightmap[z][x] then heightmap[z][x] = {} end
 					if rastername == "input" and mode.get_input_color then
 						heightmap[z][x]["input"], heightmap[z][x]["input2"], heightmap[z][x]["input3"]
-							= realterrain.get_raw_pixel(x,z, "input")
+							= realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), "input")
 					else
-						heightmap[z][x][rastername] = realterrain.get_raw_pixel(x,z, rastername)
+						if rastername == "elev" then
+							local value = realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), "elev")
+							if value then
+								heightmap[z][x]["elev"] = math.floor(value*yscale+yoffset+0.5)
+							end
+						else
+							heightmap[z][x][rastername] = realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), rastername)
+						end
 					end
 				end
 			end
