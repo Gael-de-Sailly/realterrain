@@ -838,9 +838,9 @@ function realterrain.generate(minp, maxp)
 	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
 	local data = vm:get_data()
 	
-	
 	local mode = realterrain.get_mode()
 	local modename = mode.name
+	
 	--check to see if the current chunk is above (or below) the elevation range for this footprint
 	if realterrain.surface_cache[cz0] and realterrain.surface_cache[cz0][cx0] then
 		if realterrain.surface_cache[cz0][cx0].offelev then
@@ -864,22 +864,17 @@ function realterrain.generate(minp, maxp)
 		end
 	end
 	
+	local buffer = mode.buffer or 0
+	local computed = mode.computed
+	local get_cover = mode.get_cover
+	local get_input = mode.get_input
+	local get_input2 = mode.get_input2
+	local get_input3 = mode.get_input3
+	local get_input_color = mode.get_input_color
+	local fill_below = mode.fill_below
+	local moving_window = mode.moving_window
 	--build the heightmap and include different extents and values depending on mode
-	local zstart, zend, xstart, xend, get_cover, get_input, get_input2, get_input3, get_input_color, buffer, fill_below, moving_window, computed
-	buffer = mode.buffer or 0
-	zstart, zend, xstart, xend = z0-buffer, z1+buffer, x0-buffer, x1+buffer
-	
-	computed = mode.computed
-	get_cover = mode.get_cover
-	get_input = mode.get_input
-	get_input2 = mode.get_input2
-	get_input3 = mode.get_input3
-	get_input_color = mode.get_input_color
-	fill_below = mode.fill_below
-	moving_window = mode.moving_window
-
-	local heightmap = realterrain.build_heightmap(xstart,xend,zstart,zend)
-	if next(heightmap) == nil then print("EMPTY HEIGHTMAP!!!") end
+	local heightmap = realterrain.build_heightmap(x0-buffer, x1+buffer, z0-buffer, z1+buffer)
 	--calculate the min and max elevations for skipping certain blocks completely
 	local minelev, maxelev
 	for z=z0, z1 do
@@ -1506,37 +1501,28 @@ end
 function realterrain.get_enumeration(rastername, firstcol, width, firstrow, length)
 	--print(rastername)
 	local table_enum = {}
-	--avoid null pixels if the crop is completely off the raster:
-	if((firstcol+width < 0)
-		or (firstcol > realterrain[rastername].width)
-		or (firstrow+length < 0)
-		or (firstrow > realterrain[rastername].length)) then
-		return table_enum
-	else
-		firstrow = -firstrow
-		local enumeration
-		if PROCESSOR == "gm" then
-			enumeration = realterrain[rastername].image:clone():crop(width,length,firstcol,firstrow):format("txt"):toString()
-			table_enum = string.split(enumeration, "\n")
-		elseif PROCESSOR == "magick" then
-			local tmpimg
-			tmpimg = realterrain[rastername].image:clone()
-			tmpimg:crop(width,length,firstcol,firstrow)
-			tmpimg:set_format("txt")
-			enumeration = tmpimg:get_blob()
-			tmpimg:destroy()
-			table_enum = string.split(enumeration, "\n")
-		elseif PROCESSOR == "convert" then
-			local cmd = CONVERT..' "'..RASTERS..realterrain.settings.fileelev..'"'..
-				' -crop '..width..'x'..length..'+'..firstcol..'+'..firstrow..' txt:-'
-			enumeration = io.popen(cmd)
-			--print(cmd)
-			for line in enumeration:lines() do
-				table.insert(table_enum, line)
-			end
+	local enumeration
+	if PROCESSOR == "gm" then
+		enumeration = realterrain[rastername].image:clone():crop(width,length,firstcol,firstrow):format("txt"):toString()
+		table_enum = string.split(enumeration, "\n")
+	elseif PROCESSOR == "magick" then
+		local tmpimg
+		tmpimg = realterrain[rastername].image:clone()
+		tmpimg:crop(width,length,firstcol,firstrow)
+		tmpimg:set_format("txt")
+		enumeration = tmpimg:get_blob()
+		tmpimg:destroy()
+		table_enum = string.split(enumeration, "\n")
+	elseif PROCESSOR == "convert" then
+		local cmd = CONVERT..' "'..RASTERS..realterrain.settings["file"..rastername]..'"'..
+			' -crop '..width..'x'..length..'+'..firstcol..'+'..firstrow..' txt:-'
+		enumeration = io.popen(cmd)
+		--print(cmd)
+		for line in enumeration:lines() do
+			table.insert(table_enum, line)
 		end
-		return table_enum
 	end
+	return table_enum
 end
 
 --experimental function to enumerate 80x80 crop of raster at once using IM or GM
@@ -1570,30 +1556,38 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 	
 	for k,rastername in next, rasternames do
 		if PROCESSOR == "gm" or PROCESSOR == "magick" or PROCESSOR == "convert" then
-				
+			--see if we are even on the raster
+			if((x1 < 0)
+			or (x0 > realterrain[rastername].width)
+			or (z1 > 0)
+			or (z0 > realterrain[rastername].length)) then
+				return heightmap
+			end
+			--convert map pixels to raster pixels
 			local cropstartx = x0
-			local cropstartz = x1
-			local cropendx = z0
-			local cropendz = z1
+			local cropendx = x1
+			local cropstartz = -z1
+			local cropendz = -z0
 			local empty_cols = 0
 			local empty_rows = 0
+			--don't request pixels to the left or above the raster, count how many we were off if we were going to
 			if x0 < 0 then
 				empty_cols = - x0
 				cropstartx = 0
 			end
-			if z0 > 0 then
-				empty_rows = z0
+			if z1 > 0 then
+				empty_rows = z1
 				cropstartz = 0
 			end
+			--don't request pixels beyond maxrows or maxcols in the raster
 			if x1 > realterrain[rastername].width then cropendx = realterrain[rastername].width end
-			if -z1 > realterrain[rastername].length then cropendz = -realterrain[rastername].length end
+			if -z0 > realterrain[rastername].length then cropendz = realterrain[rastername].length end
 			local cropwidth = cropendx-cropstartx+1
-			local croplength = cropendz-cropstartz+1
+			local croplength = cropendz-cropstartz+1	
 			
 			print(rastername..": offcrop cols: "..empty_cols..", rows: "..empty_rows)
-			
 			print(rastername.." request range: x:"..x0..","..x1.."; z:"..z0..","..z1)
-			print(rastername.." request entries: "..(x1-x0)*(z1-z0))
+			print(rastername.." request entries: "..(x1-x0+1)*(z1-z0+1))
 			local enumeration = realterrain.get_enumeration(rastername, cropstartx, cropwidth, cropstartz, croplength)
 			--print(dump(enumeration))
 			
@@ -1619,7 +1613,7 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 					--or does not fill the output footprint completely (this latter may not matter)
 					
 					local x = x0 + right + empty_cols -1
-					local z = z0 - down - empty_rows
+					local z = z1 - down + empty_rows 
 					if not mincol then
 						mincol = x
 						maxcol = x
