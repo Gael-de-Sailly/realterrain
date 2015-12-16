@@ -1,4 +1,4 @@
-PROCESSOR = "imlib2" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "convert" -- options are: "native", "py", "gm", "magick", "imlib2"
 print("PROCESSOR is "..PROCESSOR)
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
@@ -1474,7 +1474,7 @@ end
 function realterrain.parse_enumeration(line)
 	local value
 	if line then
-		print("enumeration line: "..line)
+		--print("enumeration line: "..line)
 		--parse the output pixels
 		local firstcomma = string.find(line, ",")
 		--print("first comma: "..firstcomma)
@@ -1540,12 +1540,10 @@ function realterrain.get_enumeration(rastername, firstcol, width, firstrow, leng
 end
 
 --experimental function to enumerate 80x80 crop of raster at once using IM or GM
-function realterrain.build_heightmap(xstart, xend, zstart, zend)
+function realterrain.build_heightmap(x0, x1, z0, z1)
 	local mode = realterrain.get_mode()
 	
 	local heightmap = {}
-	local width = xend-xstart+1
-	local length = zend-zstart+1
 	local xscale = realterrain.settings.xscale
 	local zscale = realterrain.settings.zscale
 	local xoffset = realterrain.settings.xoffset
@@ -1570,13 +1568,33 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend)
 		table.insert(rasternames, "input3")
 	end
 	
-	
-	
 	for k,rastername in next, rasternames do
 		if PROCESSOR == "gm" or PROCESSOR == "magick" or PROCESSOR == "convert" then
-			print(rastername.." request range: x:"..xstart..","..xend.."; z:"..zstart..","..zend)
-			print(rastername.." request entries: "..width*length)
-			local enumeration = realterrain.get_enumeration(rastername, xstart, width, zend, length)
+				
+			local cropstartx = x0
+			local cropstartz = x1
+			local cropendx = z0
+			local cropendz = z1
+			local empty_cols = 0
+			local empty_rows = 0
+			if x0 < 0 then
+				empty_cols = - x0
+				cropstartx = 0
+			end
+			if z0 > 0 then
+				empty_rows = z0
+				cropstartz = 0
+			end
+			if x1 > realterrain[rastername].width then cropendx = realterrain[rastername].width end
+			if -z1 > realterrain[rastername].length then cropendz = -realterrain[rastername].length end
+			local cropwidth = cropendx-cropstartx+1
+			local croplength = cropendz-cropstartz+1
+			
+			print(rastername..": offcrop cols: "..empty_cols..", rows: "..empty_rows)
+			
+			print(rastername.." request range: x:"..x0..","..x1.."; z:"..z0..","..z1)
+			print(rastername.." request entries: "..(x1-x0)*(z1-z0))
+			local enumeration = realterrain.get_enumeration(rastername, cropstartx, cropwidth, cropstartz, croplength)
 			--print(dump(enumeration))
 			
 			local entries = 0
@@ -1599,18 +1617,9 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend)
 					--CONVERT the cropped pixel row/column back to absolute map x,z
 					--@todo this will have to include consideration of whether the crop was in negative space
 					--or does not fill the output footprint completely (this latter may not matter)
-					local empty_cols = 0
-					local empty_rows = 0
-					if xstart < 0 then
-						empty_cols = 0 - xstart
-					end
-					if zend > 0 then
-						empty_rows = 0 + zend
-					end
 					
-					local x = xstart + right + empty_cols
-					local z = -zend - down - empty_rows -1
-					
+					local x = x0 + right + empty_cols -1
+					local z = z0 - down - empty_rows
 					if not mincol then
 						mincol = x
 						maxcol = x
@@ -1633,9 +1642,9 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend)
 			end
 			print(rastername.." result entries: "..entries)
 		elseif mode.computed then
-			for z=zstart,zend do
+			for z=z0,z1 do
 				if not heightmap[z] then heightmap[z] = {} end
-				for x=xstart,xend do
+				for x=x0,x1 do
 					if not heightmap[z][x] then heightmap[z][x] = {} end
 					if modename == "mandelbrot" then
 						heightmap[z][x][rastername] = realterrain.get_brot_pixel(x,z)
@@ -1645,9 +1654,9 @@ function realterrain.build_heightmap(xstart, xend, zstart, zend)
 				end
 			end
 		else --all other processors and modes
-			for z=zstart,zend do
+			for z=z0,z1 do
 				if not heightmap[z] then heightmap[z] = {} end
-				for x=xstart,xend do
+				for x=x0,x1 do
 					if not heightmap[z][x] then heightmap[z][x] = {} end
 					if rastername == "input" and mode.get_input_color then
 						heightmap[z][x]["input"], heightmap[z][x]["input2"], heightmap[z][x]["input3"]
@@ -1819,7 +1828,7 @@ minetest.register_on_joinplayer(function(player)
 	privs.worldedit = true
 	minetest.set_player_privs(pname, privs)
 	local ppos = player:getpos()
-	local surface = realterrain.get_surface(ppos.x, ppos.z)
+	local surface = realterrain.get_surface(math.floor(ppos.x+0.5), math.floor(ppos.z+0.5))
 	if surface and surface ~= 0 then
 		player:setpos({x=ppos.x, y=surface+0.5, z=ppos.z})
 	end
