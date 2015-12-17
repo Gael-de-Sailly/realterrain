@@ -1,4 +1,4 @@
-PROCESSOR = "convert" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "native" -- options are: "native", "py", "gm", "magick", "imlib2"
 print("PROCESSOR is "..PROCESSOR)
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
@@ -38,7 +38,7 @@ elseif PROCESSOR == "gm" then
 	package.path = (MODPATH.."/lib/?.lua;"..MODPATH.."/lib/?/init.lua;"..package.path)
 	gm = ie.require "graphicsmagick"
 elseif PROCESSOR == "convert" then
-	CONVERT = "convert" -- could also be CONVERT.exe, "gm CONVERT" or "gm.exe CONVERT"
+	CONVERT = "gm convert" -- could also be CONVERT.exe, "gm CONVERT" or "gm.exe CONVERT"
 elseif PROCESSOR == "native" then
 	dofile(MODPATH.."/lib/iohelpers.lua")
 	dofile(MODPATH.."/lib/imageloader.lua")
@@ -945,6 +945,7 @@ function realterrain.generate(minp, maxp)
 	--print(dump(cids))
 	local c_dirt_with_grass = minetest.get_content_id("default:dirt_with_grass")
 	local c_dirt_with_dry_grass = minetest.get_content_id("default:dirt_with_dry_grass")
+	local c_dirt_with_snow = minetest.get_content_id("default:dirt_with_snow")
 	--generate!
 	for z = z0, z1 do
 	for x = x0, x1 do
@@ -1011,7 +1012,7 @@ function realterrain.generate(minp, maxp)
 								data[vi] = cids.ores[d18]
 							else
 								--dirt with grass and dry grass fix
-								if ground == c_dirt_with_grass or ground == c_dirt_with_dry_grass then
+								if ground == c_dirt_with_grass or ground == c_dirt_with_dry_grass or ground == c_dirt_with_snow then
 									data[vi] = cids["dirt"]
 								else
 									data[vi] = ground
@@ -1528,12 +1529,12 @@ end
 --experimental function to enumerate 80x80 crop of raster at once using IM or GM
 function realterrain.build_heightmap(x0, x1, z0, z1)
 	local mode = realterrain.get_mode()
-	
+
 	local heightmap = {}
 	local xscale = realterrain.settings.xscale
 	local zscale = realterrain.settings.zscale
-	local xoffset = realterrain.settings.xoffset
-	local zoffset = realterrain.settings.zoffset
+	local xoffset = realterrain.settings.xoffset 
+	local zoffset = realterrain.settings.zoffset 
 	local yscale = realterrain.settings.yscale
 	local yoffset = realterrain.settings.yoffset
 	
@@ -1559,8 +1560,9 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 			--see if we are even on the raster
 			if((x1 < 0)
 			or (x0 > realterrain[rastername].width)
-			or (z1 > 0)
-			or (z0 > realterrain[rastername].length)) then
+			or (z0 > 0)
+			or (-z1 > realterrain[rastername].length)) then
+				--print("off raster request: x0: "..x0.." x1: "..x1.." z0: "..z0.." z1: "..z1)
 				return heightmap
 			end
 			--convert map pixels to raster pixels
@@ -1585,9 +1587,9 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 			local cropwidth = cropendx-cropstartx+1
 			local croplength = cropendz-cropstartz+1	
 			
-			print(rastername..": offcrop cols: "..empty_cols..", rows: "..empty_rows)
-			print(rastername.." request range: x:"..x0..","..x1.."; z:"..z0..","..z1)
-			print(rastername.." request entries: "..(x1-x0+1)*(z1-z0+1))
+			--print(rastername..": offcrop cols: "..empty_cols..", rows: "..empty_rows)
+			--print(rastername.." request range: x:"..x0..","..x1.."; z:"..z0..","..z1)
+			--print(rastername.." request entries: "..(x1-x0+1)*(z1-z0+1))
 			local enumeration = realterrain.get_enumeration(rastername, cropstartx, cropwidth, cropstartz, croplength)
 			--print(dump(enumeration))
 			
@@ -1613,7 +1615,7 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 					--or does not fill the output footprint completely (this latter may not matter)
 					
 					local x = x0 + right + empty_cols -1
-					local z = z1 - down + empty_rows 
+					local z = z1 - down - empty_rows 
 					if not mincol then
 						mincol = x
 						maxcol = x
@@ -1632,9 +1634,9 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				end
 			end
 			if entries > 0 then
-				print(rastername.." result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
+				--print(rastername.." result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
 			end
-			print(rastername.." result entries: "..entries)
+			--print(rastername.." result entries: "..entries)
 		elseif mode.computed then
 			for z=z0,z1 do
 				if not heightmap[z] then heightmap[z] = {} end
@@ -1808,7 +1810,7 @@ end
 --after the mapgen has run, this gets the surface level
 function realterrain.get_surface(x,z)
 	local heightmap = realterrain.build_heightmap(x,x,z,z)
-	return heightmap["elev"]
+	return heightmap[z][x]["elev"]
 end
 minetest.register_on_joinplayer(function(player)
 	--give player privs and teleport to surface
@@ -2069,7 +2071,7 @@ function realterrain.show_rc_form(pname)
 	elseif degree <= 225 then dir = "South"
 	else   dir = "South" end
 	local howfar = "unknown"
-	local surface = realterrain.get_surface(ppos.x, ppos.z)
+	local surface = realterrain.get_surface(math.floor(ppos.x+0.5), math.floor(ppos.z+0.5))
 	local above_below = "unknown"
 	if surface then
 		howfar = math.floor(math.abs(ppos.y-surface))
