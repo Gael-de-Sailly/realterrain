@@ -1,4 +1,4 @@
-PROCESSOR = "native" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "gm" -- options are: "native", "py", "gm", "magick", "imlib2"
 print("PROCESSOR is "..PROCESSOR)
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
@@ -1607,8 +1607,9 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 					local value, right, down = realterrain.parse_enumeration(line)
 					
 					
-					--print("elev: "..e)
-					value = math.floor((value / realterrain.settings.yscale) + realterrain.settings.yoffset)
+					if rastername == "elev" then
+						value = math.floor((value / realterrain.settings.yscale) + realterrain.settings.yoffset)
+					end
 					
 					--CONVERT the cropped pixel row/column back to absolute map x,z
 					--@todo this will have to include consideration of whether the crop was in negative space
