@@ -1,4 +1,4 @@
-PROCESSOR = "gm" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "imlib2" -- options are: "native", "py", "gm", "magick", "imlib2"
 print("PROCESSOR is "..PROCESSOR)
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
@@ -745,11 +745,11 @@ function realterrain.init()
 					--if we are doing a color overlay and the raster is a grayscale then CONVERT to color
 					--@todo this should only happen to the input raster
 					if mode.get_input_color and realterrain[rastername].mode ~= "RGB" then
-						py.execute(rastername.." = "..rastername..".CONVERT('RGB')")
+						py.execute(rastername.." = "..rastername..".convert('RGB')")
 						realterrain[rastername].mode = "RGB"
 					--if a color raster was supplied when a grayscale is needed, CONVERT to grayscale (L mode)
 					elseif not mode.get_input_color and realterrain[rastername].mode == "RGB" then
-						py.execute(rastername.." = "..rastername..".CONVERT('L')")
+						py.execute(rastername.." = "..rastername..".convert('L')")
 						realterrain[rastername].mode = "L"
 					end
 					py.execute(rastername.."_pixels = "..rastername..".load()")
@@ -1095,6 +1095,7 @@ function realterrain.generate(minp, maxp)
 										neighbors[dir] = nelev
 									else --edge case, need to abandon this pixel for slope
 										edge_case = true
+										--print("edgecase")
 									end
 								end
 							end
@@ -1269,10 +1270,11 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 	local colstart, rowstart = 0,0
 	if PROCESSOR == "native" then
 		x=x+1
-		z=z+1
+		z=z-1
 		colstart = 1
-		rowstart = 1
+		rowstart = -1
 	end
+
 	z = -z
 	local r,g,b
 	local width, length
@@ -1529,7 +1531,7 @@ end
 --experimental function to enumerate 80x80 crop of raster at once using IM or GM
 function realterrain.build_heightmap(x0, x1, z0, z1)
 	local mode = realterrain.get_mode()
-
+	
 	local heightmap = {}
 	local xscale = realterrain.settings.xscale
 	local zscale = realterrain.settings.zscale
@@ -1556,12 +1558,12 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 	end
 	
 	for k,rastername in next, rasternames do
-		if PROCESSOR == "gm" or PROCESSOR == "magick" or PROCESSOR == "convert" then
+		if PROCESSOR == "gm" or --[[PROCESSOR == "magick" or--]]  PROCESSOR == "convert" then
 			--see if we are even on the raster
 			if((x1 < 0)
-			or (x0 > realterrain[rastername].width)
+			or (x0 > realterrain[rastername].width) --@todo this doesn't account for scaling, offsets
 			or (z0 > 0)
-			or (-z1 > realterrain[rastername].length)) then
+			or (-z1 > realterrain[rastername].length)) then --@todo this doesn't account for scaling, offsets
 				--print("off raster request: x0: "..x0.." x1: "..x1.." z0: "..z0.." z1: "..z1)
 				return heightmap
 			end
@@ -1581,15 +1583,15 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				empty_rows = z1
 				cropstartz = 0
 			end
-			--don't request pixels beyond maxrows or maxcols in the raster
+			--don't request pixels beyond maxrows or maxcols in the raster  --@todo this doesn't account for scaling, offsets
 			if x1 > realterrain[rastername].width then cropendx = realterrain[rastername].width end
 			if -z0 > realterrain[rastername].length then cropendz = realterrain[rastername].length end
 			local cropwidth = cropendx-cropstartx+1
 			local croplength = cropendz-cropstartz+1	
 			
 			--print(rastername..": offcrop cols: "..empty_cols..", rows: "..empty_rows)
-			--print(rastername.." request range: x:"..x0..","..x1.."; z:"..z0..","..z1)
-			--print(rastername.." request entries: "..(x1-x0+1)*(z1-z0+1))
+			print(rastername.." request range: x:"..x0..","..x1.."; z:"..z0..","..z1)
+			print(rastername.." request entries: "..(x1-x0+1)*(z1-z0+1))
 			local enumeration = realterrain.get_enumeration(rastername, cropstartx, cropwidth, cropstartz, croplength)
 			--print(dump(enumeration))
 			
@@ -1616,7 +1618,7 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 					--or does not fill the output footprint completely (this latter may not matter)
 					
 					local x = x0 + right + empty_cols -1
-					local z = z1 - down - empty_rows 
+					local z = z1 - down - empty_rows
 					if not mincol then
 						mincol = x
 						maxcol = x
@@ -1635,9 +1637,9 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				end
 			end
 			if entries > 0 then
-				--print(rastername.." result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
+				print(rastername.." result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
 			end
-			--print(rastername.." result entries: "..entries)
+			print(rastername.." result entries: "..entries)
 		elseif mode.computed then
 			for z=z0,z1 do
 				if not heightmap[z] then heightmap[z] = {} end
@@ -1651,9 +1653,12 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				end
 			end
 		else --all other processors and modes
-			for z=z0,z1 do
+			local colstart, colend, rowstart, rowend = x0,x1,z0,z1  --@todo this doesn't account for scaling, offsets
+			if colend > realterrain[rastername].width then colend = realterrain[rastername].width -1 end
+			if rowstart < -realterrain[rastername].length then rowstart = -realterrain[rastername].length +1 end
+			for z=rowstart,rowend do
 				if not heightmap[z] then heightmap[z] = {} end
-				for x=x0,x1 do
+				for x=colstart,colend do
 					if not heightmap[z][x] then heightmap[z][x] = {} end
 					if rastername == "input" and mode.get_input_color then
 						heightmap[z][x]["input"], heightmap[z][x]["input2"], heightmap[z][x]["input3"]
@@ -1811,7 +1816,9 @@ end
 --after the mapgen has run, this gets the surface level
 function realterrain.get_surface(x,z)
 	local heightmap = realterrain.build_heightmap(x,x,z,z)
-	return heightmap[z][x]["elev"]
+	if heightmap[z] and heightmap[z][x] and heightmap[z][x]["elev"] then
+		return heightmap[z][x]["elev"]
+	end
 end
 minetest.register_on_joinplayer(function(player)
 	--give player privs and teleport to surface
