@@ -1,4 +1,4 @@
-PROCESSOR = "imlib2" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "gm" -- options are: "native", "py", "gm", "magick", "imlib2"
 print("PROCESSOR is "..PROCESSOR)
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
@@ -1540,25 +1540,15 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 	local yscale = realterrain.settings.yscale
 	local yoffset = realterrain.settings.yoffset
 	
-	local rasternames = {}
-	if realterrain.settings.fileelev ~= "" then 
-		table.insert(rasternames, "elev")
-	end
-	if mode.get_cover  and realterrain.settings.filecover ~= "" then
-		table.insert(rasternames, "cover")
-	end
-	if mode.get_input and realterrain.settings.fileinput ~= "" then
-		table.insert(rasternames, "input")
-	end
-	if mode.get_input2  and realterrain.settings.fileinput2 ~= "" then
-		table.insert(rasternames, "input2")
-	end
-	if mode.get_input3  and realterrain.settings.fileinput3 ~= "" then
-		table.insert(rasternames, "input3")
-	end
-	
-	for k,rastername in next, rasternames do
-		if PROCESSOR == "gm" or --[[PROCESSOR == "magick" or--]]  PROCESSOR == "convert" then
+	if not mode.computed then
+		local rasternames = {}
+		if realterrain.settings.fileelev ~= "" then table.insert(rasternames, "elev") end
+		if mode.get_cover  and realterrain.settings.filecover ~= "" then table.insert(rasternames, "cover")	end
+		if mode.get_input and realterrain.settings.fileinput ~= "" then	table.insert(rasternames, "input") end
+		if mode.get_input2  and realterrain.settings.fileinput2 ~= "" then table.insert(rasternames, "input2") end
+		if mode.get_input3  and realterrain.settings.fileinput3 ~= "" then table.insert(rasternames, "input3") end
+		
+		for k,rastername in next, rasternames do
 			--see if we are even on the raster
 			if((x1 < 0)
 			or (x0 > realterrain[rastername].width) --@todo this doesn't account for scaling, offsets
@@ -1567,116 +1557,123 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				--print("off raster request: x0: "..x0.." x1: "..x1.." z0: "..z0.." z1: "..z1)
 				return heightmap
 			end
-			--convert map pixels to raster pixels
-			local cropstartx = x0
-			local cropendx = x1
-			local cropstartz = -z1
-			local cropendz = -z0
-			local empty_cols = 0
-			local empty_rows = 0
-			--don't request pixels to the left or above the raster, count how many we were off if we were going to
-			if x0 < 0 then
-				empty_cols = - x0
-				cropstartx = 0
-			end
-			if z1 > 0 then
-				empty_rows = z1
-				cropstartz = 0
-			end
-			--don't request pixels beyond maxrows or maxcols in the raster  --@todo this doesn't account for scaling, offsets
-			if x1 > realterrain[rastername].width then cropendx = realterrain[rastername].width end
-			if -z0 > realterrain[rastername].length then cropendz = realterrain[rastername].length end
-			local cropwidth = cropendx-cropstartx+1
-			local croplength = cropendz-cropstartz+1	
 			
-			--print(rastername..": offcrop cols: "..empty_cols..", rows: "..empty_rows)
-			print(rastername.." request range: x:"..x0..","..x1.."; z:"..z0..","..z1)
-			print(rastername.." request entries: "..(x1-x0+1)*(z1-z0+1))
-			local enumeration = realterrain.get_enumeration(rastername, cropstartx, cropwidth, cropstartz, croplength)
-			--print(dump(enumeration))
-			
-			local entries = 0
-			
-			local mincol, maxcol, minrow, maxrow
-			local firstline = true
-			for k,line in next, enumeration do                         
-				if firstline and (PROCESSOR == "magick" or (PROCESSOR == "convert" and string.sub(CONVERT, 1, 2) ~= "gm" )) then
-					firstline = false --first line is a header in IM but not GM
-				else
-					entries = entries + 1
-					--print(entries .." :: " .. v)
-					
-					local value, right, down = realterrain.parse_enumeration(line)
-					
-					
-					if rastername == "elev" then
-						value = math.floor((value / realterrain.settings.yscale) + realterrain.settings.yoffset)
-					end
-					
-					--CONVERT the cropped pixel row/column back to absolute map x,z
-					--@todo this will have to include consideration of whether the crop was in negative space
-					--or does not fill the output footprint completely (this latter may not matter)
-					
-					local x = x0 + right + empty_cols -1
-					local z = z1 - down - empty_rows
-					if not mincol then
-						mincol = x
-						maxcol = x
-						minrow = z
-						maxrow = z
-					else
-						if x < mincol then mincol = x end
-						if x > maxcol then maxcol = x end
-						if z < minrow then minrow = z end
-						if z > maxrow then maxrow = z end
-					end--]]
-					--print ("x: "..x..", z: "..z..", elev: "..value)
-					if not heightmap[z] then heightmap[z] = {} end
-					if not heightmap[z][x] then heightmap[z][x] = {} end
-					heightmap[z][x][rastername] = value
+			--processors that require enumeration parsing rather than pixel-access
+			if PROCESSOR == "gm" or --[[PROCESSOR == "magick" or--]]  PROCESSOR == "convert" then
+				
+				--convert map pixels to raster pixels
+				local cropstartx = x0
+				local cropendx = x1
+				local cropstartz = -z1
+				local cropendz = -z0
+				local empty_cols = 0
+				local empty_rows = 0
+				--don't request pixels to the left or above the raster, count how many we were off if we were going to
+				--@todo this doesn't account for offsets and scales
+				if x0 < 0 then
+					empty_cols = - x0
+					cropstartx = 0
 				end
-			end
-			if entries > 0 then
-				print(rastername.." result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
-			end
-			print(rastername.." result entries: "..entries)
-		elseif mode.computed then
-			for z=z0,z1 do
-				if not heightmap[z] then heightmap[z] = {} end
-				for x=x0,x1 do
-					if not heightmap[z][x] then heightmap[z][x] = {} end
-					if modename == "mandelbrot" then
-						heightmap[z][x][rastername] = realterrain.get_brot_pixel(x,z)
-					elseif modename == "polynomial" then
-						heightmap[z][x][rastername] = realterrain.polynomial(x,z)
-					end
+				if z1 > 0 then
+					empty_rows = z1
+					cropstartz = 0
 				end
-			end
-		else --all other processors and modes
-			local colstart, colend, rowstart, rowend = x0,x1,z0,z1  --@todo this doesn't account for scaling, offsets
-			if colend > realterrain[rastername].width then colend = realterrain[rastername].width -1 end
-			if rowstart < -realterrain[rastername].length then rowstart = -realterrain[rastername].length +1 end
-			for z=rowstart,rowend do
-				if not heightmap[z] then heightmap[z] = {} end
-				for x=colstart,colend do
-					if not heightmap[z][x] then heightmap[z][x] = {} end
-					if rastername == "input" and mode.get_input_color then
-						heightmap[z][x]["input"], heightmap[z][x]["input2"], heightmap[z][x]["input3"]
-							= realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), "input")
+				--don't request pixels beyond maxrows or maxcols in the raster  --@todo this doesn't account for scaling, offsets
+				if x1 > realterrain[rastername].width then cropendx = realterrain[rastername].width end
+				if -z0 > realterrain[rastername].length then cropendz = realterrain[rastername].length end
+				local cropwidth = cropendx-cropstartx+1
+				local croplength = cropendz-cropstartz+1	
+				
+				--print(rastername..": offcrop cols: "..empty_cols..", rows: "..empty_rows)
+				print(rastername.." request range: x:"..x0..","..x1.."; z:"..z0..","..z1)
+				print(rastername.." request entries: "..(x1-x0+1)*(z1-z0+1))
+				local enumeration = realterrain.get_enumeration(rastername, cropstartx, cropwidth, cropstartz, croplength)
+				--print(dump(enumeration))
+				
+				local entries = 0
+				
+				local mincol, maxcol, minrow, maxrow
+				local firstline = true
+				for k,line in next, enumeration do                         
+					if firstline and (PROCESSOR == "magick" or (PROCESSOR == "convert" and string.sub(CONVERT, 1, 2) ~= "gm" )) then
+						firstline = false --first line is a header in IM but not GM
 					else
+						entries = entries + 1
+						--print(entries .." :: " .. v)
+						
+						local value, right, down = realterrain.parse_enumeration(line)
+						
+						
 						if rastername == "elev" then
-							local value = realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), "elev")
-							if value then
-								heightmap[z][x]["elev"] = math.floor(value*yscale+yoffset+0.5)
-							end
+							value = math.floor((value / realterrain.settings.yscale) + realterrain.settings.yoffset)
+						end
+						
+						--CONVERT the cropped pixel row/column back to absolute map x,z
+						--@todo this will have to include consideration of whether the crop was in negative space
+						--or does not fill the output footprint completely (this latter may not matter)
+						
+						local x = x0 + right + empty_cols -1
+						local z = z1 - down - empty_rows
+						if not mincol then
+							mincol = x
+							maxcol = x
+							minrow = z
+							maxrow = z
 						else
-							heightmap[z][x][rastername] = realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), rastername)
+							if x < mincol then mincol = x end
+							if x > maxcol then maxcol = x end
+							if z < minrow then minrow = z end
+							if z > maxrow then maxrow = z end
+						end--]]
+						--print ("x: "..x..", z: "..z..", elev: "..value)
+						if not heightmap[z] then heightmap[z] = {} end
+						if not heightmap[z][x] then heightmap[z][x] = {} end
+						heightmap[z][x][rastername] = value
+					end
+				end
+				if entries > 0 then
+					print(rastername.." result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
+				end
+				print(rastername.." result entries: "..entries)
+			
+			else --processors that require pixel-access instead of enumeration parsing
+				local colstart, colend, rowstart, rowend = x0,x1,z0,z1  --@todo this doesn't account for scaling, offsets
+				if colend > realterrain[rastername].width then colend = realterrain[rastername].width -1 end
+				if rowstart < -realterrain[rastername].length then rowstart = -realterrain[rastername].length +1 end
+				for z=rowstart,rowend do
+					if not heightmap[z] then heightmap[z] = {} end
+					for x=colstart,colend do
+						if not heightmap[z][x] then heightmap[z][x] = {} end
+						if rastername == "input" and mode.get_input_color then
+							heightmap[z][x]["input"], heightmap[z][x]["input2"], heightmap[z][x]["input3"]
+								= realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), "input")
+						else
+							if rastername == "elev" then
+								local value = realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), "elev")
+								if value then
+									heightmap[z][x]["elev"] = math.floor(value*yscale+yoffset+0.5)
+								end
+							else
+								heightmap[z][x][rastername] = realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), rastername)
+							end
 						end
 					end
 				end
+			end --end processor decisions
+		end	--end for rasternames
+	elseif mode.computed then
+		for z=z0,z1 do
+			if not heightmap[z] then heightmap[z] = {} end
+			for x=x0,x1 do
+				if not heightmap[z][x] then heightmap[z][x] = {} end
+				if modename == "mandelbrot" then
+					heightmap[z][x][rastername] = realterrain.get_brot_pixel(x,z)
+				elseif modename == "polynomial" then
+					heightmap[z][x][rastername] = realterrain.polynomial(x,z)
+				end
 			end
-		end --end processor decisions
-	end	--end for rasternames
+		end
+	end --end if computed
 	return heightmap
 end
 
