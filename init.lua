@@ -1,4 +1,4 @@
-PROCESSOR = "gm" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "magick" -- options are: "native", "py", "gm", "magick", "imlib2"
 print("PROCESSOR is "..PROCESSOR)
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
@@ -1196,10 +1196,8 @@ function realterrain.generate(minp, maxp)
 								local height = realterrain.fill_below(x,z,heightmap,y0)
 								if height > 0 then
 									for i=1, height, 1 do
-										data[vi-(i*ystridevm)] = data[color]
+										data[vi-(i*ystridevm)] = data[cids[color]]
 									end
-									
-									--table.insert(fillmap, {x=x, y=y, z=z, height=height, nodename=color})
 								end
 							end
 						end
@@ -1358,65 +1356,6 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 		return r,g,b
 	end
 end
---[[ --NO LONGER USED, NOW USING BUILD HEIGHTMAP
---the main get pixel method that applies the scale and offsets
-function realterrain.get_pixel(x,z, get_cover, get_input, get_input2, get_input3, get_input_color)
-	local e, c, i, i2, i3
-    local rowstart, colstart = 0,0
-	local row = 0 - z + realterrain.settings.zoffset -1
-	local col = 0 + x - realterrain.settings.xoffset -1
-	--adjust for x and z scales
-    row = math.floor(row / realterrain.settings.zscale)
-    col = math.floor(col / realterrain.settings.xscale)
-    if PROCESSOR == "native" then
-		row = row-1
-		col = col-1
-		rowstart = 0
-		colstart = 0
-	end
-	
-    --off the elev return false unless no elev is set in which case flat maps and gibberish are expected
-	--hint there is always a elev unless realterrain_settings is hand-edited due to form validation
-    if (realterrain.elev.image or PROCESSOR == "py")
-		and ((col < colstart) or (col >= realterrain.elev.width) or (row < rowstart) or (row >= realterrain.elev.length)) then
-		return false
-	end
-    
-	e = realterrain.get_raw_pixel(col,row, "elev") or 0
-	
-	--print("raw e: "..e)
-	--adjust for offset and scale
-    e = math.floor((e * realterrain.settings.yscale) + realterrain.settings.yoffset)
-	
-    if get_cover  and realterrain.settings.filecover ~= "" then
-		c = realterrain.get_raw_pixel(col,row, "cover") or 0
-	end
-	
-	if get_input and realterrain.settings.fileinput ~= "" then
-		if get_input_color then
-			i, i2, i3 = realterrain.get_raw_pixel(col,row, "input")
-			if not i then i = 0 end
-			if not i2 then i2 = 0 end
-			if not i3 then i3 = 0 end
-			--print("r: ".. i..", g: "..i2..", b: "..i3)
-		else
-			i = realterrain.get_raw_pixel(col,row, "input") or 0
-		end
-	end
-	if get_input2  and realterrain.settings.fileinput2 ~= "" then
-		i2 = realterrain.get_raw_pixel(col,row, "input2") or 0
-	end
-	if get_input3 and realterrain.settings.fileinput3 ~= "" then
-		i3 = realterrain.get_raw_pixel(col,row, "input3") or 0
-	end
-	-- we never want to return nil so that rasters can actually be empty
-	e = e or 0
-	c = c or 0
-	i = i or 0
-	i2 = i2 or 0
-	i3 = i3 or 0
-	return e, c, i, i2, i3
-end--]]
 function realterrain.get_brot_pixel(x,z)
 	--taken from https://plus.maths.org/content/computing-mandelbrot-set
 	--Where do we want to center the brot?
@@ -1464,7 +1403,7 @@ function realterrain.polynomial(x,z)
 	return math.floor(value)
 end
 --this function parses a line of IM or GM pixel enumeration without any scaling or adjustment
-function realterrain.parse_enumeration(line)
+function realterrain.parse_enumeration(line, get_rgb)
 	local value
 	if line then
 		--print("enumeration line: "..line)
@@ -1479,7 +1418,7 @@ function realterrain.parse_enumeration(line)
 		--print("down: "..down)
 		local secondcomma
 		local firstpercent = string.find(line, "%%")
-		-- if a percent is found then we know we are using IM and it is a 16bit value
+		-- if a percent is found then we know we are using IM convert and it is a 16bit value
 		if firstpercent then
 			value = tonumber(string.sub(line, firstcolon + 3, firstpercent -1))
 			--print("value: "..value)
@@ -1488,7 +1427,21 @@ function realterrain.parse_enumeration(line)
 			secondcomma = string.find(line, ",", firstcolon)
 			value = tonumber(string.sub(line, firstcolon + 3, secondcomma -1))
 		end
-		
+		--get the blue and green channel as well if requested
+		if get_rgb then
+			local r,g,b
+			r = value
+			--print("r: "..r)
+			local thirdcomma = string.find(line, ",", secondcomma+1)
+			local closeparenthesis = string.find(line, ")")
+			local percent_or_not = 1
+			if firstpercent then percent_or_not = 2 end
+			g = tonumber(string.sub(line, secondcomma+1, thirdcomma - percent_or_not))
+			--print("g: "..g)
+			b = tonumber(string.sub(line, thirdcomma+1, closeparenthesis - percent_or_not))
+			--print("b: "..b)
+			value = {r=r,g=g,b=b}
+		end
 		return value, right, down
 	else
 		--print("no line")
@@ -1583,9 +1536,10 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				local croplength = cropendz-cropstartz+1	
 				
 				--print(rastername..": offcrop cols: "..empty_cols..", rows: "..empty_rows)
-				print(rastername.." request range: x:"..x0..","..x1.."; z:"..z0..","..z1)
-				print(rastername.." request entries: "..(x1-x0+1)*(z1-z0+1))
+				--print(rastername.." request range: x:"..x0..","..x1.."; z:"..z0..","..z1)
+				--print(rastername.." request entries: "..(x1-x0+1)*(z1-z0+1))
 				local enumeration = realterrain.get_enumeration(rastername, cropstartx, cropwidth, cropstartz, croplength)
+				
 				--print(dump(enumeration))
 				
 				local entries = 0
@@ -1601,11 +1555,16 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 						entries = entries + 1
 						--print(entries .." :: " .. v)
 						
-						local value, right, down = realterrain.parse_enumeration(line)
+						local value, right, down
+						if rastername == "input" and mode.get_input_color then
+							value,right,down = realterrain.parse_enumeration(line, true)
+						else
+							value,right,down = realterrain.parse_enumeration(line)
+						end	
 						
 						-- for elevation layers apply vertical scale and offset
 						if rastername == "elev" then
-							value = math.floor((value / realterrain.settings.yscale) + realterrain.settings.yoffset)
+							value = math.floor((value * realterrain.settings.yscale) + realterrain.settings.yoffset)
 						end
 						--convert the cropped pixel row/column back to absolute map x,z
 						if not pixels[-down] then pixels[-down] = {} end
@@ -1624,14 +1583,21 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 						local newz = math.floor(z/zscale+zoffset+0.5)-scaled_z1 + empty_rows
 						local newx = math.floor(x/xscale+xoffset+0.5)-scaled_x0 - empty_cols +1 --@todo should 1 be scaled?
 						if pixels[newz] and pixels[newz][newx] then
-							heightmap[z][x][rastername] = pixels[newz][newx]
+							if rastername == "input" and mode.get_input_color then
+								heightmap[z][x]["input"] = pixels[newz][newx].r
+								heightmap[z][x]["input2"] = pixels[newz][newx].g
+								heightmap[z][x]["input3"] = pixels[newz][newx].b
+								
+							else
+								heightmap[z][x][rastername] = pixels[newz][newx]
+							end
 						end
 					end
 				end
 				if entries > 0 then
 					--print(rastername.." result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
 				end
-				print(rastername.." result entries: "..entries)
+				--print(rastername.." result entries: "..entries)
 			
 			else --processors that require pixel-access instead of enumeration parsing
 				local colstart, colend, rowstart, rowend = x0,x1,z0,z1  --@todo this doesn't account for scaling, offsets
