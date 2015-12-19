@@ -1539,7 +1539,10 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 	local zoffset = realterrain.settings.zoffset 
 	local yscale = realterrain.settings.yscale
 	local yoffset = realterrain.settings.yoffset
-	
+	local scaled_x0 = math.floor(x0/xscale+xoffset+0.5)
+	local scaled_x1 = math.floor(x1/xscale+xoffset+0.5)
+	local scaled_z0 = math.floor(z0/zscale+zoffset+0.5)
+	local scaled_z1 = math.floor(z1/zscale+zoffset+0.5)
 	if not mode.computed then
 		local rasternames = {}
 		if realterrain.settings.fileelev ~= "" then table.insert(rasternames, "elev") end
@@ -1550,37 +1553,37 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 		
 		for k,rastername in next, rasternames do
 			--see if we are even on the raster
-			if((x1 < 0)
-			or (x0 > realterrain[rastername].width) --@todo this doesn't account for scaling, offsets
-			or (z0 > 0)
-			or (-z1 > realterrain[rastername].length)) then --@todo this doesn't account for scaling, offsets
-				--print("off raster request: x0: "..x0.." x1: "..x1.." z0: "..z0.." z1: "..z1)
+			if((scaled_x1 < 0)
+			or (scaled_x0 > realterrain[rastername].width) --@todo this doesn't account for scaling, offsets
+			or (scaled_z0 > 0)
+			or (-scaled_z1 > realterrain[rastername].length)) then --@todo this doesn't account for scaling, offsets
+				--print("off raster request: scaled_x0: "..scaled_x0.." scaled_x1: "..scaled_x1.." scaled_z0: "..scaled_z0.." scaled_z1: "..scaled_z1)
 				return heightmap
 			end
 			
 			--processors that require enumeration parsing rather than pixel-access
 			if PROCESSOR == "gm" or --[[PROCESSOR == "magick" or--]]  PROCESSOR == "convert" then
-				
+				local pixels = {}
 				--convert map pixels to raster pixels
-				local cropstartx = x0
-				local cropendx = x1
-				local cropstartz = -z1
-				local cropendz = -z0
+				local cropstartx = scaled_x0
+				local cropendx = scaled_x1
+				local cropstartz = -scaled_z1
+				local cropendz = -scaled_z0
 				local empty_cols = 0
 				local empty_rows = 0
 				--don't request pixels to the left or above the raster, count how many we were off if we were going to
 				--@todo this doesn't account for offsets and scales
-				if x0 < 0 then
-					empty_cols = - x0
+				if scaled_x0 < 0 then
+					empty_cols = - scaled_x0
 					cropstartx = 0
 				end
-				if z1 > 0 then
-					empty_rows = z1
+				if scaled_z1 > 0 then
+					empty_rows = scaled_z1
 					cropstartz = 0
 				end
 				--don't request pixels beyond maxrows or maxcols in the raster  --@todo this doesn't account for scaling, offsets
-				if x1 > realterrain[rastername].width then cropendx = realterrain[rastername].width end
-				if -z0 > realterrain[rastername].length then cropendz = realterrain[rastername].length end
+				if scaled_x1 > realterrain[rastername].width then cropendx = realterrain[rastername].width end
+				if -scaled_z0 > realterrain[rastername].length then cropendz = realterrain[rastername].length end
 				local cropwidth = cropendx-cropstartx+1
 				local croplength = cropendz-cropstartz+1	
 				
@@ -1594,6 +1597,7 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				
 				local mincol, maxcol, minrow, maxrow
 				local firstline = true
+				--build the pixel table from the enumeration
 				for k,line in next, enumeration do                         
 					if firstline and (PROCESSOR == "magick" or (PROCESSOR == "convert" and string.sub(CONVERT, 1, 2) ~= "gm" )) then
 						firstline = false --first line is a header in IM but not GM
@@ -1607,32 +1611,31 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 						if rastername == "elev" then
 							value = math.floor((value / realterrain.settings.yscale) + realterrain.settings.yoffset)
 						end
-						
 						--CONVERT the cropped pixel row/column back to absolute map x,z
 						--@todo this will have to include consideration of whether the crop was in negative space
 						--or does not fill the output footprint completely (this latter may not matter)
+						if not pixels[down] then pixels[down] = {} end
+						pixels[down][right] = value
+					end--if firstline
+				end--end for enumeration line
+				--now we have to build the heightmap from the pixel table
+				for z=z0, z1 do
+					for x=x0,x1 do
+						--local x = scaled_x0 + right + empty_cols -1
+						--local z = scaled_z1 - down - empty_rows
 						
-						local x = x0 + right + empty_cols -1
-						local z = z1 - down - empty_rows
-						if not mincol then
-							mincol = x
-							maxcol = x
-							minrow = z
-							maxrow = z
-						else
-							if x < mincol then mincol = x end
-							if x > maxcol then maxcol = x end
-							if z < minrow then minrow = z end
-							if z > maxrow then maxrow = z end
-						end--]]
-						--print ("x: "..x..", z: "..z..", elev: "..value)
 						if not heightmap[z] then heightmap[z] = {} end
 						if not heightmap[z][x] then heightmap[z][x] = {} end
-						heightmap[z][x][rastername] = value
+						--here is the tricky part, requesting the correct pixel for this x,z map coordinate
+						local newz = math.floor(z/zscale+zoffset+0.5)-scaled_z0
+						local newx = math.floor(x/xscale+xoffset+0.5)-scaled_x0
+						if pixels[newz] and pixels[newz][newx] then
+							heightmap[z][x][rastername] = pixels[newz][newx]
+						end
 					end
 				end
 				if entries > 0 then
-					print(rastername.." result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
+					--print(rastername.." result range: x:"..mincol..","..maxcol.."; z:"..minrow..","..maxrow)
 				end
 				print(rastername.." result entries: "..entries)
 			
