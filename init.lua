@@ -1626,8 +1626,8 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 						if not heightmap[z] then heightmap[z] = {} end
 						if not heightmap[z][x] then heightmap[z][x] = {} end
 						--here is the tricky part, requesting the correct pixel for this x,z map coordinate
-						local newz = math.floor(z/zscale+zoffset+0.5)-scaled_z1 - empty_rows/zscale
-						local newx = math.floor(x/xscale+xoffset+0.5)-scaled_x0 - empty_cols/xscale +1 --@todo should 1 be scaled?
+						local newz = math.floor(z/zscale+zoffset+0.5)-scaled_z1 + empty_rows
+						local newx = math.floor(x/xscale+xoffset+0.5)-scaled_x0 - empty_cols +1 --@todo should 1 be scaled?
 						if pixels[newz] and pixels[newz][newx] then
 							heightmap[z][x][rastername] = pixels[newz][newx]
 						end
