@@ -31,7 +31,7 @@ if PROCESSOR == "py" then
 elseif PROCESSOR == "magick" then
 	package.path = (MODPATH.."/lib/magick/?.lua;"..MODPATH.."/lib/magick/?/init.lua;"..package.path)
 	magick = ie.require "magick"
-	MAGICK_AS_CONVERT = false --when false uses pixel-access, true uses enumeration-parsing (as GM does)
+	MAGICK_AS_CONVERT = true --when false uses pixel-access, true uses enumeration-parsing (as GM does) (bit detection, slower)
 elseif PROCESSOR == "imlib2" then
 	package.path = (MODPATH.."/lib/lua-imlib2/?.lua;"..package.path)
 	imlib2 = ie.require "imlib2"
@@ -2153,7 +2153,11 @@ function realterrain.show_rc_form(pname)
 		"dropdown["..col[2]..",7;4,1;fileinput3;"..f_images..";"..
 			realterrain.get_idx(images, realterrain.get_setting("fileinput3")) .."]"
 	end
-	if not mode.computed and PROCESSOR ~= "py" and PROCESSOR ~="gm" and PROCESSOR ~= "convert" then --these modes know the bits
+	if not mode.computed
+	and PROCESSOR ~= "py"
+	and PROCESSOR ~="gm"
+	and PROCESSOR ~= "convert"
+	and not (PROCESSOR == "magick" and MAGICK_AS_CONVERT) then --these modes know the bits
 		f_settings = f_settings ..
 		"label["..col[3]+0.2 ..",2;Bits]"..
 		"dropdown["..col[3]..",3;1,1;elevbits;8,16;"..
