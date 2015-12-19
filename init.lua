@@ -31,6 +31,7 @@ if PROCESSOR == "py" then
 elseif PROCESSOR == "magick" then
 	package.path = (MODPATH.."/lib/magick/?.lua;"..MODPATH.."/lib/magick/?/init.lua;"..package.path)
 	magick = ie.require "magick"
+	MAGICK_AS_CONVERT = false --when false uses pixel-access, true uses enumeration-parsing (as GM does)
 elseif PROCESSOR == "imlib2" then
 	package.path = (MODPATH.."/lib/lua-imlib2/?.lua;"..package.path)
 	imlib2 = ie.require "imlib2"
@@ -788,26 +789,6 @@ realterrain.surface_cache = {} --used to prevent reading of DEM for skyblocks
 minetest.register_on_mapgen_init(function(mgparams)
 	minetest.set_mapgen_params({mgname="singlenode", flags="nolight"})
 end)
---[[
-realterrain.genlock = false
-minetest.register_globalstep(function(dtime)
-	if not realterrain.genlock then
-		realterrain.genlock = true
-		local c_grass  = minetest.get_content_id("default:dirt_with_grass")
-		local vm = minetest.get_voxel_manip()
-		local emin, emax = vm:read_from_map({x=0,y=minelev,z=-length},{x=width,y=maxelev,z=0})
-		print("emin: "..emin.x..","..emin.y..","..emin.z..", emax: "..emax.x..","..emax.y..","..emax.z)
-		vm = nil
-		for z=emin.z, emax.z, 80 do
-			for y=emin.y, emax.y, 80 do
-				for x=emin.x, emax.x, 80 do
-					realterrain.generate({x=x,y=y,z=z}, {x=x+79,y=y+79,z=z+79})
-				end
-			end
-		end
-		--realterrain.genlock = false
-	end
-end)--]]
 
 -- On generated function
 minetest.register_on_generated(function(minp, maxp, seed)
@@ -1193,13 +1174,13 @@ function realterrain.generate(minp, maxp)
 									data[vi] = cids[color]
 								end
 								if fill_below then
-								local height = realterrain.fill_below(x,z,heightmap, y0)
-								if height > 0 then
-									for i=1, height, 1 do
-										data[vi-(i*ystridevm)] = data[vi]
+									local height = realterrain.fill_below(x,z,heightmap, y0)
+									if height > 0 then
+										for i=1, height, 1 do
+											data[vi-(i*ystridevm)] = data[vi]
+										end
 									end
 								end
-							end
 							end
 						end
 						vi = vi + ystridevm
@@ -1517,7 +1498,9 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 			end
 			
 			--processors that require enumeration parsing rather than pixel-access
-			if PROCESSOR == "gm" or --[[PROCESSOR == "magick" or--]]  PROCESSOR == "convert" then
+			if PROCESSOR == "gm"
+			or PROCESSOR == "convert"
+			or (PROCESSOR == "magick" and MAGICK_AS_CONVERT) then
 				local pixels = {}
 				--convert map pixels to raster pixels
 				local cropstartx = scaled_x0
@@ -1567,6 +1550,7 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 							value,right,down = realterrain.parse_enumeration(line, true)
 						else
 							value,right,down = realterrain.parse_enumeration(line)
+							
 						end	
 						
 						-- for elevation layers apply vertical scale and offset
@@ -1904,7 +1888,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				end
 				minetest.register_on_shutdown(function()
 					local wait = os.clock()
-					while os.clock() - wait < 0.5 do end --the following delete happens too fast otherwise @todo this doesn't help
+					while os.clock() - wait < 1 do end --the following delete happens too fast otherwise @todo this doesn't help
 					os.remove(WORLDPATH.."/map.sqlite")
 				end)
 				
