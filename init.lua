@@ -1601,34 +1601,33 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				for k,line in next, enumeration do                         
 					if firstline and (PROCESSOR == "magick" or (PROCESSOR == "convert" and string.sub(CONVERT, 1, 2) ~= "gm" )) then
 						firstline = false --first line is a header in IM but not GM
+						--and do nothing
 					else
 						entries = entries + 1
 						--print(entries .." :: " .. v)
 						
 						local value, right, down = realterrain.parse_enumeration(line)
 						
-						
+						-- for elevation layers apply vertical scale and offset
 						if rastername == "elev" then
 							value = math.floor((value / realterrain.settings.yscale) + realterrain.settings.yoffset)
 						end
-						--CONVERT the cropped pixel row/column back to absolute map x,z
-						--@todo this will have to include consideration of whether the crop was in negative space
-						--or does not fill the output footprint completely (this latter may not matter)
-						if not pixels[down] then pixels[down] = {} end
-						pixels[down][right] = value
-					end--if firstline
+						--convert the cropped pixel row/column back to absolute map x,z
+						if not pixels[-down] then pixels[-down] = {} end
+						pixels[-down][right] = value
+					end-- firstline test
 				end--end for enumeration line
 				--now we have to build the heightmap from the pixel table
 				for z=z0, z1 do
 					for x=x0,x1 do
-						--local x = scaled_x0 + right + empty_cols -1
 						--local z = scaled_z1 - down - empty_rows
-						
+						--local x = scaled_x0 + right + empty_cols -1
+												
 						if not heightmap[z] then heightmap[z] = {} end
 						if not heightmap[z][x] then heightmap[z][x] = {} end
 						--here is the tricky part, requesting the correct pixel for this x,z map coordinate
-						local newz = math.floor(z/zscale+zoffset+0.5)-scaled_z0
-						local newx = math.floor(x/xscale+xoffset+0.5)-scaled_x0
+						local newz = math.floor(z/zscale+zoffset+0.5)-scaled_z1 - empty_rows/zscale
+						local newx = math.floor(x/xscale+xoffset+0.5)-scaled_x0 - empty_cols/xscale +1 --@todo should 1 be scaled?
 						if pixels[newz] and pixels[newz][newx] then
 							heightmap[z][x][rastername] = pixels[newz][newx]
 						end
@@ -1641,8 +1640,6 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 			
 			else --processors that require pixel-access instead of enumeration parsing
 				local colstart, colend, rowstart, rowend = x0,x1,z0,z1  --@todo this doesn't account for scaling, offsets
-				if colend > realterrain[rastername].width then colend = realterrain[rastername].width -1 end
-				if rowstart < -realterrain[rastername].length then rowstart = -realterrain[rastername].length +1 end
 				for z=rowstart,rowend do
 					if not heightmap[z] then heightmap[z] = {} end
 					for x=colstart,colend do
