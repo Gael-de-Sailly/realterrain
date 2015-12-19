@@ -1047,7 +1047,7 @@ function realterrain.generate(minp, maxp)
 								end
 							end
 							if fill_below then
-								local height = realterrain.fill_below(x,z,heightmap)
+								local height = realterrain.fill_below(x,z,heightmap, y0)
 								if height > 0 then
 									for i=1, height, 1 do
 										data[vi-(i*ystridevm)] = data[vi]
@@ -1193,10 +1193,10 @@ function realterrain.generate(minp, maxp)
 									data[vi] = cids[color]
 								end
 								--could check for fill_below here but it is implied in these modes
-								local height = realterrain.fill_below(x,z,heightmap)
+								local height = realterrain.fill_below(x,z,heightmap,y0)
 								if height > 0 then
 									for i=1, height, 1 do
-										data[vi-(i*ystridevm)] = cids[color]
+										data[vi-(i*ystridevm)] = data[color]
 									end
 									
 									--table.insert(fillmap, {x=x, y=y, z=z, height=height, nodename=color})
@@ -1227,17 +1227,12 @@ function realterrain.generate(minp, maxp)
 						data[vi] = cids[color]
 					elseif y == elev and modename == "polynomial" then
 						data[vi] = cids[0].ground
-						local height = realterrain.fill_below(x,z,heightmap)
-						--[[if height > 0 then
+						local height = realterrain.fill_below(x,z,heightmap,y0)
+						if height > 0 then
 							for i=1, height, 1 do
-								--make sure the fill-in is within the mapchunk, if not then slate for setnode
-								if y - i >= y0 then
-									data[vi-(i*ystridevm)] = data[vi]
-								else
-									table.insert(fillmap, {x=x, y=y-i, z=z, nodename=realterrain.settings.b0ground})
-								end
+								data[vi-(i*ystridevm)] = data[vi]
 							end
-						end--]]
+						end
 					end
 					vi = vi + ystridevm
 				end --end y iteration
@@ -1531,7 +1526,7 @@ end
 --experimental function to enumerate 80x80 crop of raster at once using IM or GM
 function realterrain.build_heightmap(x0, x1, z0, z1)
 	local mode = realterrain.get_mode()
-	
+	local modename = mode.name
 	local heightmap = {}
 	local xscale = realterrain.settings.xscale
 	local zscale = realterrain.settings.zscale
@@ -1667,9 +1662,9 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 			for x=x0,x1 do
 				if not heightmap[z][x] then heightmap[z][x] = {} end
 				if modename == "mandelbrot" then
-					heightmap[z][x][rastername] = realterrain.get_brot_pixel(x,z)
+					heightmap[z][x]["elev"] = realterrain.get_brot_pixel(x,z)
 				elseif modename == "polynomial" then
-					heightmap[z][x][rastername] = realterrain.polynomial(x,z)
+					heightmap[z][x]["elev"] = realterrain.polynomial(x,z)
 				end
 			end
 		end
@@ -1678,16 +1673,17 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 end
 
 --this funcion gets the hieght needed to fill below a node for surface-only modes
-function realterrain.fill_below(x,z,heightmap)
+function realterrain.fill_below(x,z,heightmap,y0)
 	local height = 0
 	local elev = heightmap[z][x].elev
 	for dir, offset in next, neighborhood do
 		--get elev for all surrounding nodes
 		if dir == "b" or dir == "d" or dir == "f" or dir == "h" then
 			
-			if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x] then
+			if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x] and heightmap[z+offset.z][x+offset.x].elev then
 				local nelev = heightmap[z+offset.z][x+offset.x].elev
 				-- if the neighboring height is more than one down, check if it is the furthest down
+				if nelev < y0 then nelev = y0 end --vm indexes outside the mapchunk are garbage.
 				if elev > ( nelev + 1) and height < (elev-nelev+1) then
 					height = elev - nelev + 1
 				end
