@@ -1192,13 +1192,14 @@ function realterrain.generate(minp, maxp)
 									color = color1..color2..color3
 									data[vi] = cids[color]
 								end
-								--could check for fill_below here but it is implied in these modes
-								local height = realterrain.fill_below(x,z,heightmap,y0)
+								if fill_below then
+								local height = realterrain.fill_below(x,z,heightmap, y0)
 								if height > 0 then
 									for i=1, height, 1 do
-										data[vi-(i*ystridevm)] = data[cids[color]]
+										data[vi-(i*ystridevm)] = data[vi]
 									end
 								end
+							end
 							end
 						end
 						vi = vi + ystridevm
@@ -1228,7 +1229,13 @@ function realterrain.generate(minp, maxp)
 						local height = realterrain.fill_below(x,z,heightmap,y0)
 						if height > 0 then
 							for i=1, height, 1 do
-								data[vi-(i*ystridevm)] = data[vi]
+								if data[vi] == c_dirt_with_grass or data[vi] == c_dirt_with_dry_grass or data[vi] == c_dirt_with_snow then
+									data[vi-(i*ystridevm)] = cids["dirt"]
+								else
+									data[vi-(i*ystridevm)] = data[vi]
+								end
+								
+								
 							end
 						end
 					end
