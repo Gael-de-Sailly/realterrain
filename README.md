@@ -1,16 +1,9 @@
 # realterrain v.0.1.0
 A Minetest mod that brings real world Terrain into the game (using freely available DEM tiles). Any image can actually be used which allows for WorldPainter-style map creation using any paint program.
 
-use any image any bit-depth (suggested to convert to greyscale first):
-
 ![screenshot_126233205](https://cloud.githubusercontent.com/assets/12679496/8270171/b98d0144-178e-11e5-9a21-ddea2624fdb6.png)
 
-Supplied heightmap and landcover files:
-
-![dem](https://cloud.githubusercontent.com/assets/12679496/10683910/00078544-78fc-11e5-9806-1c0786b3fa4e.png)
-![biomes](https://cloud.githubusercontent.com/assets/12679496/10683908/fffbac4c-78fb-11e5-8190-4f0c0561b4b1.png)
-
-Settings tool (Realterrain Remote)
+Settings tool (Realterrain Remote) (old version)
 
 ![screenshot_20151201_190737](https://cloud.githubusercontent.com/assets/12679496/11521234/48a2749e-985f-11e5-9d22-9ee3b33c529c.png)
 
