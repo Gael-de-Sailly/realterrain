@@ -784,7 +784,7 @@ end
 
 
 realterrain.surface_cache = {} --used to prevent reading of DEM for skyblocks
-
+realterrain.fill_below_leftovers = {} --used to handle off-chunk draws
 -- Set mapgen parameters
 minetest.register_on_mapgen_init(function(mgparams)
 	minetest.set_mapgen_params({mgname="singlenode", flags="nolight"})
@@ -931,6 +931,11 @@ function realterrain.generate(minp, maxp)
 	for z = z0, z1 do
 	for x = x0, x1 do
 		if heightmap[z] and heightmap[z][x] and heightmap[z][x]["elev"] then
+			--get the height needed to fill_below in surface mode
+			local height
+			if fill_below then
+				height = realterrain.fill_below(x,z,heightmap)
+			end
 			if not computed then
 				--modes that use biomes:
 				if get_cover then
@@ -980,7 +985,7 @@ function realterrain.generate(minp, maxp)
 					--[[if tree then print("cover: "..cover..", ground: "..ground..", tree: "..tree..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
 					else print("cover: "..cover..", ground: "..ground..", tprob: "..tprob..", shrub: "..shrub..", sprob: "..sprob)
 					end]]
-					local vi = area:index(x, y0, z) -- voxelmanip index
+					local vi = area:index(x, y0, z) -- voxelmanip index	
 					for y = y0, y1 do
 						--underground layers
 						if y < elev and (mode.name == "normal") then 
@@ -993,15 +998,16 @@ function realterrain.generate(minp, maxp)
 								data[vi] = cids.ores[d18]
 							else
 								--dirt with grass and dry grass fix
-								if ground == c_dirt_with_grass or ground == c_dirt_with_dry_grass or ground == c_dirt_with_snow then
+								if ( ground == c_dirt_with_grass or ground == c_dirt_with_dry_grass or ground == c_dirt_with_snow ) then
 									data[vi] = cids["dirt"]
 								else
 									data[vi] = ground
 								end
 							end
 						--the surface layer, determined by cover value
-						elseif  y == elev and ( (cover ~= 5 or fill_below)
-							or modename == "coverchange" ) then
+						elseif  y == elev
+						and ( cover ~= 5 or modename == "coverchange" or modename =="surface")
+						or (y < elev and y >= (elev - height) and fill_below) then
 							if modename == "coverchange" and cover2 and cover ~= cover2 then
 								--print("cover1: "..cover..", cover2: "..cover2)
 								data[vi] = cids["symbol10"]
@@ -1026,13 +1032,9 @@ function realterrain.generate(minp, maxp)
 								else
 									data[vi] = ground
 								end
-							end
-							if fill_below then
-								local height = realterrain.fill_below(x,z,heightmap, y0)
-								if height > 0 then
-									for i=1, height, 1 do
-										data[vi-(i*ystridevm)] = data[vi]
-									end
+								if y < elev
+								and ( data[vi] == c_dirt_with_grass or data[vi] == c_dirt_with_dry_grass or data[vi] == c_dirt_with_snow ) then
+									data[vi] = cids["dirt"]
 								end
 							end
 						--shrubs and trees one block above the ground
@@ -1060,7 +1062,7 @@ function realterrain.generate(minp, maxp)
 					for y = y0, y1 do
 						local elev
 						elev = heightmap[z][x].elev
-						if y == elev then
+						if y == elev or (y < elev and y >= (elev - height) and fill_below) then
 							local neighbors = {}
 							local edge_case = false
 							--moving window mode.names need neighborhood built
@@ -1173,14 +1175,6 @@ function realterrain.generate(minp, maxp)
 									color = color1..color2..color3
 									data[vi] = cids[color]
 								end
-								if fill_below then
-									local height = realterrain.fill_below(x,z,heightmap, y0)
-									if height > 0 then
-										for i=1, height, 1 do
-											data[vi-(i*ystridevm)] = data[vi]
-										end
-									end
-								end
 							end
 						end
 						vi = vi + ystridevm
@@ -1205,19 +1199,16 @@ function realterrain.generate(minp, maxp)
 						else color = "000000"
 						end
 						data[vi] = cids[color]
-					elseif y == elev and modename == "polynomial" then
-						data[vi] = cids[0].ground
-						local height = realterrain.fill_below(x,z,heightmap,y0)
-						if height > 0 then
-							for i=1, height, 1 do
-								if data[vi] == c_dirt_with_grass or data[vi] == c_dirt_with_dry_grass or data[vi] == c_dirt_with_snow then
-									data[vi-(i*ystridevm)] = cids["dirt"]
-								else
-									data[vi-(i*ystridevm)] = data[vi]
-								end
-								
-								
-							end
+					elseif modename == "polynomial"
+					and (y == elev or (y < elev and y >= (elev - height) and fill_below) ) then
+						
+						--dirt with cover fix
+						local ground = cids[0].ground
+						if y < elev
+						and ( ground == c_dirt_with_grass or ground == c_dirt_with_dry_grass or ground == c_dirt_with_snow ) then
+							data[vi] = cids["dirt"]
+						else
+							data[vi] = ground
 						end
 					end
 					vi = vi + ystridevm
@@ -1235,11 +1226,6 @@ function realterrain.generate(minp, maxp)
 	--place all the trees (schems assumed to be 7x7 bases with tree in center)
 	for k,v in next, treemap do
 		minetest.place_schematic({x=v.pos.x-3,y=v.pos.y,z=v.pos.z-3}, MODPATH.."/schems/"..v.type..".mts", (math.floor(math.random(0,3)) * 90), nil, false)
-	end
-	--fill "overflow" fill_belows
-	--print(dump(fillmap))
-	for k,v in next, fillmap do
-		minetest.set_node({x=v.x, y=v.y, z=v.z}, {name=v.nodename})
 	end
 	
 	local chugent = math.ceil((os.clock() - t0) * 1000)
@@ -1630,8 +1616,11 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 end
 
 --this funcion gets the hieght needed to fill below a node for surface-only modes
-function realterrain.fill_below(x,z,heightmap,y0)
+function realterrain.fill_below(x,z,heightmap)
 	local height = 0
+	local height_in_chunk = 0
+	local height_below_chunk = 0
+	local below_positions = {}
 	local elev = heightmap[z][x].elev
 	for dir, offset in next, neighborhood do
 		--get elev for all surrounding nodes
@@ -1640,39 +1629,15 @@ function realterrain.fill_below(x,z,heightmap,y0)
 			if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x] and heightmap[z+offset.z][x+offset.x].elev then
 				local nelev = heightmap[z+offset.z][x+offset.x].elev
 				-- if the neighboring height is more than one down, check if it is the furthest down
-				if nelev < y0 then nelev = y0 end --vm indexes outside the mapchunk are garbage.
-				if elev > ( nelev + 1) and height < (elev-nelev+1) then
-					height = elev - nelev + 1
+				if elev > ( nelev) and height < (elev-nelev) then
+					height = elev - nelev
 				end
 			end
 		end
 	end
 	--print(height)
-	return height
+	return height -1
 end
---[[function realterrain.get_elev_range()
-	print("calculating min and max elevation...")
-	local minelev, maxelev
-	
-	for z=0, -length, -1 do
-		for x=0, width-1, 1 do
-			local elev = realterrain.get_pixel(x,z, true)
-			if not minelev then
-				minelev = elev
-				maxelev = elev
-			else
-				if elev < minelev then
-					minelev = elev
-				end
-				if elev > maxelev then
-					maxelev = elev
-				end
-			end
-		end
-	end
-	print("min elev: "..minelev..", maxelev: "..maxelev)
-	return minelev, maxelev
-end--]]
 function realterrain.get_slope(n, rad)
 	--print(dump(n))
 	local x_cellsize, z_cellsize = 1, 1
