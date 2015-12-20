@@ -858,6 +858,7 @@ function realterrain.generate(minp, maxp)
 	local heightmap = realterrain.build_heightmap(x0-buffer, x1+buffer, z0-buffer, z1+buffer)
 	--calculate the min and max elevations for skipping certain blocks completely
 	local minelev, maxelev
+	local input_present = false
 	for z=z0, z1 do
 		for x=x0, x1 do
 			local elev
@@ -893,6 +894,10 @@ function realterrain.generate(minp, maxp)
 							end
 						end
 					end
+				end
+				--making distance more efficient
+				if modename == "distance"and not input_present and heightmap[z][x].input and heightmap[z][x].input > 0 then
+					input_present = true
 				end
 			end
 		end
@@ -1141,7 +1146,7 @@ function realterrain.generate(minp, maxp)
 								elseif modename == "distance" then
 									local limit = realterrain.settings.dist_lim
 									--if there is no input present in the full search extent skip
-									if next(input) ~= nil then 
+									if input_present then 
 										local distance = realterrain.get_distance(x,y,z, heightmap)
 										if distance < (limit/10) then color = "symbol1"
 										elseif distance < (limit/10)*2 then color = "symbol2"
