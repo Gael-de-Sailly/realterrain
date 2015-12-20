@@ -8,6 +8,7 @@ MODPATH = minetest.get_modpath("realterrain")
 WORLDPATH = minetest.get_worldpath()
 RASTERS = MODPATH .. "/rasters/"
 SCHEMS = MODPATH .. "/schems/"
+STRUCTURES = MODPATH .. "/structures/"
 
 local ie = minetest.request_insecure_environment()
 
@@ -46,6 +47,7 @@ elseif PROCESSOR == "native" then
 end
 
 local realterrain = {}
+
 realterrain.settings = {}
 realterrain.validate = {}
 --defaults
@@ -290,16 +292,16 @@ realterrain.settings.b9shrub2 = "default:dry_shrub"
 realterrain.settings.b9sprob2 = 50
 realterrain.validate.b9sprob2 = "number"
 
-local neighborhood = {}
-neighborhood.a = {x= 1,y= 0,z= 1} -- NW
-neighborhood.b = {x= 0,y= 0,z= 1} -- N
-neighborhood.c = {x= 1,y= 0,z= 1} -- NE
-neighborhood.d = {x=-1,y= 0,z= 0} -- W
+realterrain.neighborhood = {}
+realterrain.neighborhood.a = {x= 1,y= 0,z= 1} -- NW
+realterrain.neighborhood.b = {x= 0,y= 0,z= 1} -- N
+realterrain.neighborhood.c = {x= 1,y= 0,z= 1} -- NE
+realterrain.neighborhood.d = {x=-1,y= 0,z= 0} -- W
 --neighborhood.e = {x= 0,y= 0,z= 0} -- SELF
-neighborhood.f = {x= 1,y= 0,z= 0} -- E
-neighborhood.g = {x=-1,y= 0,z=-1} -- SW
-neighborhood.h = {x= 0,y= 0,z=-1} -- S
-neighborhood.i = {x= 1,y= 0,z=-1} -- SE
+realterrain.neighborhood.f = {x= 1,y= 0,z= 0} -- E
+realterrain.neighborhood.g = {x=-1,y= 0,z=-1} -- SW
+realterrain.neighborhood.h = {x= 0,y= 0,z=-1} -- S
+realterrain.neighborhood.i = {x= 1,y= 0,z=-1} -- SE
 
 local slopecolors = {"00f700", "5af700", "8cf700", "b5f700", "def700", "f7de00", "ffb500", "ff8400","ff4a00", "f70000"}
 for k, colorcode in next, slopecolors do
@@ -642,6 +644,7 @@ function realterrain.get_idx(haystack, needle)
 	end
 	return 0
 end
+
 -- SELECT the mechanism for loading the image which is later uesed by get_pixel()
 --@todo throw warning if image sizes do not match the elev size
 realterrain.elev = {}
@@ -1084,7 +1087,7 @@ function realterrain.generate(minp, maxp)
 							--moving window mode.names need neighborhood built
 							if moving_window then
 								neighbors["e"] = y
-								for dir, offset in next, neighborhood do
+								for dir, offset in next, realterrain.neighborhood do
 									--get elev for all surrounding nodes
 									local nelev
 									if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x]then
@@ -1174,7 +1177,8 @@ function realterrain.generate(minp, maxp)
 										color = "symbol10"
 									end
 									data[vi] = cids[color]
-								elseif modename == "imageoverlay" or mode.name == "bandoverlay" then
+								elseif (modename == "imageoverlay" and heightmap[z][x].input)
+									or (mode.name == "bandoverlay" and heightmap[z][x].input and heightmap[z][x].input2 and heightmap[z][x].input3) then
 									local input = heightmap[z][x].input
 									local input2 = heightmap[z][x].input2
 									local input3 = heightmap[z][x].input3
@@ -1241,7 +1245,13 @@ function realterrain.generate(minp, maxp)
 	
 	--place all the trees (schems assumed to be 7x7 bases with tree in center)
 	for k,v in next, treemap do
-		minetest.place_schematic({x=v.pos.x-3,y=v.pos.y,z=v.pos.z-3}, MODPATH.."/schems/"..v.type..".mts", (math.floor(math.random(0,3)) * 90), nil, false)
+		minetest.place_schematic({x=v.pos.x-3,y=v.pos.y,z=v.pos.z-3}, SCHEMS..v.type..".mts", (math.floor(math.random(0,3)) * 90), nil, false)
+	end
+	
+	--place all structures whose pmin are in this chunk
+	local structures = realterrain.get_structures_for_chunk(x0,y0,z0)
+	for k,v in next, structures do
+		minetest.place_schematic({x=v.x,y=v.y,z=v.z}, STRUCTURES..v.schemname..".mts")
 	end
 	
 	local chugent = math.ceil((os.clock() - t0) * 1000)
@@ -1490,8 +1500,9 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 		if mode.get_input3  and realterrain.settings.fileinput3 ~= "" then table.insert(rasternames, "input3") end
 		
 		for k,rastername in next, rasternames do
-			--see if we are even on the raster
-			if((scaled_x1 < 0)
+			--see if we are even on the raster or that there is a raster
+			if( not realterrain.settings["file"..rastername]
+			or (scaled_x1 < 0)
 			or (scaled_x0 > realterrain[rastername].width) --@todo this doesn't account for scaling, offsets
 			or (scaled_z0 > 0)
 			or (-scaled_z1 > realterrain[rastername].length)) then --@todo this doesn't account for scaling, offsets
@@ -1638,7 +1649,7 @@ function realterrain.fill_below(x,z,heightmap)
 	local height_below_chunk = 0
 	local below_positions = {}
 	local elev = heightmap[z][x].elev
-	for dir, offset in next, neighborhood do
+	for dir, offset in next, realterrain.neighborhood do
 		--get elev for all surrounding nodes
 		if dir == "b" or dir == "d" or dir == "f" or dir == "h" then
 			
@@ -1757,6 +1768,7 @@ end
 minetest.register_on_joinplayer(function(player)
 	--give player privs and teleport to surface
 	local pname = player:get_player_name()
+	minetest.chat_send_player(pname, "you are using the "..PROCESSOR.." processor")
 	local privs = minetest.get_player_privs(pname)
 	privs.fly = true
 	privs.fast = true
@@ -1765,10 +1777,12 @@ minetest.register_on_joinplayer(function(player)
 	privs.teleport = true
 	privs.worldedit = true
 	minetest.set_player_privs(pname, privs)
+	minetest.chat_send_player(pname, "you have been granted some privs, like fast, fly, noclip, time, teleport and worldedit")
 	local ppos = player:getpos()
 	local surface = realterrain.get_surface(math.floor(ppos.x+0.5), math.floor(ppos.z+0.5))
-	if surface and surface ~= 0 then
+	if surface then
 		player:setpos({x=ppos.x, y=surface+0.5, z=ppos.z})
+		minetest.chat_send_player(pname, "you have been moved to the surface")
 	end
 	return true
 end)
@@ -1807,8 +1821,8 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		--the main form
 		if formname == "realterrain:rc_form" then 
 			--buttons that don't close the form:
+			local ppos = player:getpos()
 			if fields.gotosurface then
-				local ppos = player:getpos()
 				local surface = realterrain.get_surface(ppos.x, ppos.z)
 				if surface then
 					player:setpos({x=ppos.x, y=surface+0.5, z=ppos.z})
@@ -1820,6 +1834,27 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				return true
 			elseif fields.resetday then
 				minetest.set_timeofday(0.25)
+			elseif fields.setpos1 then
+				realterrain.pos1 = {x=math.floor(ppos.x+0.5),y=math.floor(ppos.y+0.5),z=math.floor(ppos.z+0.5)}
+				minetest.chat_send_player(pname, "pos1 set to ("..ppos.x..","..ppos.y..","..ppos.z..")")
+				realterrain.show_rc_form(pname)
+				return true
+			elseif fields.setpos2 then
+				realterrain.pos2 = {x=math.floor(ppos.x+0.5),y=math.floor(ppos.y+0.5),z=math.floor(ppos.z+0.5)}
+				minetest.chat_send_player(pname, "pos2 set to ("..ppos.x..","..ppos.y..","..ppos.z..")")
+				realterrain.show_rc_form(pname)
+				return true
+			elseif fields.posreset then
+				realterrain.pos1 = nil
+				realterrain.pos2 = nil
+				realterrain.show_rc_form(pname)
+				return true
+			elseif fields.savestructure then
+				if realterrain.pos1 and realterrain.pos2 then --will always be since button not shown otherwise
+					realterrain.save_structure(realterrain.pos1,realterrain.pos2)
+					minetest.chat_send_player(pname, "structure persisted to file")
+				end
+				return true
 			end
 			
 			--actual form submissions
@@ -2065,6 +2100,28 @@ function realterrain.show_rc_form(pname)
 	local f_settings =			"label["..col[1]..",1.1;Raster Mode]"..
 								"dropdown["..col[2]..",1;4,1;output;"..f_modes..";"..
 									realterrain.get_mode_idx(realterrain.settings.output).."]"
+									
+	if modename == "normal" or modename == "surface" then
+		local pos1 = "not set"
+		local pos2 = "not set"
+		if realterrain.pos1 then
+			pos1 = "("..realterrain.pos1.x..","..realterrain.pos1.y..","..realterrain.pos1.z..")"
+		end
+		if realterrain.pos2 then
+			pos2 = "("..realterrain.pos2.x..","..realterrain.pos2.y..","..realterrain.pos2.z..")"
+		end
+		f_settings = f_settings ..
+		"label["..col[4]..",4;Structure Optoins:]"..
+		"label["..col[4]..",4.5;pos1: "..pos1..", pos2: "..pos2.."]"..
+		"button["..col[4]..",5;1,1;setpos1;Pos1]" ..
+		"button["..col[5]..",5;1,1;setpos2;Pos2]" ..
+		"button["..col[6]..",5;1.5,1;posreset;Clear]"
+		
+		if realterrain.pos1 and realterrain.pos2 then
+			f_settings = f_settings..
+			"button["..col[8]..",5;1.5,1;savestructure;Save]"
+		end
+	end
 	if modename ~= "polynomial" then
 		f_settings = f_settings ..
 		"label["..col[4]-.2 ..",2;Scales]"..
@@ -2373,6 +2430,63 @@ function realterrain.show_invalidated(pname, formname, fields)
                                     "label[1,3;"..realterrain.esc(message).."]"
 	)
 	return true
+end
+
+function realterrain.get_structures_for_chunk(x0,y0,z0)
+	local structures = {}
+	--look in the structures folder and check each one to see if it is in the chunk
+	local list = {}
+	if package.config:sub(1,1) == "/" then
+	--Unix
+		--Loop through all files
+		for file in io.popen('find "'..STRUCTURES..'" -type f'):lines() do                         
+			local filename = string.sub(file, #STRUCTURES + 1)
+			if string.find(file, ".mts", -4) ~= nil then
+				table.insert(list, string.sub(filename, 1, -5))
+			end
+		end
+	else
+	--Windows
+		--Open directory look for files, loop through all files 
+		for filename in io.popen('dir "'..STRUCTURES..'" /b'):lines() do
+			if string.find(filename, ".mts", -4) ~= nil then
+				table.insert(list, string.sub(filename, 1, -5))
+			end
+		end
+	end
+	for k,v in next, list do
+		local split = string.split(v,"_")
+		local xmin = tonumber(split[1])
+		local ymin = tonumber(split[2])
+		local zmin = tonumber(split[3])
+		--print("x0 "..x0..", y0 "..y0..", z0 "..z0..", xmin "..xmin..", ymin "..ymin..", zmin "..zmin)
+		if xmin >= x0 and xmin < x0 +80 and ymin >= y0 and ymin < y0 +80 and zmin >= z0 and zmin < z0 +80 then
+			print("here")
+			table.insert(structures,{x=xmin,y=ymin,z=zmin,schemname=v})
+		end
+	end
+	return structures
+end
+
+function realterrain.save_structure(pos1,pos2)
+	--swap the max and mins until pos1 is the pmin and pos2 is the pmax
+	local xmin,ymin,zmin,xmax,ymax,zmax
+	if pos1.x < pos2.x then xmin = pos1.x else xmin = pos2.x end
+	if pos1.y < pos2.y then ymin = pos1.y else ymin = pos2.y end
+	if pos1.z < pos2.z then zmin = pos1.z else zmin = pos2.z end
+	if pos1.x > pos2.x then xmax = pos1.x else xmax = pos2.x end
+	if pos1.y > pos2.y then ymax = pos1.y else ymax = pos2.y end
+	if pos1.z > pos2.z then zmax = pos1.z else zmax = pos2.z end
+	pos1 = {x=xmin, y=ymin, z=zmin}
+	pos2 = {x=xmax, y=ymax, z=zmax}
+	
+	if minetest.create_schematic(pos1, pos2, nil, STRUCTURES..pos1.x.."_"..pos1.y.."_"..pos1.z..".mts") then
+		--append a line to the persistence csv file @todo maybe no file is needed
+		--[[local line = pos1.x..","..pos1.y..","..pos1.z
+		print(line)--]]
+		return true
+	end
+	
 end
 
 realterrain.init()
