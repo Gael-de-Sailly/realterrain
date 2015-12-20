@@ -858,7 +858,6 @@ function realterrain.generate(minp, maxp)
 	local heightmap = realterrain.build_heightmap(x0-buffer, x1+buffer, z0-buffer, z1+buffer)
 	--calculate the min and max elevations for skipping certain blocks completely
 	local minelev, maxelev
-	local input_present = false
 	for z=z0, z1 do
 		for x=x0, x1 do
 			local elev
@@ -895,8 +894,15 @@ function realterrain.generate(minp, maxp)
 						end
 					end
 				end
-				--making distance more efficient
-				if modename == "distance"and not input_present and heightmap[z][x].input and heightmap[z][x].input > 0 then
+			end
+		end
+	end
+	--making distance more efficient
+	local input_present = false
+	if modename == "distance" then
+		for z,v1 in next, heightmap do
+			for x,v2 in next, v1 do
+				if not input_present and heightmap[z][x].input and heightmap[z][x].input > 0 then
 					input_present = true
 				end
 			end
@@ -1011,12 +1017,12 @@ function realterrain.generate(minp, maxp)
 							end
 						--the surface layer, determined by cover value
 						elseif  y == elev
-						and ( cover ~= 5 or modename == "coverchange" or modename =="surface")
+						and ( cover ~= 5 or modename == "elevchange" or modename == "coverchange" or modename =="surface")
 						or (y < elev and y >= (elev - height) and fill_below) then
 							if modename == "coverchange" and cover2 and cover ~= cover2 then
 								--print("cover1: "..cover..", cover2: "..cover2)
 								data[vi] = cids["symbol10"]
-							elseif modename == "elevchange"	and (elev ~= elev2) then
+							elseif modename == "elevchange"	and elev2 and (elev ~= elev2) then
 								local diff = elev2 - elev
 								if diff < 0 then
 									color = "symbol10"
@@ -1591,10 +1597,10 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 							heightmap[z][x]["input"], heightmap[z][x]["input2"], heightmap[z][x]["input3"]
 								= realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), "input")
 						else
-							if rastername == "elev" then
+							if rastername == "elev" or (modename == "elevchange" and rastername == "input") then
 								local value = realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), "elev")
 								if value then
-									heightmap[z][x]["elev"] = math.floor(value*yscale+yoffset+0.5)
+									heightmap[z][x][rastername] = math.floor(value*yscale+yoffset+0.5)
 								end
 							else
 								heightmap[z][x][rastername] = realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), rastername)
