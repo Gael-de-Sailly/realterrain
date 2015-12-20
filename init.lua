@@ -84,11 +84,14 @@ realterrain.settings.fileinput3 = ''
 realterrain.settings.input3bits = 8
 realterrain.validate.input3bits = "number"
 
-realterrain.settings.dist_lim = 80
+realterrain.settings.dist_lim = 40
 realterrain.validate.dist_lim = "number"
 realterrain.settings.dist_mode = "3D" --3D or 3Dp
 realterrain.settings.dist_to_min = 1
+realterrain.validate.dist_to_min = "number"
 realterrain.settings.dist_to_max = 255
+realterrain.validate.dist_to_max = "number"
+
 
 realterrain.settings.polya = 0.00001
 realterrain.validate.polya = "number"
@@ -1709,6 +1712,9 @@ function realterrain.get_distance(x,y,z, heightmap)
 	local limit = realterrain.settings.dist_lim
 	local dist_mode = realterrain.settings.dist_mode
 	local shortest = limit
+	local to_min = realterrain.settings.dist_to_min
+	local to_max = realterrain.settings.dist_to_max
+	--print("min: "..to_min..", max: "..to_max)
 	--buid a square around the search pixel
 	local c=0
 	for j=z-limit, z+limit do
@@ -1720,7 +1726,7 @@ function realterrain.get_distance(x,y,z, heightmap)
 				if dist_mode == "3D" then
 					e = heightmap[j][i].elev
 				end
-				if v and v > 0 then
+				if v and v >= to_min and v <= to_max then
 					local distance
 					if dist_mode == "2D" then
 						distance = math.sqrt(((z-j)^2)+((x-i)^2))
@@ -2093,7 +2099,11 @@ function realterrain.show_rc_form(pname)
 			realterrain.esc(realterrain.get_setting("dist_lim")).."]" ..
 		"label["..col[5]..",4.6;mode:]"..
 		"dropdown["..col[5]..",5.05;1,1;dist_mode;2D,3D;"..
-			dmode[realterrain.esc(realterrain.get_setting("dist_mode"))].."]"
+			dmode[realterrain.esc(realterrain.get_setting("dist_mode"))].."]"..
+		"field["..col[7]..",5.25;1,1;dist_to_min;to min;"..
+			realterrain.esc(realterrain.get_setting("dist_to_min")).."]" ..
+		"field["..col[8]..",5.25;1.5,1;dist_to_max;to max;"..
+			realterrain.esc(realterrain.get_setting("dist_to_max")).."]" 
 		
 	end
 	if modename == "polynomial" then							

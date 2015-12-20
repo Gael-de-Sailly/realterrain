@@ -78,14 +78,15 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact red ch
 ### Changelog
 
 #### 0.0.9
-- got graphicsmagick library working
+- got graphicsmagick library working and bit depth detection in other modes
 - added support for graphicsmagick and imagemagick commandline interface (no libs required)
 - fixed bugs with alignment of pixels to map and scaling / offsets
 - form only shows options relevant to the current selected mode
 - form validation for all numeric inputs
 - "teleport to surface" button
 - "set time to morning" button
-- performance improvements
+- set the search limit and value range, as well as 2D/3D distance in distance mode
+- performance improvements including obtaining pixel ranges where possible
 
 #### 0.0.8
 - expanded biome editor
