@@ -22,6 +22,10 @@ Trees and shrubs:
 
 ![screenshot_20151128_180108](https://cloud.githubusercontent.com/assets/12679496/11454976/44c755b8-95fa-11e5-98d4-16329f5981ee.png)
 
+Persist structures:
+
+![screenshot_20151220_133903](https://cloud.githubusercontent.com/assets/12679496/11920273/0fc1dfec-a71f-11e5-9f9e-79dad5003642.png)
+
 Slope analysis:
 
 ![screenshot_20151031_115437](https://cloud.githubusercontent.com/assets/12679496/10865362/512e2128-7fc6-11e5-9c40-e214fa738e40.png)
