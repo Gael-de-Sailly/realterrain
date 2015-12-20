@@ -1838,12 +1838,12 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				minetest.set_timeofday(0.25)
 			elseif fields.setpos1 then
 				realterrain.pos1 = {x=math.floor(ppos.x+0.5),y=math.floor(ppos.y+0.5),z=math.floor(ppos.z+0.5)}
-				minetest.chat_send_player(pname, "pos1 set to ("..ppos.x..","..ppos.y..","..ppos.z..")")
+				minetest.chat_send_player(pname, "pos1 set to ("..realterrain.pos1.x..","..realterrain.pos1.y..","..realterrain.pos1.z..")")
 				realterrain.show_rc_form(pname)
 				return true
 			elseif fields.setpos2 then
 				realterrain.pos2 = {x=math.floor(ppos.x+0.5),y=math.floor(ppos.y+0.5),z=math.floor(ppos.z+0.5)}
-				minetest.chat_send_player(pname, "pos2 set to ("..ppos.x..","..ppos.y..","..ppos.z..")")
+				minetest.chat_send_player(pname, "pos2 set to ("..realterrain.pos2.x..","..realterrain.pos2.y..","..realterrain.pos2.z..")")
 				realterrain.show_rc_form(pname)
 				return true
 			elseif fields.posreset then
