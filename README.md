@@ -37,9 +37,10 @@ Overlay a color image or raster bands for false-color mapping of landsat imagery
 
 ### Dependencies:
 - this mod works out of the box with no libraries when using color BMP source rasters
-- otherwise you must have imageMagick and MagickWand , OR imlib2 (8-bit limit) installed on your system
-- and Mod Security disabled
--optional dependencies include lunatic-python, python, graphicsmagick (experimental, commented-out-features)
+- otherwise you must have imageMagick and MagickWand , GraphicksMagick, or imlib2 (8-bit limit) installed on your system
+- and Mod Security disabled (you can also use Python Image Library if you build lunatic-python)
+- optional dependencies include lunatic-python, python image library, graphicsmagick.
+- optionally you can run GraphicsMagick or ImageMagick in command-line mode, which is slower but uses no libs.
 
 ### Instructions
 - install the dependencies and the mod as usual (luarocks can be activated if needed)
@@ -47,20 +48,20 @@ Overlay a color image or raster bands for false-color mapping of landsat imagery
 - use the Realterrain Remote to change the settings, or
 - edit the mod defaults section (better to use the remote)
 - create greyscale images for heightmap and biomes (only heightmap is required) these should be the same length and width.
-The Biomes layer uses USGS landcover classifications and collapses tier two or three to tier one,
-which means that values from 10-19 are equivalent to 1, 20-29 are equivalent to 2, etc upt to 99.
+The Biomes layer uses USGS landcover classifications 1-9 and collapses tier two or three to tier one,
+which means that values from 10-19 are equivalent to 1, 20-29 are equivalent to 2, etc.
 The biome file is assumed to be 8-bit. pixel values that equate to 1 (or 10-19) will paint as roads, and pixel values that equate to biome 5 () will paint as water.
 A color image can be used for elevation and landcover but only the red channel is used.
-Read the defaults to see what the other biomes equate to in the USGS system, or redefine them in the in-game biome settings tool.
-Using a graphics editor that doesn't do anti-aliasing and preserves exact red channel values is recommended. Also if using the experimental python image handling, greyscale is required.
-- OR download DEM and USGS landcover/landuse tiles for same the same extent. Note, for true 16-bit DEMs you must use imagemagick or graphicsmagick, not imlib2 or the native processor.
-- after you change settings exit the world and delete the map.sqlite in the world folder
-- relaunch the map and enjoy!
-- note windows users may have to edit line 162 (or so) of magick/init.lua from "MagickWand" to "C:/Program Files/ImageMagick-6.9.2-Q16/CORE_RL_wand_" or whatever the version and location of your MagickWand install might be.
-- https://www.youtube.com/watch?v=66pehrH6Bh0
+Use the Biome editor in the remote to see the default biome settings and to redefine them.
+Using a graphics editor that doesn't do anti-aliasing and preserves exact channel values is recommended. When using the native (no libs) image processing, stick with BMP saved as RGB files with windows headers.
+- OR download DEM and USGS landcover/landuse tiles for same the same extent. Note, for true 16-bit DEMs you must use imagemagick or graphicsmagick, not imlib2 or the native processor. Use QGIS or some other GIS tool to crop and save these source files to standard GeoTIFF format.
+- after you change settings exit the world and delete the map.sqlite in the world folder or use the "Delete" button in the remote (this might crash the game, just restart)
+- relaunch the map and let it regenerate. To persist sections of the map or structures you have built, set pos1 and pos2 using the remote to points which enclose the structure, then hit save. When you delete map.sqlite these structures will be re-imported (assuming you haven't changed the image you used for elevation or the scales and offsets!).
+- note windows users wishing to use lua-magick may have to edit line 162 (or so) of magick/init.lua from "MagickWand" to "C:/Program Files/ImageMagick-6.9.2-Q16/CORE_RL_wand_" or whatever the version and location of your MagickWand install might be.
+- demonstation video: https://www.youtube.com/watch?v=66pehrH6Bh0
 
 ### Upgrading:
-- delete the realterrain.settings file in the world folder, or just create a new world
+- if game crashes after upgrade delete the realterrain.settings file in the world folder, or just create a new world
 
 ### Next steps:
 
