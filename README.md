@@ -1,5 +1,5 @@
 # realterrain v.0.1.0
-A Minetest mod that brings real world Terrain into the game (using freely available DEM tiles). Any image can actually be used.
+A Minetest mod that brings real world Terrain into the game (using freely available DEM tiles). Any image can actually be used which allows for WorldPainter-style map creation using any paint program.
 
 use any image any bit-depth (suggested to convert to greyscale first):
 
