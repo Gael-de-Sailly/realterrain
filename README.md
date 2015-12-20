@@ -50,7 +50,7 @@ Overlay a color image or raster bands for false-color mapping of landsat imagery
 - create greyscale images for heightmap and biomes (only heightmap is required) these should be the same length and width.
 The Biomes layer uses USGS landcover classifications 1-9 and collapses tier two or three to tier one,
 which means that values from 10-19 are equivalent to 1, 20-29 are equivalent to 2, etc.
-The biome file is assumed to be 8-bit. pixel values that equate to 1 (or 10-19) will paint as roads, and pixel values that equate to biome 5 () will paint as water.
+The biome file is assumed to be 8-bit. pixel values that equate to 1 (or 10-19) will paint as roads, and pixel values that equate to biome 5 (50-59) will paint as water.
 A color image can be used for elevation and landcover but only the red channel is used.
 Use the Biome editor in the remote to see the default biome settings and to redefine them.
 Using a graphics editor that doesn't do anti-aliasing and preserves exact channel values is recommended. When using the native (no libs) image processing, stick with BMP saved as RGB files with windows headers.
