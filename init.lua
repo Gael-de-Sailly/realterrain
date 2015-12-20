@@ -8,7 +8,9 @@ MODPATH = minetest.get_modpath("realterrain")
 WORLDPATH = minetest.get_worldpath()
 RASTERS = MODPATH .. "/rasters/"
 SCHEMS = MODPATH .. "/schems/"
-STRUCTURES = MODPATH .. "/structures/"
+STRUCTURES = WORLDPATH .. "/structures/"
+--make sure the structures folder is present
+minetest.mkdir(STRUCTURES)
 
 local ie = minetest.request_insecure_environment()
 
@@ -69,10 +71,10 @@ realterrain.validate.waterlevel = "number"
 realterrain.settings.alpinelevel = 1000
 realterrain.validate.alpinelevel = "number"
 
-realterrain.settings.fileelev = 'demo/dem.bmp'
+realterrain.settings.fileelev = 'dem.bmp'
 realterrain.settings.elevbits = 8
 realterrain.validate.elevbits = "number"
-realterrain.settings.filecover = 'demo/biomes.bmp'
+realterrain.settings.filecover = 'biomes.bmp'
 realterrain.settings.coverbits = 8
 realterrain.validate.coverbits = "number"
 
@@ -2481,9 +2483,6 @@ function realterrain.save_structure(pos1,pos2)
 	pos2 = {x=xmax, y=ymax, z=zmax}
 	
 	if minetest.create_schematic(pos1, pos2, nil, STRUCTURES..pos1.x.."_"..pos1.y.."_"..pos1.z..".mts") then
-		--append a line to the persistence csv file @todo maybe no file is needed
-		--[[local line = pos1.x..","..pos1.y..","..pos1.z
-		print(line)--]]
 		return true
 	end
 	

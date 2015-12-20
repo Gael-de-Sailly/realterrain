@@ -1,4 +1,4 @@
-# realterrain v.0.0.9
+# realterrain v.0.1.0
 A Minetest mod that brings real world Terrain into the game (using freely available DEM tiles). Any image can actually be used.
 
 use any image any bit-depth (suggested to convert to greyscale first):
@@ -73,9 +73,10 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact red ch
 - allow output of heightmap and land cover to image files
 - admin priv for using the settings tool
 - add more raster analysis modes
-- allow the placement of structures, saving of schems located to the map
 
 ### Changelog
+#### 0.1.0
+- allow the persistence of structures, ie: saving of schems located to the map
 
 #### 0.0.9
 - got graphicsmagick library working and bit depth detection in other modes
