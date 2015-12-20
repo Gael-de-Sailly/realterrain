@@ -87,6 +87,8 @@ realterrain.validate.input3bits = "number"
 realterrain.settings.dist_lim = 80
 realterrain.validate.dist_lim = "number"
 realterrain.settings.dist_mode = "3D" --3D or 3Dp
+realterrain.settings.dist_to_min = 1
+realterrain.settings.dist_to_max = 255
 
 realterrain.settings.polya = 0.00001
 realterrain.validate.polya = "number"
@@ -2028,6 +2030,11 @@ function realterrain.show_rc_form(pname)
 	local bits = {}
 	bits["8"] = "1"
 	bits["16"] = "2"
+	
+	local dmode = {}
+	dmode["2D"] = "1"
+	dmode["3D"] = "2"
+	
 	local f_modes = ""
 	for k,v in next, realterrain.modes do
 		if f_modes == ""  then
@@ -2079,6 +2086,16 @@ function realterrain.show_rc_form(pname)
 		"field["..col[9]..",3.25;1,1;zoffset;;"..
 			realterrain.esc(realterrain.get_setting("zoffset")).."]"
 	end
+	if modename == "distance" then
+		f_settings = f_settings ..
+		"label["..col[4]..",4;Distance Options:]"..
+		"field["..col[4]..",5.25;1,1;dist_lim;limit;"..
+			realterrain.esc(realterrain.get_setting("dist_lim")).."]" ..
+		"label["..col[5]..",4.6;mode:]"..
+		"dropdown["..col[5]..",5.05;1,1;dist_mode;2D,3D;"..
+			dmode[realterrain.esc(realterrain.get_setting("dist_mode"))].."]"
+		
+	end
 	if modename == "polynomial" then							
 		f_settings = f_settings ..
 		"label["..col[4]..",4;Polynomial Co-efficients]"..
@@ -2098,7 +2115,7 @@ function realterrain.show_rc_form(pname)
 		   realterrain.esc(realterrain.get_setting("polyg")).."]"..
 		"field["..col[6]..",7.25;2,1;polyh;+h;"..
 			realterrain.esc(realterrain.get_setting("polyh")).."]"
-	end							
+	end
 	if not mode.computed then
 		f_settings = f_settings ..
 		"label["..col[1]..",3.1;Elevation File]"..
