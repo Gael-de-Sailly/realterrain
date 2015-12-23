@@ -63,19 +63,10 @@ Using a graphics editor that doesn't do anti-aliasing and preserves exact channe
 ### Upgrading:
 - if game crashes after upgrade delete the realterrain.settings file in the world folder, or just create a new world
 
-### Next steps:
-
-- allow for placement of buildings and other structures via .mts import
-- allow DEMs to tile according to standard naming conventions, or explicitly
-- pull DEMs directly from the internet
-- pull landcover directly from the internet
-- allow output of heightmap and land cover to image files
-- admin priv for using the settings tool
-- add more raster analysis modes
-
 ### Changelog
 #### 0.1.0
 - allow the persistence of structures, ie: saving of schems located to the map
+- switched the ores system to use the default ores
 
 #### 0.0.9
 - got graphicsmagick library working and bit depth detection in other modes
