@@ -371,17 +371,6 @@ realterrain.settings.rastsymbol8 = "realterrain:slope8"
 realterrain.settings.rastsymbol9 = "realterrain:slope9"
 realterrain.settings.rastsymbol10 = "realterrain:slope10"
 
-minetest.register_ore({
-    ore_type       = "scatter",
-    ore            = "default:stone_with_coal",
-    wherein        = "default:stone",
-    clust_scarcity = 8*8*8,
-    clust_num_ores = 8,
-    clust_size     = 3,
-    height_min     = -31000,
-    height_max     = 64,
-})
-print(dump(minetest.registered_ores))
 minetest.register_node(
 	'realterrain:water_static', {
 		description = "Water that Stays Put",
@@ -1229,8 +1218,18 @@ function realterrain.generate(minp, maxp)
 		end --end if pixel is in heightmap
 	end
 	end
-	
+	-- public function made by the default mod, to register ores and blobs
+	if default then
+		if default.register_ores then
+			default.register_ores()
+		end
+		if default.register_blobs then
+			default.register_blobs()
+		end
+	end
+	print(dump(minetest.registered_ores))
 	vm:set_data(data)
+	minetest.generate_ores(vm, minp, maxp)
 	vm:calc_lighting()
 	vm:write_to_map(data)
 	vm:update_liquids()
@@ -2244,7 +2243,7 @@ function realterrain.show_rc_form(pname)
 	end
 	--Action buttons
 	local f_footer =			"button_exit[8,8;2,1;exit;Biomes]"..
-								"button_exit[10,8;2,1;exit;Ores]"..
+								--[["button_exit[10,8;2,1;exit;Ores]"..--]]
 								"button_exit[12,8;2,1;exit;Symbols]"..
 								
 								"label[5.5,9;Apply and]"..
