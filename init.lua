@@ -371,6 +371,17 @@ realterrain.settings.rastsymbol8 = "realterrain:slope8"
 realterrain.settings.rastsymbol9 = "realterrain:slope9"
 realterrain.settings.rastsymbol10 = "realterrain:slope10"
 
+minetest.register_ore({
+    ore_type       = "scatter",
+    ore            = "default:stone_with_coal",
+    wherein        = "default:stone",
+    clust_scarcity = 8*8*8,
+    clust_num_ores = 8,
+    clust_size     = 3,
+    height_min     = -31000,
+    height_max     = 64,
+})
+print(dump(minetest.registered_ores))
 minetest.register_node(
 	'realterrain:water_static', {
 		description = "Water that Stays Put",
@@ -390,26 +401,8 @@ realterrain.cids = nil
 function realterrain.build_cids()
 	local cids = {}
 	--turn various content ids into variables for speed
-	cids["ores"] = {}
-	
-	cids.ores[3] = minetest.get_content_id("default:stone_with_diamond")
-	cids.ores[4] = minetest.get_content_id("default:obsidian")
-	cids.ores[5] = minetest.get_content_id("default:stone_with_copper")
-	cids.ores[6] = minetest.get_content_id("default:clay")
-	cids.ores[7] = minetest.get_content_id("default:stone")
-	cids.ores[8] = minetest.get_content_id("default:sandstone")
-	cids.ores[9] = minetest.get_content_id("default:dirt")
-	cids.ores[10] = minetest.get_content_id("default:desert_stone")
-	cids.ores[11] = minetest.get_content_id("default:desert_sand")
-	cids.ores[12] = minetest.get_content_id("default:gravel")
-	cids.ores[13] = minetest.get_content_id("default:sand")
-	cids.ores[14] = minetest.get_content_id("default:ice")
-	cids.ores[15] = minetest.get_content_id("default:stone_with_coal")
-	cids.ores[16] = minetest.get_content_id("default:stone_with_iron")
-	cids.ores[17] = minetest.get_content_id("default:stone_with_gold")
-	cids.ores[18] = minetest.get_content_id("default:stone_with_mese")
-	
 	cids["dirt"] = minetest.get_content_id("default:dirt")
+	cids["stone"] = minetest.get_content_id("default:stone")
 	cids["alpine"] = minetest.get_content_id("default:gravel")
 	cids["water_bottom"] = minetest.get_content_id("default:sand")
 	cids["water"] = minetest.get_content_id("water_source")
@@ -790,11 +783,9 @@ function realterrain.init()
 	end
 end
 
-
-
-
 realterrain.surface_cache = {} --used to prevent reading of DEM for skyblocks
 realterrain.fill_below_leftovers = {} --used to handle off-chunk draws
+
 -- Set mapgen parameters
 minetest.register_on_mapgen_init(function(mgparams)
 	minetest.set_mapgen_params({mgname="singlenode", flags="nolight"})
@@ -948,6 +939,9 @@ function realterrain.generate(minp, maxp)
 	local c_dirt_with_grass = minetest.get_content_id("default:dirt_with_grass")
 	local c_dirt_with_dry_grass = minetest.get_content_id("default:dirt_with_dry_grass")
 	local c_dirt_with_snow = minetest.get_content_id("default:dirt_with_snow")
+	local c_stone = minetest.get_content_id("default:stone")
+	local c_dirt = minetest.get_content_id("default:dirt")
+	
 	--generate!
 	for z = z0, z1 do
 	for x = x0, x1 do
@@ -1012,15 +1006,11 @@ function realterrain.generate(minp, maxp)
 						if y < elev and (mode.name == "normal") then 
 							--create strata of stone, cobble, gravel, sand, coal, iron ore, etc
 							if y < elev-(math.random(10,15)) then
-								local d1 = math.random(1,6)
-								local d2 = math.random(1,6)
-								local d3 = math.random(1,6)
-								local d18 = d1+d2+d3 --classic d&d bell curve
-								data[vi] = cids.ores[d18]
+								data[vi] = c_stone
 							else
 								--dirt with grass and dry grass fix
 								if ( ground == c_dirt_with_grass or ground == c_dirt_with_dry_grass or ground == c_dirt_with_snow ) then
-									data[vi] = cids["dirt"]
+									data[vi] = c_dirt
 								else
 									data[vi] = ground
 								end
