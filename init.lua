@@ -1,4 +1,4 @@
-PROCESSOR = "native" -- options are: "native", "py", "gm", "magick", "imlib2"
+PROCESSOR = "gm" -- options are: "native", "py", "gm", "magick", "imlib2"
 print("PROCESSOR is "..PROCESSOR)
 --imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
 --gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
@@ -1493,9 +1493,9 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 			--see if we are even on the raster or that there is a raster
 			if( not realterrain.settings["file"..rastername]
 			or (scaled_x1 < 0)
-			or (scaled_x0 > realterrain[rastername].width) --@todo this doesn't account for scaling, offsets
+			or (scaled_x0 > realterrain[rastername].width)
 			or (scaled_z0 > 0)
-			or (-scaled_z1 > realterrain[rastername].length)) then --@todo this doesn't account for scaling, offsets
+			or (-scaled_z1 > realterrain[rastername].length)) then
 				--print("off raster request: scaled_x0: "..scaled_x0.." scaled_x1: "..scaled_x1.." scaled_z0: "..scaled_z0.." scaled_z1: "..scaled_z1)
 				return heightmap
 			end
@@ -1568,9 +1568,7 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				--now we have to build the heightmap from the pixel table
 				for z=z0, z1 do
 					for x=x0,x1 do
-						--local z = scaled_z1 - down - empty_rows
-						--local x = scaled_x0 + right + empty_cols -1
-												
+					
 						if not heightmap[z] then heightmap[z] = {} end
 						if not heightmap[z][x] then heightmap[z][x] = {} end
 						--here is the tricky part, requesting the correct pixel for this x,z map coordinate
@@ -1581,7 +1579,6 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 								heightmap[z][x]["input"] = pixels[newz][newx].r
 								heightmap[z][x]["input2"] = pixels[newz][newx].g
 								heightmap[z][x]["input3"] = pixels[newz][newx].b
-								
 							else
 								heightmap[z][x][rastername] = pixels[newz][newx]
 							end
