@@ -1227,7 +1227,6 @@ function realterrain.generate(minp, maxp)
 			default.register_blobs()
 		end
 	end
-	print(dump(minetest.registered_ores))
 	vm:set_data(data)
 	minetest.generate_ores(vm, minp, maxp)
 	vm:calc_lighting()
