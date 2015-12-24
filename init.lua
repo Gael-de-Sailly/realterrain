@@ -1297,7 +1297,7 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 					file:seek("set", ((z) * width) + x + 8)
 					r = file:read(1)
 					if r then
-						r = r:byte() -- -32?
+						r = r:byte()
 						
 						r = tonumber(r)
 						--print(r)
@@ -1310,7 +1310,7 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 					local r1 = file:read(1)
 					local r2 = file:read(1)
 					if r1 and r2 then
-						r = tonumber(r1:byte()) + tonumber(r2:byte())*256
+						r = tonumber(r1:byte()) + tonumber(r2:byte())*256 --might be *256 the wrong byte
 						--print(r)
 					else
 						print(rastername..": one of two bytes is nil")
