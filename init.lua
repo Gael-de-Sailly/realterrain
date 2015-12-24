@@ -1251,13 +1251,13 @@ end
 function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 	--print("x: "..x.." z: "..z..", rastername: "..rastername)
 	local colstart, rowstart = 0,0
-	if PROCESSOR == "native" then
+	if PROCESSOR == "native" and realterrain[rastername].format == "bmp" then
 		x=x+1
 		z=z-1
 		colstart = 1
 		rowstart = -1
 	end
-
+	
 	z = -z
 	local r,g,b
 	local width, length
@@ -1292,9 +1292,9 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 					print("tiff mode problem retrieving file handle")
 				end
 				--print(file)
-				
+				if x < 0 or z < 0 or x >= width or z >= length then return end
 				if realterrain[rastername].bits == 8 then
-					file:seek("set", ((z) * width) + x)
+					file:seek("set", ((z) * width) + x + 8)
 					r = file:read(1)
 					if r then
 						r = r:byte() -- -32?
@@ -1306,11 +1306,11 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 						r = nil
 					end
 				else
-					file:seek("set", ((z) * width * 2) + (x*2)+1)
+					file:seek("set", ((z) * width * 2) + (x*2) + 8)
 					local r1 = file:read(1)
 					local r2 = file:read(1)
 					if r1 and r2 then
-						r = tonumber(r1:byte()) + tonumber(r2:byte())
+						r = tonumber(r1:byte()) + tonumber(r2:byte())*256
 						--print(r)
 					else
 						print(rastername..": one of two bytes is nil")
@@ -1465,8 +1465,7 @@ function realterrain.get_enumeration(rastername, firstcol, width, firstrow, leng
 	end
 	return table_enum
 end
-
---experimental function to enumerate 80x80 crop of raster at once using IM or GM
+--main function that builds a heightmap using the various processors' methods available
 function realterrain.build_heightmap(x0, x1, z0, z1)
 	local mode = realterrain.get_mode()
 	local modename = mode.name
@@ -1481,6 +1480,7 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 	local scaled_x1 = math.floor(x1/xscale+xoffset+0.5)
 	local scaled_z0 = math.floor(z0/zscale+zoffset+0.5)
 	local scaled_z1 = math.floor(z1/zscale+zoffset+0.5)
+	
 	if not mode.computed then
 		local rasternames = {}
 		if realterrain.settings.fileelev ~= "" then table.insert(rasternames, "elev") end
@@ -1513,7 +1513,6 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				local empty_cols = 0
 				local empty_rows = 0
 				--don't request pixels to the left or above the raster, count how many we were off if we were going to
-				--@todo this doesn't account for offsets and scales
 				if scaled_x0 < 0 then
 					empty_cols = - scaled_x0
 					cropstartx = 0
@@ -1591,22 +1590,25 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				--print(rastername.." result entries: "..entries)
 			
 			else --processors that require pixel-access instead of enumeration parsing
-				local colstart, colend, rowstart, rowend = x0,x1,z0,z1  --@todo this doesn't account for scaling, offsets
+				--local colstart, colend, rowstart, rowend = scaled_x0,scaled_x1,scaled_z0,scaled_z1
+				local colstart, colend, rowstart, rowend = x0,x1,z0,z1
 				for z=rowstart,rowend do
 					if not heightmap[z] then heightmap[z] = {} end
 					for x=colstart,colend do
+						local scaled_x = math.floor(x/xscale+xoffset+0.5)
+						local scaled_z = math.floor(z/zscale+zoffset+0.5)
 						if not heightmap[z][x] then heightmap[z][x] = {} end
 						if rastername == "input" and mode.get_input_color then
 							heightmap[z][x]["input"], heightmap[z][x]["input2"], heightmap[z][x]["input3"]
-								= realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), "input")
+								= realterrain.get_raw_pixel(scaled_x,scaled_z, "input")
 						else
 							if rastername == "elev" or (modename == "elevchange" and rastername == "input") then
-								local value = realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), "elev")
+								local value = realterrain.get_raw_pixel(scaled_x,scaled_z, "elev")
 								if value then
 									heightmap[z][x][rastername] = math.floor(value*yscale+yoffset+0.5)
 								end
 							else
-								heightmap[z][x][rastername] = realterrain.get_raw_pixel(math.floor(x/xscale+xoffset+0.5),math.floor(z/zscale+zoffset+0.5), rastername)
+								heightmap[z][x][rastername] = realterrain.get_raw_pixel(scaled_x,scaled_z, rastername)
 							end
 						end
 					end
