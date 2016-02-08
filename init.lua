@@ -949,12 +949,8 @@ function realterrain.generate(minp, maxp)
 					--print(cover)
 					if not cover or cover < 1 then
 						cover = 0
-					elseif cover > 99 then
-						cover = math.floor(cover/100) -- USGS tier3 now tier1
-					elseif cover > 9 then
-						cover = math.floor(cover/10) -- USGS tier2 now tier1
 					else
-						cover = math.floor(cover)
+						cover = tonumber(string.sub(tostring(cover),1,1))
 					end
 					if modename == "elevchange" then
 						elev2 = heightmap[z][x].input
@@ -963,12 +959,8 @@ function realterrain.generate(minp, maxp)
 						cover2 = heightmap[z][x].input
 						if not cover2 or cover2 < 1 then
 							cover2 = 0
-						elseif cover2 > 99 then
-							cover2 = math.floor(cover2/100) -- USGS tier3 now tier1
-						elseif cover2 > 9 then
-							cover2 = math.floor(cover2/10) -- USGS tier2 now tier1
 						else
-							cover2 = math.floor(cover2)
+							cover2 = tonumber(string.sub(tostring(cover2),1,1))
 						end
 					end
 					--print("elev: "..elev..", cover: "..cover)
@@ -1306,7 +1298,7 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 						r = nil
 					end
 				else
-					file:seek("set", ((z) * width * 2) + (x*2) + 8)
+					file:seek("set", ((z) * width * 2) + (x*2) + 11082) -- + 11082 cleans up the dem16.tif raster,
 					local r1 = file:read(1)
 					local r2 = file:read(1)
 					if r1 and r2 then
@@ -2450,7 +2442,7 @@ function realterrain.get_structures_for_chunk(x0,y0,z0)
 		local zmin = tonumber(split[3])
 		--print("x0 "..x0..", y0 "..y0..", z0 "..z0..", xmin "..xmin..", ymin "..ymin..", zmin "..zmin)
 		if xmin >= x0 and xmin < x0 +80 and ymin >= y0 and ymin < y0 +80 and zmin >= z0 and zmin < z0 +80 then
-			print("here")
+			print("structure found for this chunk")
 			table.insert(structures,{x=xmin,y=ymin,z=zmin,schemname=v})
 		end
 	end
