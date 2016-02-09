@@ -16,7 +16,7 @@ function realterrain.list_images()
 		--Loop through all files
 		for file in io.popen('find "'..realterrain.RASTERS..'" -type f'):lines() do                         
 			local filename = string.sub(file, #realterrain.RASTERS + 1)
-			local im = imagesize.imgsize(realterrain.RASTERS .. filename)
+			local im = realterrain.imagesize.imgsize(realterrain.RASTERS .. filename)
 			if im then
 				table.insert(list, filename)
 			end
@@ -27,7 +27,7 @@ function realterrain.list_images()
 	--Windows
 		--Open directory look for files, loop through all files 
 		for filename in io.popen('dir "'..realterrain.RASTERS..'" /b'):lines() do
-			local im = imagesize.imgsize(realterrain.RASTERS .. filename)
+			local im = realterrain.imagesize.imgsize(realterrain.RASTERS .. filename)
 			if im then
 				table.insert(list, filename)
 			end

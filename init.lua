@@ -8,7 +8,8 @@ realterrain.STRUCTURES = realterrain.WORLDPATH .. "/structures/"
 --make sure the structures folder is present
 minetest.mkdir(realterrain.STRUCTURES)
 
-local imagesize, native, py, gm, magick, imlib2 = dofile(realterrain.MODPATH .. "/processor.lua")
+dofile(realterrain.MODPATH .. "/processor.lua")
+local py, gm, magick, imlib2 = realterrain.py, realterrain.gm, realterrain.magick, realterrain.imlib2
 dofile(realterrain.MODPATH .. "/settings.lua")
 
 --define global constants
@@ -107,7 +108,7 @@ function realterrain.init()
 			if realterrain.settings["file"..rastername] ~= ""  then 
 				if realterrain.PROCESSOR == "native" then
 					--use imagesize to get the dimensions and header offset
-					local width, length, format = imagesize.imgsize(realterrain.RASTERS..realterrain.settings["file"..rastername])
+					local width, length, format = realterrain.imagesize.imgsize(realterrain.RASTERS..realterrain.settings["file"..rastername])
 					print(rastername..": format: "..format.." width: "..width.." length: "..length)
 					if string.sub(format, -3) == "bmp" or string.sub(format, -6) == "bitmap" then
 						dofile(realterrain.MODPATH.."/lib/loader_bmp.lua")
@@ -137,7 +138,7 @@ function realterrain.init()
 						print("your file should be an uncompressed tiff, png or bmp")
 					end
 				elseif realterrain.PROCESSOR == "convert" then
-					local width, length, format = imagesize.imgsize(realterrain.RASTERS..realterrain.settings["file"..rastername])
+					local width, length, format = realterrain.imagesize.imgsize(realterrain.RASTERS..realterrain.settings["file"..rastername])
 					realterrain[rastername].width = width
 					realterrain[rastername].length = length
 				elseif realterrain.PROCESSOR == "py" then

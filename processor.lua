@@ -10,11 +10,11 @@ local ie = minetest.request_insecure_environment()
 --ie.require "luarocks.loader" --if you use luarocks to install some of the packages below you may need this
 
 package.path = (realterrain.MODPATH.."/lib/lua-imagesize-1.2/?.lua;"..package.path)
-local imagesize = ie.require "imagesize"
+realterrain.imagesize = ie.require "imagesize"
 
 --[[package.path = (MODPATH.."/lib/luasocket/?.lua;"..MODPATH.."/lib/luasocket/?/init.lua;"..package.path)
 local socket = ie.require "socket"--]]
-local native, py, gm, magick, imlib2
+local py, gm, magick, imlib2
 if realterrain.PROCESSOR == "py" then
 	package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*") --may not need to explicitly state this
 	package.path = (realterrain.MODPATH.."/lib/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
@@ -41,4 +41,7 @@ elseif realterrain.PROCESSOR == "native" then
 	dofile(realterrain.MODPATH.."/lib/imageloader.lua")
 end
 
-return imagesize, native, py, gm, magick, imlib2
+realterrain.py = py
+realterrain.gm = gm
+realterrain.magick = magick
+realterrain.imlib2 = imlib2

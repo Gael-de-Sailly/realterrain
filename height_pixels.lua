@@ -1,3 +1,5 @@
+local py = realterrain.py
+
 --the raw get pixel method that uses the selected method and accounts for bit depth
 function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 	--print("x: "..x.." z: "..z..", rastername: "..rastername)
