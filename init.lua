@@ -8,7 +8,7 @@ realterrain.STRUCTURES = realterrain.WORLDPATH .. "/structures/"
 --make sure the structures folder is present
 minetest.mkdir(realterrain.STRUCTURES)
 
-dofile(realterrain.MODPATH .. "/processor.lua")
+local imagesize, native, py, gm, magick, imlib2 = dofile(realterrain.MODPATH .. "/processor.lua")
 dofile(realterrain.MODPATH .. "/settings.lua")
 
 --define global constants
@@ -19,7 +19,7 @@ realterrain.symbols = {}
 for k,u in next, websafe do
 	for k,v in next, websafe do
 		for k,w in next, websafe do
-			table.insert(symbols, u..v..w)
+			table.insert(realterrain.symbols, u..v..w)
 		end
 	end
 end

@@ -37,6 +37,8 @@ elseif realterrain.PROCESSOR == "gm" then
 elseif realterrain.PROCESSOR == "convert" then
 	CONVERT = "gm convert" -- could also be CONVERT.exe, "gm CONVERT" or "gm.exe CONVERT"
 elseif realterrain.PROCESSOR == "native" then
-	dofile(MODPATH.."/lib/iohelpers.lua")
-	dofile(MODPATH.."/lib/imageloader.lua")
+	dofile(realterrain.MODPATH.."/lib/iohelpers.lua")
+	dofile(realterrain.MODPATH.."/lib/imageloader.lua")
 end
+
+return imagesize, native, py, gm, magick, imlib2
