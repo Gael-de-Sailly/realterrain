@@ -1,5 +1,5 @@
 realterrain.cids = nil
-function realterrain.build_cids()
+local function build_cids()
 	local cids = {}
 	--turn various content ids into variables for speed
 	cids["dirt"] = minetest.get_content_id("default:dirt")
@@ -68,6 +68,30 @@ function realterrain.build_cids()
 	end
 	
 	realterrain.cids = cids
+end
+
+--this funcion gets the hieght needed to fill below a node for surface-only modes
+local function height_fill_below(x,z,heightmap)
+	local height = 0
+	local height_in_chunk = 0
+	local height_below_chunk = 0
+	local below_positions = {}
+	local elev = heightmap[z][x].elev
+	for dir, offset in next, realterrain.neighborhood do
+		--get elev for all surrounding nodes
+		if dir == "b" or dir == "d" or dir == "f" or dir == "h" then
+			
+			if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x] and heightmap[z+offset.z][x+offset.x].elev then
+				local nelev = heightmap[z+offset.z][x+offset.x].elev
+				-- if the neighboring height is more than one down, check if it is the furthest down
+				if elev > ( nelev) and height < (elev-nelev) then
+					height = elev - nelev
+				end
+			end
+		end
+	end
+	--print(height)
+	return height -1
 end
 
 function realterrain.generate(minp, maxp)
@@ -207,7 +231,7 @@ function realterrain.generate(minp, maxp)
 	end
 	--print(dump(heightmap))
 	if not realterrain.cids then
-		realterrain.build_cids()
+		build_cids()
 	end
 	local cids = realterrain.cids
 	--print(dump(cids))
@@ -224,7 +248,7 @@ function realterrain.generate(minp, maxp)
 			--get the height needed to fill_below in surface mode
 			local height
 			if fill_below then
-				height = realterrain.fill_below(x,z,heightmap)
+				height = height_fill_below(x,z,heightmap)
 			end
 			if not computed then
 				--modes that use biomes:

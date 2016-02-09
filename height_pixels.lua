@@ -389,30 +389,6 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 	return heightmap
 end
 
---this funcion gets the hieght needed to fill below a node for surface-only modes
-function realterrain.fill_below(x,z,heightmap)
-	local height = 0
-	local height_in_chunk = 0
-	local height_below_chunk = 0
-	local below_positions = {}
-	local elev = heightmap[z][x].elev
-	for dir, offset in next, realterrain.neighborhood do
-		--get elev for all surrounding nodes
-		if dir == "b" or dir == "d" or dir == "f" or dir == "h" then
-			
-			if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x] and heightmap[z+offset.z][x+offset.x].elev then
-				local nelev = heightmap[z+offset.z][x+offset.x].elev
-				-- if the neighboring height is more than one down, check if it is the furthest down
-				if elev > ( nelev) and height < (elev-nelev) then
-					height = elev - nelev
-				end
-			end
-		end
-	end
-	--print(height)
-	return height -1
-end
-
 function realterrain.get_slope(n, rad)
 	--print(dump(n))
 	local x_cellsize, z_cellsize = 1, 1

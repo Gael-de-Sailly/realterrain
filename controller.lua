@@ -9,7 +9,7 @@ minetest.register_tool("realterrain:remote" , {
 	end,
 })
 
-function realterrain.list_images()
+local function list_images()
 	local list = {}
 	if package.config:sub(1,1) == "/" then
 	--Unix
@@ -37,7 +37,7 @@ function realterrain.list_images()
 	end
 end
 
-function realterrain.list_schems()
+local function list_schems()
 	local list = {}
 	if package.config:sub(1,1) == "/" then
 	--Unix
@@ -61,7 +61,7 @@ function realterrain.list_schems()
 	end
 end
 
-function realterrain.list_nodes()
+local function list_nodes()
 	local list = {}
 	--generate a list of all registered nodes that are simple blocks
 	for k,v in next, minetest.registered_nodes do
@@ -76,7 +76,7 @@ function realterrain.list_nodes()
 	return list
 end
 
-function realterrain.list_plants()
+local function list_plants()
 	local list = {}
 	--generate a list of all registered nodes that are simple blocks
 	for k,v in next, minetest.registered_nodes do
@@ -87,7 +87,7 @@ function realterrain.list_plants()
 	return list
 end
 
-function realterrain.list_symbology()
+local function list_symbology()
 	local list = {}
 	--generate a list of all registered nodes that are simple blocks
 	for k,v in next, minetest.registered_nodes do
@@ -99,7 +99,7 @@ function realterrain.list_symbology()
 end
 
 --need to override the minetest.formspec_escape to return empty string when nil
-function realterrain.esc(str)
+local function escape(str)
 	if not str or str == "" then return "" else return minetest.formspec_escape(str) end
 end
 
@@ -248,16 +248,16 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				return true
 			elseif fields.ground then
 				local setting = "b"..fields.ground.."ground"
-				realterrain.show_item_images(pname, realterrain.list_nodes(), setting)
+				realterrain.show_item_images(pname, list_nodes(), setting)
 			elseif fields.ground2 then
 				local setting = "b"..fields.ground2.."ground2"
-				realterrain.show_item_images(pname, realterrain.list_nodes(), setting)
+				realterrain.show_item_images(pname, list_nodes(), setting)
 			elseif fields.shrub then
 				local setting = "b"..fields.shrub.."shrub"
-				realterrain.show_item_images(pname, realterrain.list_plants(), setting)
+				realterrain.show_item_images(pname, list_plants(), setting)
 			elseif fields.shrub2 then
 				local setting = "b"..fields.shrub2.."shrub2"
-				realterrain.show_item_images(pname, realterrain.list_plants(), setting)
+				realterrain.show_item_images(pname, list_plants(), setting)
 			end
 			return true
 		end
@@ -293,7 +293,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			elseif fields.rastsymbol then 
 				local setting = "rastsymbol"..fields.rastsymbol
 				minetest.chat_send_player(pname, "please be patient while all symbols load")
-				realterrain.show_all_symbols(pname, realterrain.list_symbology(), setting)
+				realterrain.show_all_symbols(pname, list_symbology(), setting)
 			end
 			return true
 		end
@@ -340,7 +340,7 @@ function realterrain.show_rc_form(pname)
 	local mode = realterrain.get_mode()
 	local modename = mode.name
 	
-	local images = realterrain.list_images()
+	local images = list_images()
 	local f_images = ""
 	for k,v in next, images do
 		f_images = f_images .. v .. ","
@@ -409,56 +409,56 @@ function realterrain.show_rc_form(pname)
 		"label["..col[6]..",2.5;Z]"..
 		
 		"field["..col[4]..",3.25;1,1;yscale;;"..
-			realterrain.esc(realterrain.get_setting("yscale")).."]" ..
+			escape(realterrain.get_setting("yscale")).."]" ..
 		"field["..col[5]..",3.25;1,1;xscale;;"..
-			realterrain.esc(realterrain.get_setting("xscale")).."]" ..
+			escape(realterrain.get_setting("xscale")).."]" ..
 		"field["..col[6]..",3.25;1,1;zscale;;"..
-			realterrain.esc(realterrain.get_setting("zscale")).."]" ..
+			escape(realterrain.get_setting("zscale")).."]" ..
 		
 		"label["..col[7]..",2.5;Y]"..
 		"label["..col[8]..",2.5;X]"..
 		"label["..col[9]..",2.5;Z]"..
 		
 		"field["..col[7]..",3.25;1,1;yoffset;;"..
-			realterrain.esc(realterrain.get_setting("yoffset")).."]" ..
+			escape(realterrain.get_setting("yoffset")).."]" ..
 		"field["..col[8]..",3.25;1,1;xoffset;;"..
-			realterrain.esc(realterrain.get_setting("xoffset")).."]" ..
+			escape(realterrain.get_setting("xoffset")).."]" ..
 		"field["..col[9]..",3.25;1,1;zoffset;;"..
-			realterrain.esc(realterrain.get_setting("zoffset")).."]"
+			escape(realterrain.get_setting("zoffset")).."]"
 	end
 	if modename == "distance" then
 		f_settings = f_settings ..
 		"label["..col[4]..",4;Distance Options:]"..
 		"field["..col[4]..",5.25;1,1;dist_lim;limit;"..
-			realterrain.esc(realterrain.get_setting("dist_lim")).."]" ..
+			escape(realterrain.get_setting("dist_lim")).."]" ..
 		"label["..col[5]..",4.6;mode:]"..
 		"dropdown["..col[5]..",5.05;1,1;dist_mode;2D,3D;"..
-			dmode[realterrain.esc(realterrain.get_setting("dist_mode"))].."]"..
+			dmode[escape(realterrain.get_setting("dist_mode"))].."]"..
 		"field["..col[7]..",5.25;1,1;dist_to_min;to min;"..
-			realterrain.esc(realterrain.get_setting("dist_to_min")).."]" ..
+			escape(realterrain.get_setting("dist_to_min")).."]" ..
 		"field["..col[8]..",5.25;1.5,1;dist_to_max;to max;"..
-			realterrain.esc(realterrain.get_setting("dist_to_max")).."]" 
+			escape(realterrain.get_setting("dist_to_max")).."]" 
 		
 	end
 	if modename == "polynomial" then							
 		f_settings = f_settings ..
 		"label["..col[4]..",4;Polynomial Co-efficients]"..
 		"field["..col[4]..",5.25;2,1;polya;(a*(x^2)*(z^2));"..
-			realterrain.esc(realterrain.get_setting("polya")).."]" ..
+			escape(realterrain.get_setting("polya")).."]" ..
 		"field["..col[6]..",5.25;2,1;polyb;+(b*(x^2)*(z));"..
-			realterrain.esc(realterrain.get_setting("polyb")).."]" ..
+			escape(realterrain.get_setting("polyb")).."]" ..
 		"field["..col[8]..",5.25;2,1;polyc;+(c*(x)*(z^2));"..
-			realterrain.esc(realterrain.get_setting("polyc")).."]" ..
+			escape(realterrain.get_setting("polyc")).."]" ..
 		"field["..col[4]..",6.25;2,1;polyd;+(d*(x^2));"..
-			realterrain.esc(realterrain.get_setting("polyd")).."]" ..
+			escape(realterrain.get_setting("polyd")).."]" ..
 		"field["..col[6]..",6.25;2,1;polye;+(e*(z^2));"..
-			realterrain.esc(realterrain.get_setting("polye")).."]"..
+			escape(realterrain.get_setting("polye")).."]"..
 		"field["..col[8]..",6.25;2,1;polyf;+(f*(x));"..
-			realterrain.esc(realterrain.get_setting("polyf")).."]"..
+			escape(realterrain.get_setting("polyf")).."]"..
 		"field["..col[4]..",7.25;2,1;polyg;+(g*(z));"..
-		   realterrain.esc(realterrain.get_setting("polyg")).."]"..
+		   escape(realterrain.get_setting("polyg")).."]"..
 		"field["..col[6]..",7.25;2,1;polyh;+h;"..
-			realterrain.esc(realterrain.get_setting("polyh")).."]"
+			escape(realterrain.get_setting("polyh")).."]"
 	end
 	if not mode.computed then
 		f_settings = f_settings ..
@@ -498,34 +498,34 @@ function realterrain.show_rc_form(pname)
 		f_settings = f_settings ..
 		"label["..col[3]+0.2 ..",2;Bits]"..
 		"dropdown["..col[3]..",3;1,1;elevbits;8,16;"..
-				bits[realterrain.esc(realterrain.get_setting("elevbits"))].."]"
+				bits[escape(realterrain.get_setting("elevbits"))].."]"
 		if mode.get_cover then
 			f_settings = f_settings ..
 			"dropdown["..col[3]..",4;1,1;coverbits;8,16;"..
-				bits[realterrain.esc(realterrain.get_setting("coverbits"))].."]"
+				bits[escape(realterrain.get_setting("coverbits"))].."]"
 		end
 		if mode.get_input then
 			f_settings = f_settings ..
 			"dropdown["..col[3]..",5;1,1;inputbits;8,16;"..
-				bits[realterrain.esc(realterrain.get_setting("inputbits"))].."]"
+				bits[escape(realterrain.get_setting("inputbits"))].."]"
 		end
 		if mode.get_input2 then
 			f_settings = f_settings ..
 			"dropdown["..col[3]..",6;1,1;input2bits2;8,16;"..
-				bits[realterrain.esc(realterrain.get_setting("input2bits"))].."]"
+				bits[escape(realterrain.get_setting("input2bits"))].."]"
 		end
 		if mode.get_input3 then
 			f_settings = f_settings ..
 			"dropdown["..col[3]..",7;1,1;input3bits;8,16;"..
-				bits[realterrain.esc(realterrain.get_setting("input3bits"))].."]"
+				bits[escape(realterrain.get_setting("input3bits"))].."]"
 		end
 	end
 	if modename == "normal" or modename == "surface" then
 		f_settings = f_settings ..	
 		"field[1,9;2,1;waterlevel;Water Level;"..
-			realterrain.esc(realterrain.get_setting("waterlevel")).."]"..
+			escape(realterrain.get_setting("waterlevel")).."]"..
 		"field[3,9;2,1;alpinelevel;Alpine Level;"..
-			realterrain.esc(realterrain.get_setting("alpinelevel")).."]"
+			escape(realterrain.get_setting("alpinelevel")).."]"
 	end
 	--Action buttons
 	local f_footer =			"button_exit[8,8;2,1;exit;Biomes]"..
@@ -548,7 +548,7 @@ function realterrain.show_rc_form(pname)
 end
 
 function realterrain.show_cover_form(pname)
-	local schems = realterrain.list_schems()
+	local schems = list_schems()
 	local f_schems = ""
 	for k,v in next, schems do
 		f_schems = f_schems .. v .. ","
@@ -573,23 +573,23 @@ function realterrain.show_cover_form(pname)
 			"item_image_button["..(col[3])..","..(h-0.2)..";0.8,0.8;"..
 			realterrain.get_setting("b"..i.."ground2")..";ground2;"..i.."]"..
 			"field["..(col[4]+0.2)..","..h ..";1,1;b"..i.."gprob;;"..
-				realterrain.esc(realterrain.get_setting("b"..i.."gprob")).."]"
+				escape(realterrain.get_setting("b"..i.."gprob")).."]"
 		f_body = f_body ..
 			"dropdown["..col[5]..","..(h-0.3) ..";2,1;b"..i.."tree;"..f_schems..";"..
 				realterrain.get_idx(schems, realterrain.get_setting("b"..i.."tree")) .."]" ..
 			"field["..(col[6]+0.2)..","..h ..";1,1;b"..i.."tprob;;"..
-				realterrain.esc(realterrain.get_setting("b"..i.."tprob")).."]" ..
+				escape(realterrain.get_setting("b"..i.."tprob")).."]" ..
 			"dropdown["..col[7]..","..(h-0.3) ..";2,1;b"..i.."tree2;"..f_schems..";"..
 				realterrain.get_idx(schems, realterrain.get_setting("b"..i.."tree2")) .."]" ..
 			"field["..(col[8]+0.2)..","..h ..";1,1;b"..i.."tprob2;;"..
-				realterrain.esc(realterrain.get_setting("b"..i.."tprob2")).."]"
+				escape(realterrain.get_setting("b"..i.."tprob2")).."]"
 		f_body = f_body ..
 			"item_image_button["..(col[9])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."shrub")..";shrub;"..i.."]"..
 			"field["..col[10]..","..h ..";1,1;b"..i.."sprob;;"..
-				realterrain.esc(realterrain.get_setting("b"..i.."sprob")).."]"..
+				escape(realterrain.get_setting("b"..i.."sprob")).."]"..
 			"item_image_button["..(col[11])..","..(h-0.2)..";0.8,0.8;"..realterrain.get_setting("b"..i.."shrub2")..";shrub2;"..i.."]"..
 			"field["..col[12]..","..h ..";1,1;b"..i.."sprob2;;"..
-				realterrain.esc(realterrain.get_setting("b"..i.."sprob2")).."]"
+				escape(realterrain.get_setting("b"..i.."sprob2")).."]"
 	end
 	local f_notes = "label[1,8;Biome 1 - Roads,  Biome2 - Agriculture,  Biome3 - Rangeland]"..
 					"label[1,8.5;Biome 4 - Forest,  Biome 5 - Water,  Biome 6 - Wetlands]"..
@@ -708,7 +708,7 @@ function realterrain.show_invalidated(pname, formname, fields)
 	minetest.show_formspec(pname,   "realterrain:invalidated",
                                     "size[10,8]" ..
                                     "button_exit[1,1;2,1;exit;"..back.."]"..
-                                    "label[1,3;"..realterrain.esc(message).."]"
+                                    "label[1,3;"..escape(message).."]"
 	)
 	return true
 end

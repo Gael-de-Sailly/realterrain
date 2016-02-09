@@ -9,7 +9,7 @@ realterrain.STRUCTURES = realterrain.WORLDPATH .. "/structures/"
 minetest.mkdir(realterrain.STRUCTURES)
 
 dofile(realterrain.MODPATH .. "/processor.lua")
-local py, gm, magick, imlib2 = realterrain.py, realterrain.gm, realterrain.magick, realterrain.imlib2
+local imagesize, py, gm, magick, imlib2 = realterrain.imagesize, realterrain.py, realterrain.gm, realterrain.magick, realterrain.imlib2 -- prefer local variables
 dofile(realterrain.MODPATH .. "/settings.lua")
 
 --define global constants
