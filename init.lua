@@ -1,16 +1,23 @@
 realterrain = {}
 
-realterrain.MODPATH = minetest.get_modpath("realterrain")
-realterrain.WORLDPATH = minetest.get_worldpath()
-realterrain.RASTERS = realterrain.MODPATH .. "/rasters/"
-realterrain.SCHEMS = realterrain.MODPATH .. "/schems/"
-realterrain.STRUCTURES = realterrain.WORLDPATH .. "/structures/"
+local MODPATH = minetest.get_modpath("realterrain")
+local WORLDPATH = minetest.get_worldpath()
+local RASTERS = MODPATH .. "/rasters/"
+local SCHEMS = MODPATH .. "/schems/"
+local STRUCTURES = WORLDPATH .. "/structures/"
 --make sure the structures folder is present
-minetest.mkdir(realterrain.STRUCTURES)
+minetest.mkdir(STRUCTURES)
 
-dofile(realterrain.MODPATH .. "/processor.lua")
+realterrain.modpath = MODPATH
+realterrain.worldpath = WORLDPATH
+realterrain.rasters = RASTERS
+realterrain.schems = SCHEMS
+realterrain.structures = STRUCTURES
+
+dofile(MODPATH .. "/processor.lua")
 local imagesize, py, gm, magick, imlib2 = realterrain.imagesize, realterrain.py, realterrain.gm, realterrain.magick, realterrain.imlib2 -- prefer local variables
-dofile(realterrain.MODPATH .. "/settings.lua")
+local PROCESSOR = realterrain.processor
+dofile(MODPATH .. "/settings.lua")
 
 --define global constants
 realterrain.slopecolors = {"00f700", "5af700", "8cf700", "b5f700", "def700", "f7de00", "ffb500", "ff8400","ff4a00", "f70000"}
@@ -37,7 +44,7 @@ realterrain.neighborhood = {
 	i = {x= 1,y= 0,z=-1}, -- SE
 }
 
-dofile(realterrain.MODPATH .. "/nodes.lua")
+dofile(MODPATH .. "/nodes.lua")
 
 --modes table for easier feature addition, fillbelow and moving_window require a buffer of at least 1
 realterrain.modes = {
@@ -78,9 +85,9 @@ function realterrain.get_idx(haystack, needle)
 	return 0
 end
 
-dofile(realterrain.MODPATH .. "/mapgen.lua")
-dofile(realterrain.MODPATH .. "/height_pixels.lua")
-dofile(realterrain.MODPATH .. "/controller.lua")
+dofile(MODPATH .. "/mapgen.lua")
+dofile(MODPATH .. "/height_pixels.lua")
+dofile(MODPATH .. "/controller.lua")
 
 -- SELECT the mechanism for loading the image which is later uesed by get_pixel()
 --@todo throw warning if image sizes do not match the elev size
@@ -93,9 +100,9 @@ function realterrain.init()
 	local mode = realterrain.get_mode()
 	if not mode.computed then
 		local imageload
-		if realterrain.PROCESSOR == "gm" then imageload = gm.Image
-		elseif realterrain.PROCESSOR == "magick" then imageload = magick.load_image
-		elseif realterrain.PROCESSOR == "imlib2" then imageload = imlib2.image.load
+		if PROCESSOR == "gm" then imageload = gm.Image
+		elseif PROCESSOR == "magick" then imageload = magick.load_image
+		elseif PROCESSOR == "imlib2" then imageload = imlib2.image.load
 		end
 		local rasternames = {}
 		table.insert(rasternames, "elev")
@@ -106,13 +113,13 @@ function realterrain.init()
 		for k,rastername in next, rasternames do
 				
 			if realterrain.settings["file"..rastername] ~= ""  then 
-				if realterrain.PROCESSOR == "native" then
+				if PROCESSOR == "native" then
 					--use imagesize to get the dimensions and header offset
-					local width, length, format = realterrain.imagesize.imgsize(realterrain.RASTERS..realterrain.settings["file"..rastername])
+					local width, length, format = realterrain.imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
 					print(rastername..": format: "..format.." width: "..width.." length: "..length)
 					if string.sub(format, -3) == "bmp" or string.sub(format, -6) == "bitmap" then
-						dofile(realterrain.MODPATH.."/lib/loader_bmp.lua")
-						local bitmap, e = imageloader.load(realterrain.RASTERS..realterrain.settings["file"..rastername])
+						dofile(MODPATH.."/lib/loader_bmp.lua")
+						local bitmap, e = imageloader.load(RASTERS..realterrain.settings["file"..rastername])
 						if e then print(e) end
 						realterrain[rastername].image = bitmap
 						realterrain[rastername].width = width
@@ -120,15 +127,15 @@ function realterrain.init()
 						realterrain[rastername].bits = realterrain.settings[rastername.."bits"]
 						realterrain[rastername].format = "bmp"
 					elseif format == "image/png" then
-						dofile(realterrain.MODPATH.."/lib/loader_png.lua")
-						local bitmap, e = imageloader.load(realterrain.RASTERS..realterrain.settings["file"..rastername])
+						dofile(MODPATH.."/lib/loader_png.lua")
+						local bitmap, e = imageloader.load(RASTERS..realterrain.settings["file"..rastername])
 						if e then print(e) end
 						realterrain[rastername].image = bitmap
 						realterrain[rastername].width = width
 						realterrain[rastername].length = length
 						realterrain[rastername].format = "png"
 					elseif format == "image/tiff" then
-						local file = io.open(realterrain.RASTERS..realterrain.settings["file"..rastername], "rb")
+						local file = io.open(RASTERS..realterrain.settings["file"..rastername], "rb")
 						realterrain[rastername].image = file
 						realterrain[rastername].width = width
 						realterrain[rastername].length = length
@@ -137,13 +144,13 @@ function realterrain.init()
 					else
 						print("your file should be an uncompressed tiff, png or bmp")
 					end
-				elseif realterrain.PROCESSOR == "convert" then
-					local width, length, format = realterrain.imagesize.imgsize(realterrain.RASTERS..realterrain.settings["file"..rastername])
+				elseif PROCESSOR == "convert" then
+					local width, length, format = realterrain.imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
 					realterrain[rastername].width = width
 					realterrain[rastername].length = length
-				elseif realterrain.PROCESSOR == "py" then
+				elseif PROCESSOR == "py" then
 					--get metadata from the raster using GDAL
-					py.execute("dataset = gdal.Open( '"..realterrain.RASTERS..realterrain.settings["file"..rastername].."', GA_ReadOnly )")
+					py.execute("dataset = gdal.Open( '"..RASTERS..realterrain.settings["file"..rastername].."', GA_ReadOnly )")
 					realterrain[rastername].driver_short = tostring(py.eval("dataset.GetDriver().ShortName"))
 					realterrain[rastername].driver_long = tostring(py.eval("dataset.GetDriver().LongName"))
 					realterrain[rastername].raster_x_size = tostring(py.eval("dataset.RasterXSize"))
@@ -182,7 +189,7 @@ function realterrain.init()
 					py.execute("dataset = None")
 					
 					
-					py.execute(rastername.." = Image.open('"..realterrain.RASTERS..realterrain.settings["file"..rastername] .."')")
+					py.execute(rastername.." = Image.open('"..RASTERS..realterrain.settings["file"..rastername] .."')")
 					py.execute(rastername.."_w, "..rastername.."_l = "..rastername..".size")
 					realterrain[rastername].width = tonumber(tostring(py.eval(rastername.."_w")))
 					realterrain[rastername].length = tonumber(tostring(py.eval(rastername.."_l")))
@@ -200,14 +207,14 @@ function realterrain.init()
 					end
 					py.execute(rastername.."_pixels = "..rastername..".load()")
 				else 
-					realterrain[rastername].image = imageload(realterrain.RASTERS..realterrain.settings["file"..rastername])
+					realterrain[rastername].image = imageload(RASTERS..realterrain.settings["file"..rastername])
 					if realterrain[rastername].image then
-						if realterrain.PROCESSOR == "gm" then
+						if PROCESSOR == "gm" then
 							realterrain[rastername].width, realterrain[rastername].length = realterrain[rastername].image:size()
 						else--imagick or imlib2
 							realterrain[rastername].width = realterrain[rastername].image:get_width()
 							realterrain[rastername].length = realterrain[rastername].image:get_height()
-							if realterrain.PROCESSOR == "magick" then
+							if PROCESSOR == "magick" then
 								realterrain[rastername].bits = realterrain.settings[rastername.."bits"]
 							end
 						end
@@ -216,7 +223,7 @@ function realterrain.init()
 						realterrain[rastername] = {}
 					end
 				end
-				print("["..realterrain.PROCESSOR.."-"..rastername.."] file: "..realterrain.settings["file"..rastername].." width: "..realterrain[rastername].width..", length: "..realterrain[rastername].length)
+				print("["..PROCESSOR.."-"..rastername.."] file: "..realterrain.settings["file"..rastername].." width: "..realterrain[rastername].width..", length: "..realterrain[rastername].length)
 			else
 				print("no "..rastername.." selected")
 				realterrain[rastername] = {}
@@ -240,7 +247,7 @@ end)
 minetest.register_on_joinplayer(function(player)
 	--give player privs and teleport to surface
 	local pname = player:get_player_name()
-	minetest.chat_send_player(pname, "you are using the "..realterrain.PROCESSOR.." processor")
+	minetest.chat_send_player(pname, "you are using the "..PROCESSOR.." processor")
 	local privs = minetest.get_player_privs(pname)
 	privs.fly = true
 	privs.fast = true

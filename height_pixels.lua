@@ -1,10 +1,12 @@
+local RASTERS = realterrain.rasters
+local PROCESSOR = realterrain.processor
 local py = realterrain.py
 
 --the raw get pixel method that uses the selected method and accounts for bit depth
 function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 	--print("x: "..x.." z: "..z..", rastername: "..rastername)
 	local colstart, rowstart = 0,0
-	if realterrain.PROCESSOR == "native" and realterrain[rastername].format == "bmp" then
+	if PROCESSOR == "native" and realterrain[rastername].format == "bmp" then
 		x=x+1
 		z=z-1
 		colstart = 1
@@ -19,7 +21,7 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 	--check to see if the image is even on the raster, otherwise skip
 	if width and length and ( x >= rowstart and x <= width ) and ( z >= colstart and z <= length ) then
 		--print(rastername..": x "..x..", z "..z)
-		if realterrain.PROCESSOR == "native" then
+		if PROCESSOR == "native" then
 			if realterrain[rastername].format == "bmp" then
 				local bitmap = realterrain[rastername].image
 				local c
@@ -70,7 +72,7 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 					end
 				end
 			end
-		elseif realterrain.PROCESSOR == "py" then
+		elseif PROCESSOR == "py" then
 			if realterrain[rastername].mode == "RGB" then
 				py.execute(rastername.."_r, "..rastername.."_g,"..rastername.."_b = "..rastername.."_pixels["..x..", "..z.."]")
 				r = tonumber(tostring(py.eval(rastername.."_r")))
@@ -82,13 +84,13 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 			--print(r)
 		else
 			if realterrain[rastername].image then
-				if realterrain.PROCESSOR == "magick" then
+				if PROCESSOR == "magick" then
 					r,g,b = realterrain[rastername].image:get_pixel(x, z) --@todo change when magick autodetects bit depth
 					--print(rastername.." raw r: "..r..", g: "..g..", b: "..b..", a: "..a)
 					r = math.floor(r * (2^realterrain[rastername].bits))
 					g = math.floor(g * (2^realterrain[rastername].bits))
 					b = math.floor(b * (2^realterrain[rastername].bits))
-				elseif realterrain.PROCESSOR == "imlib2" then
+				elseif PROCESSOR == "imlib2" then
 					r = realterrain[rastername].image:get_pixel(x, z).red
 					g = realterrain[rastername].image:get_pixel(x, z).green
 					b = realterrain[rastername].image:get_pixel(x, z).blue
@@ -200,10 +202,10 @@ function realterrain.get_enumeration(rastername, firstcol, width, firstrow, leng
 	--print(rastername)
 	local table_enum = {}
 	local enumeration
-	if realterrain.PROCESSOR == "gm" then
+	if PROCESSOR == "gm" then
 		enumeration = realterrain[rastername].image:clone():crop(width,length,firstcol,firstrow):format("txt"):toString()
 		table_enum = string.split(enumeration, "\n")
-	elseif realterrain.PROCESSOR == "magick" then
+	elseif PROCESSOR == "magick" then
 		local tmpimg
 		tmpimg = realterrain[rastername].image:clone()
 		tmpimg:crop(width,length,firstcol,firstrow)
@@ -211,8 +213,8 @@ function realterrain.get_enumeration(rastername, firstcol, width, firstrow, leng
 		enumeration = tmpimg:get_blob()
 		tmpimg:destroy()
 		table_enum = string.split(enumeration, "\n")
-	elseif realterrain.PROCESSOR == "convert" then
-		local cmd = CONVERT..' "'..realterrain.RASTERS..realterrain.settings["file"..rastername]..'"'..
+	elseif PROCESSOR == "convert" then
+		local cmd = CONVERT..' "'..RASTERS..realterrain.settings["file"..rastername]..'"'..
 			' -crop '..width..'x'..length..'+'..firstcol..'+'..firstrow..' txt:-'
 		enumeration = io.popen(cmd)
 		--print(cmd)
@@ -259,9 +261,9 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 			end
 			
 			--processors that require enumeration parsing rather than pixel-access
-			if realterrain.PROCESSOR == "gm"
-			or realterrain.PROCESSOR == "convert"
-			or (realterrain.PROCESSOR == "magick" and MAGICK_AS_CONVERT) then
+			if PROCESSOR == "gm"
+			or PROCESSOR == "convert"
+			or (PROCESSOR == "magick" and MAGICK_AS_CONVERT) then
 				local pixels = {}
 				--convert map pixels to raster pixels
 				local cropstartx = scaled_x0
@@ -298,7 +300,7 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				local firstline = true
 				--build the pixel table from the enumeration
 				for k,line in next, enumeration do                         
-					if firstline and (realterrain.PROCESSOR == "magick" or (realterrain.PROCESSOR == "convert" and string.sub(CONVERT, 1, 2) ~= "gm" )) then
+					if firstline and (PROCESSOR == "magick" or (PROCESSOR == "convert" and string.sub(CONVERT, 1, 2) ~= "gm" )) then
 						firstline = false --first line is a header in IM but not GM
 						--and do nothing
 					else

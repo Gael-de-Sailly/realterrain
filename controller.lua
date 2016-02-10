@@ -1,3 +1,8 @@
+local WORLDPATH = realterrain.worldpath
+local RASTERS = realterrain.rasters
+local SCHEMS = realterrain.schems
+local PROCESSOR = realterrain.processor
+
 -- the controller for changing map settings
 minetest.register_tool("realterrain:remote" , {
 	description = "Realterrain Settings",
@@ -14,9 +19,9 @@ local function list_images()
 	if package.config:sub(1,1) == "/" then
 	--Unix
 		--Loop through all files
-		for file in io.popen('find "'..realterrain.RASTERS..'" -type f'):lines() do                         
-			local filename = string.sub(file, #realterrain.RASTERS + 1)
-			local im = realterrain.imagesize.imgsize(realterrain.RASTERS .. filename)
+		for file in io.popen('find "'..RASTERS..'" -type f'):lines() do                         
+			local filename = string.sub(file, #RASTERS + 1)
+			local im = realterrain.imagesize.imgsize(RASTERS .. filename)
 			if im then
 				table.insert(list, filename)
 			end
@@ -26,8 +31,8 @@ local function list_images()
 	else
 	--Windows
 		--Open directory look for files, loop through all files 
-		for filename in io.popen('dir "'..realterrain.RASTERS..'" /b'):lines() do
-			local im = realterrain.imagesize.imgsize(realterrain.RASTERS .. filename)
+		for filename in io.popen('dir "'..RASTERS..'" /b'):lines() do
+			local im = realterrain.imagesize.imgsize(RASTERS .. filename)
 			if im then
 				table.insert(list, filename)
 			end
@@ -42,8 +47,8 @@ local function list_schems()
 	if package.config:sub(1,1) == "/" then
 	--Unix
 		--Loop through all files
-		for file in io.popen('find "'..realterrain.SCHEMS..'" -type f'):lines() do                         
-			local filename = string.sub(file, #realterrain.SCHEMS + 1)
+		for file in io.popen('find "'..SCHEMS..'" -type f'):lines() do                         
+			local filename = string.sub(file, #SCHEMS + 1)
 			if string.find(file, ".mts", -4) ~= nil then
 				table.insert(list, string.sub(filename, 1, -5))
 			end
@@ -52,7 +57,7 @@ local function list_schems()
 	else
 	--Windows
 		--Open directory look for files, loop through all files 
-		for filename in io.popen('dir "'..realterrain.SCHEMS..'" /b'):lines() do
+		for filename in io.popen('dir "'..SCHEMS..'" /b'):lines() do
 			if string.find(filename, ".mts", -4) ~= nil then
 				table.insert(list, string.sub(filename, 1, -5))
 			end
@@ -214,7 +219,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				minetest.register_on_shutdown(function()
 					local wait = os.clock()
 					while os.clock() - wait < 1 do end --the following delete happens too fast otherwise @todo this doesn't help
-					os.remove(realterrain.WORLDPATH.."/map.sqlite")
+					os.remove(WORLDPATH.."/map.sqlite")
 				end)
 				
                 return true
@@ -491,10 +496,10 @@ function realterrain.show_rc_form(pname)
 			realterrain.get_idx(images, realterrain.get_setting("fileinput3")) .."]"
 	end
 	if not mode.computed
-	and realterrain.PROCESSOR ~= "py"
-	and realterrain.PROCESSOR ~="gm"
-	and realterrain.PROCESSOR ~= "convert"
-	and not (realterrain.PROCESSOR == "magick" and MAGICK_AS_CONVERT) then --these modes know the bits
+	and PROCESSOR ~= "py"
+	and PROCESSOR ~="gm"
+	and PROCESSOR ~= "convert"
+	and not (PROCESSOR == "magick" and MAGICK_AS_CONVERT) then --these modes know the bits
 		f_settings = f_settings ..
 		"label["..col[3]+0.2 ..",2;Bits]"..
 		"dropdown["..col[3]..",3;1,1;elevbits;8,16;"..

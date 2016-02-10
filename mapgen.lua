@@ -1,6 +1,9 @@
-realterrain.cids = nil
+local SCHEMS = realterrain.schems
+local STRUCTURES = realterrain.structures
+
+local cids = nil
 local function build_cids()
-	local cids = {}
+	cids = {}
 	--turn various content ids into variables for speed
 	cids["dirt"] = minetest.get_content_id("default:dirt")
 	cids["stone"] = minetest.get_content_id("default:stone")
@@ -66,8 +69,6 @@ local function build_cids()
 	for k,v in next, realterrain.symbols do
 		cids[v] = minetest.get_content_id("realterrain:"..v)
 	end
-	
-	realterrain.cids = cids
 end
 
 --this funcion gets the hieght needed to fill below a node for surface-only modes
@@ -230,10 +231,9 @@ function realterrain.generate(minp, maxp)
 		return
 	end
 	--print(dump(heightmap))
-	if not realterrain.cids then
+	if not cids then
 		build_cids()
 	end
-	local cids = realterrain.cids
 	--print(dump(cids))
 	local c_dirt_with_grass = minetest.get_content_id("default:dirt_with_grass")
 	local c_dirt_with_dry_grass = minetest.get_content_id("default:dirt_with_dry_grass")
@@ -537,13 +537,13 @@ function realterrain.generate(minp, maxp)
 	
 	--place all the trees (schems assumed to be 7x7 bases with tree in center)
 	for k,v in next, treemap do
-		minetest.place_schematic({x=v.pos.x-3,y=v.pos.y,z=v.pos.z-3}, realterrain.SCHEMS..v.type..".mts", (math.floor(math.random(0,3)) * 90), nil, false)
+		minetest.place_schematic({x=v.pos.x-3,y=v.pos.y,z=v.pos.z-3}, SCHEMS..v.type..".mts", (math.floor(math.random(0,3)) * 90), nil, false)
 	end
 	
 	--place all structures whose pmin are in this chunk
 	local structures = realterrain.get_structures_for_chunk(x0,y0,z0)
 	for k,v in next, structures do
-		minetest.place_schematic({x=v.x,y=v.y,z=v.z}, realterrain.STRUCTURES..v.schemname..".mts")
+		minetest.place_schematic({x=v.x,y=v.y,z=v.z}, STRUCTURES..v.schemname..".mts")
 	end
 	
 	local chugent = math.ceil((os.clock() - t0) * 1000)
@@ -557,8 +557,8 @@ function realterrain.get_structures_for_chunk(x0,y0,z0)
 	if package.config:sub(1,1) == "/" then
 	--Unix
 		--Loop through all files
-		for file in io.popen('find "'..realterrain.STRUCTURES..'" -type f'):lines() do                         
-			local filename = string.sub(file, #realterrain.STRUCTURES + 1)
+		for file in io.popen('find "'..STRUCTURES..'" -type f'):lines() do                         
+			local filename = string.sub(file, #STRUCTURES + 1)
 			if string.find(file, ".mts", -4) ~= nil then
 				table.insert(list, string.sub(filename, 1, -5))
 			end
@@ -566,7 +566,7 @@ function realterrain.get_structures_for_chunk(x0,y0,z0)
 	else
 	--Windows
 		--Open directory look for files, loop through all files 
-		for filename in io.popen('dir "'..realterrain.STRUCTURES..'" /b'):lines() do
+		for filename in io.popen('dir "'..STRUCTURES..'" /b'):lines() do
 			if string.find(filename, ".mts", -4) ~= nil then
 				table.insert(list, string.sub(filename, 1, -5))
 			end
@@ -598,7 +598,7 @@ function realterrain.save_structure(pos1,pos2)
 	pos1 = {x=xmin, y=ymin, z=zmin}
 	pos2 = {x=xmax, y=ymax, z=zmax}
 	
-	if minetest.create_schematic(pos1, pos2, nil, realterrain.STRUCTURES..pos1.x.."_"..pos1.y.."_"..pos1.z..".mts") then
+	if minetest.create_schematic(pos1, pos2, nil, STRUCTURES..pos1.x.."_"..pos1.y.."_"..pos1.z..".mts") then
 		return true
 	end
 	

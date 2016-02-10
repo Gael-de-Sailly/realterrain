@@ -1,3 +1,5 @@
+local WORLDPATH = realterrain.worldpath
+
 realterrain.settings = {}
 realterrain.validate = {}
 --defaults
@@ -256,7 +258,7 @@ realterrain.settings.rastsymbol10 = "realterrain:slope10"
 
 --called at each form submission
 function realterrain.save_settings()
-	local file = io.open(realterrain.WORLDPATH.."/realterrain_settings", "w")
+	local file = io.open(WORLDPATH.."/realterrain_settings", "w")
 	if file then
 		for k,v in next, realterrain.settings do
 			local line = {key=k, values=v}
@@ -297,7 +299,7 @@ end
 
 -- load settings run at EOF at mod start
 function realterrain.load_settings()
-	local file = io.open(realterrain.WORLDPATH.."/realterrain_settings", "r")
+	local file = io.open(WORLDPATH.."/realterrain_settings", "r")
 	if file then
 		for line in file:lines() do
 			if line ~= "" then
