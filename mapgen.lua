@@ -95,6 +95,8 @@ local function height_fill_below(x,z,heightmap)
 	return height -1
 end
 
+local surface_cache = {} --used to prevent reading of DEM for skyblocks
+
 function realterrain.generate(minp, maxp)
 	local t0 = os.clock()
 	local x1 = maxp.x
@@ -124,13 +126,13 @@ function realterrain.generate(minp, maxp)
 	local modename = mode.name
 	
 	--check to see if the current chunk is above (or below) the elevation range for this footprint
-	if realterrain.surface_cache[cz0] and realterrain.surface_cache[cz0][cx0] then
-		if realterrain.surface_cache[cz0][cx0].offelev then
+	if surface_cache[cz0] and surface_cache[cz0][cx0] then
+		if surface_cache[cz0][cx0].offelev then
 			local chugent = math.ceil((os.clock() - t0) * 1000)
 			print ("[OFF] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
 			return
 		end
-		if y0 >= realterrain.surface_cache[cz0][cx0].maxelev then
+		if y0 >= surface_cache[cz0][cx0].maxelev then
 			local chugent = math.ceil((os.clock() - t0) * 1000)
 			print ("[SKY] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
 			vm:set_data(data)
@@ -139,7 +141,7 @@ function realterrain.generate(minp, maxp)
 			vm:update_liquids()
 			return
 		end
-		if mode.name ~= "normal" and y1 <= realterrain.surface_cache[cz0][cx0].minelev then
+		if mode.name ~= "normal" and y1 <= surface_cache[cz0][cx0].minelev then
 			local chugent = math.ceil((os.clock() - t0) * 1000)
 			print ("[SUB] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
 			return
@@ -212,19 +214,19 @@ function realterrain.generate(minp, maxp)
 	-- if there were elevations in this footprint then add the min and max to the cache table if not already there
 	if minelev then
 		--print("minelev: "..minelev..", maxelev: "..maxelev)
-		if not realterrain.surface_cache[cz0] then
-			realterrain.surface_cache[cz0] = {}
+		if not surface_cache[cz0] then
+			surface_cache[cz0] = {}
 		end
-		if not realterrain.surface_cache[cz0][cx0] then
-			realterrain.surface_cache[cz0][cx0] = {minelev = minelev, maxelev=maxelev}
+		if not surface_cache[cz0][cx0] then
+			surface_cache[cz0][cx0] = {minelev = minelev, maxelev=maxelev}
 		end
 	else
 		--otherwise this chunk was off the DEM raster
-		if not realterrain.surface_cache[cz0] then
-			realterrain.surface_cache[cz0] = {}
+		if not surface_cache[cz0] then
+			surface_cache[cz0] = {}
 		end
-		if not realterrain.surface_cache[cz0][cx0] then
-			realterrain.surface_cache[cz0][cx0] = {offelev=true}
+		if not surface_cache[cz0][cx0] then
+			surface_cache[cz0][cx0] = {offelev=true}
 		end
 		local chugent = math.ceil((os.clock() - t0) * 1000)
 		print ("[OFF] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")

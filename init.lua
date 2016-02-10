@@ -232,8 +232,6 @@ function realterrain.init()
 	end
 end
 
-realterrain.surface_cache = {} --used to prevent reading of DEM for skyblocks
-
 -- Set mapgen parameters
 minetest.register_on_mapgen_init(function(mgparams)
 	minetest.set_mapgen_params({mgname="singlenode", flags="nolight"})

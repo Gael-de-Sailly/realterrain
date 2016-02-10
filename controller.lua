@@ -2,17 +2,7 @@ local WORLDPATH = realterrain.worldpath
 local RASTERS = realterrain.rasters
 local SCHEMS = realterrain.schems
 local PROCESSOR = realterrain.processor
-
--- the controller for changing map settings
-minetest.register_tool("realterrain:remote" , {
-	description = "Realterrain Settings",
-	inventory_image = "remote.png",
-	--left-clicking the tool
-	on_use = function (itemstack, user, pointed_thing)
-        local pname = user:get_player_name()
-		realterrain.show_rc_form(pname)
-	end,
-})
+local imagesize = realterrain.imagesize
 
 local function list_images()
 	local list = {}
@@ -21,7 +11,7 @@ local function list_images()
 		--Loop through all files
 		for file in io.popen('find "'..RASTERS..'" -type f'):lines() do                         
 			local filename = string.sub(file, #RASTERS + 1)
-			local im = realterrain.imagesize.imgsize(RASTERS .. filename)
+			local im = imagesize.imgsize(RASTERS .. filename)
 			if im then
 				table.insert(list, filename)
 			end
@@ -32,7 +22,7 @@ local function list_images()
 	--Windows
 		--Open directory look for files, loop through all files 
 		for filename in io.popen('dir "'..RASTERS..'" /b'):lines() do
-			local im = realterrain.imagesize.imgsize(RASTERS .. filename)
+			local im = imagesize.imgsize(RASTERS .. filename)
 			if im then
 				table.insert(list, filename)
 			end
@@ -108,218 +98,8 @@ local function escape(str)
 	if not str or str == "" then return "" else return minetest.formspec_escape(str) end
 end
 
--- Processing the form from the RC
-minetest.register_on_player_receive_fields(function(player, formname, fields)
-	if string.sub(formname, 1, 12) == "realterrain:" then
-		local wait = os.clock()
-		while os.clock() - wait < 0.05 do end --popups don't work without this
-		--print("form, "..formname.." submitted: "..dump(fields))
-		local pname = player:get_player_name()
-		
-		--the popup form never has settings so process that first
-		if formname == "realterrain:invalidated" then
-			if fields.exit == "Main" then
-				realterrain.show_rc_form(pname)
-			elseif fields.exit == "Cover" then
-				realterrain.show_cover_form(pname)
-			elseif fields.exit == "Ores" then
-				realterrain.show_ores_form(pname)
-			elseif fields.exit == "Symbols" then
-				realterrain.show_symbology(pname)
-			end
-			return true
-		end
-		--the main form
-		if formname == "realterrain:rc_form" then 
-			--buttons that don't close the form:
-			local ppos = player:getpos()
-			if fields.gotosurface then
-				local surface = realterrain.get_surface(ppos.x, ppos.z)
-				if surface then
-					player:setpos({x=ppos.x, y=surface+0.5, z=ppos.z})
-					--should refresh this form so that the position info updates
-					realterrain.show_rc_form(pname)
-				else
-					minetest.chat_send_player(pname, "surface is undetectable")
-				end
-				return true
-			elseif fields.resetday then
-				minetest.set_timeofday(0.25)
-			elseif fields.setpos1 then
-				realterrain.pos1 = {x=math.floor(ppos.x+0.5),y=math.floor(ppos.y+0.5),z=math.floor(ppos.z+0.5)}
-				minetest.chat_send_player(pname, "pos1 set to ("..realterrain.pos1.x..","..realterrain.pos1.y..","..realterrain.pos1.z..")")
-				realterrain.show_rc_form(pname)
-				return true
-			elseif fields.setpos2 then
-				realterrain.pos2 = {x=math.floor(ppos.x+0.5),y=math.floor(ppos.y+0.5),z=math.floor(ppos.z+0.5)}
-				minetest.chat_send_player(pname, "pos2 set to ("..realterrain.pos2.x..","..realterrain.pos2.y..","..realterrain.pos2.z..")")
-				realterrain.show_rc_form(pname)
-				return true
-			elseif fields.posreset then
-				realterrain.pos1 = nil
-				realterrain.pos2 = nil
-				realterrain.show_rc_form(pname)
-				return true
-			elseif fields.savestructure then
-				if realterrain.pos1 and realterrain.pos2 then --will always be since button not shown otherwise
-					realterrain.save_structure(realterrain.pos1,realterrain.pos2)
-					minetest.chat_send_player(pname, "structure persisted to file")
-				end
-				return true
-			end
-			
-			--actual form submissions
-			if fields.output or fields.fileelev or fields.filecover or fields.fileinput
-				or fields.fileinput2 or fields.fileinput3 then
-				--check to see if the source rasters were changed, if so re-initialize
-				local old_output, old_elev, old_cover, old_input
-				old_output = realterrain.settings.output
-				old_elev = realterrain.settings.fileelev
-				old_cover = realterrain.settings.filecover
-				old_input = realterrain.settings.fileinput
-				
-				-- @todo validation for mode and raster selection changes, or not
-				
-				-- save form fields, if errors then show popup
-				local invalids = realterrain.validate_and_save(fields)
-				if invalids ~= false then
-					realterrain.show_invalidated(pname, formname, invalids)
-					return false
-				end
-				
-				minetest.chat_send_player(pname, "You changed the mapgen settings!")
-				if old_elev ~= realterrain.settings.fileelev
-					or old_cover ~= realterrain.settings.filecover
-					or old_input ~= realterrain.settings.fileinput then
-					realterrain.init()
-				end
-				if old_output ~= realterrain.settings.output then
-					--redisplay the form so that mode-specific stuff is shown/hidden
-					realterrain.show_rc_form(pname)
-					return true
-				end
-				
-            elseif fields.exit then --Apply or any other button
-				
-				-- save form fields, if errors then show popup
-				local invalids = realterrain.validate_and_save(fields)
-				if invalids ~= false then
-					realterrain.show_invalidated(pname, formname, invalids)
-					return false
-				end
-				
-				minetest.chat_send_player(pname, "You changed the mapgen settings!")
-			end
-			if fields.exit == "Delete" then --@todo use the popup form do display a confirmation dialog box
-                --kick all players and delete the map file
-                local players = minetest.get_connected_players()
-				for k, player in next, players do
-					minetest.kick_player(player:get_player_name(), "map.sqlite deleted by admin, reload level")	
-				end
-				minetest.register_on_shutdown(function()
-					local wait = os.clock()
-					while os.clock() - wait < 1 do end --the following delete happens too fast otherwise @todo this doesn't help
-					os.remove(WORLDPATH.."/map.sqlite")
-				end)
-				
-                return true
-			elseif fields.exit == "Biomes" then
-				realterrain.show_cover_form(pname)
-				return true
-			elseif fields.exit == "Ores" then
-				realterrain.show_ores_form(pname)
-				return true
-			elseif fields.exit == "Symbols" then
-				realterrain.show_symbology(pname)
-				return true
-			end
-			return true
-		end
-		
-		--cover config form
-		if formname == "realterrain:cover_config" then
-			-- @todo validated all non dropdown fields (numbers as numbers)
-				
-			-- save form fields, if errors then show popup
-			local invalids = realterrain.validate_and_save(fields)
-			if invalids ~= false then
-				realterrain.show_invalidated(pname, formname, invalids)
-				return false
-			end
-			
-			minetest.chat_send_player(pname, "You changed the biome settings!")
-			if fields.exit == "Apply" then
-				realterrain.show_rc_form(pname)
-				return true
-			elseif fields.ground then
-				local setting = "b"..fields.ground.."ground"
-				realterrain.show_item_images(pname, list_nodes(), setting)
-			elseif fields.ground2 then
-				local setting = "b"..fields.ground2.."ground2"
-				realterrain.show_item_images(pname, list_nodes(), setting)
-			elseif fields.shrub then
-				local setting = "b"..fields.shrub.."shrub"
-				realterrain.show_item_images(pname, list_plants(), setting)
-			elseif fields.shrub2 then
-				local setting = "b"..fields.shrub2.."shrub2"
-				realterrain.show_item_images(pname, list_plants(), setting)
-			end
-			return true
-		end
-		--item image selection form
-		if formname == "realterrain:image_items" then
-			
-			-- save form fields, if errors then show popup
-			local invalids = realterrain.validate_and_save(fields)
-			if invalids ~= false then
-				realterrain.show_invalidated(pname, formname, invalids)
-				return false
-			end
-			
-			minetest.chat_send_player(pname, "You changed the biome settings!")
-			realterrain.show_cover_form(pname)
-			return true
-		end
-		--raster symbology selection form
-		if formname == "realterrain:symbology" then
-			-- @todo validated all non dropdown fields (numbers as numbers)
-				
-			-- save form fields, if errors then show popup
-			local invalids = realterrain.validate_and_save(fields)
-			if invalids ~= false then
-				realterrain.show_invalidated(pname, formname, invalids)
-				return false
-			end
-			
-			minetest.chat_send_player(pname, "You changed the symbology settings!")
-			if fields.exit == "Apply" then
-				realterrain.show_rc_form(pname)
-				return true
-			elseif fields.rastsymbol then 
-				local setting = "rastsymbol"..fields.rastsymbol
-				minetest.chat_send_player(pname, "please be patient while all symbols load")
-				realterrain.show_all_symbols(pname, list_symbology(), setting)
-			end
-			return true
-		end
-		--symbology selection form
-		if formname == "realterrain:all_symbols" then
-			-- save form fields, if errors then show popup
-			local invalids = realterrain.validate_and_save(fields)
-			if invalids ~= false then
-				realterrain.show_invalidated(pname, formname, invalids)
-				return false
-			end
-			minetest.chat_send_player(pname, "You changed the symbology settings!")
-			realterrain.show_symbology(pname)
-			return true
-		end
-		return true
-	end
-end)
-
 -- show the main remote control form
-function realterrain.show_rc_form(pname)
+local function show_rc_form(pname)
 	local player = minetest.get_player_by_name(pname)
 	local ppos = player:getpos()
 	local degree = player:get_look_yaw()*180/math.pi - 90
@@ -552,7 +332,7 @@ function realterrain.show_rc_form(pname)
     return true
 end
 
-function realterrain.show_cover_form(pname)
+local function show_cover_form(pname)
 	local schems = list_schems()
 	local f_schems = ""
 	for k,v in next, schems do
@@ -606,7 +386,7 @@ function realterrain.show_cover_form(pname)
 	return true
 end
 
-function realterrain.show_ores_form(pname)
+local function show_ores_form(pname)
 	
 	local col= {0.01,  0.5,1.3,2.1,   3.5,5.5,6.5,8.5,   10,11,12,13,   12.5}
 	local f_header = 	"size[14,10]" ..
@@ -627,7 +407,7 @@ function realterrain.show_ores_form(pname)
 	return true
 end
 
-function realterrain.show_symbology(pname)
+local function show_symbology(pname)
 	local col= {0.01,2}
 	local f_header = 	"size[14,10]" ..
 						"button_exit[11,0.01;2,1;exit;Apply]"..
@@ -646,7 +426,7 @@ function realterrain.show_symbology(pname)
 	return true
 end
 
-function realterrain.show_item_images(pname, items, setting)
+local function show_item_images(pname, items, setting)
 	local f_images = ""
 	local i = 1
 	local j = 1
@@ -669,7 +449,7 @@ function realterrain.show_item_images(pname, items, setting)
 	return true
 end
 
-function realterrain.show_all_symbols(pname, items, setting)
+local function show_all_symbols(pname, items, setting)
 	local f_images = ""
 	local i = 1
 	local j = 1
@@ -690,11 +470,10 @@ function realterrain.show_all_symbols(pname, items, setting)
                                     f_body..f_images
 	)
 	return true
-	
 end
 
 -- this is the form-error popup
-function realterrain.show_invalidated(pname, formname, fields)
+local function show_invalidated(pname, formname, fields)
 	local back, message
 	if formname == "realterrain:rc_form" then back = "Main"
 	elseif formname == "realterrain:cover_config" then back = "Cover"
@@ -717,3 +496,226 @@ function realterrain.show_invalidated(pname, formname, fields)
 	)
 	return true
 end
+
+-- the controller for changing map settings
+minetest.register_tool("realterrain:remote" , {
+	description = "Realterrain Settings",
+	inventory_image = "remote.png",
+	--left-clicking the tool
+	on_use = function (itemstack, user, pointed_thing)
+        local pname = user:get_player_name()
+		show_rc_form(pname)
+	end,
+})
+
+-- Processing the form from the RC
+minetest.register_on_player_receive_fields(function(player, formname, fields)
+	if string.sub(formname, 1, 12) == "realterrain:" then
+		local wait = os.clock()
+		while os.clock() - wait < 0.05 do end --popups don't work without this
+		--print("form, "..formname.." submitted: "..dump(fields))
+		local pname = player:get_player_name()
+		
+		--the popup form never has settings so process that first
+		if formname == "realterrain:invalidated" then
+			if fields.exit == "Main" then
+				show_rc_form(pname)
+			elseif fields.exit == "Cover" then
+				show_cover_form(pname)
+			elseif fields.exit == "Ores" then
+				show_ores_form(pname)
+			elseif fields.exit == "Symbols" then
+				show_symbology(pname)
+			end
+			return true
+		end
+		--the main form
+		if formname == "realterrain:rc_form" then 
+			--buttons that don't close the form:
+			local ppos = player:getpos()
+			if fields.gotosurface then
+				local surface = realterrain.get_surface(ppos.x, ppos.z)
+				if surface then
+					player:setpos({x=ppos.x, y=surface+0.5, z=ppos.z})
+					--should refresh this form so that the position info updates
+					show_rc_form(pname)
+				else
+					minetest.chat_send_player(pname, "surface is undetectable")
+				end
+				return true
+			elseif fields.resetday then
+				minetest.set_timeofday(0.25)
+			elseif fields.setpos1 then
+				realterrain.pos1 = {x=math.floor(ppos.x+0.5),y=math.floor(ppos.y+0.5),z=math.floor(ppos.z+0.5)}
+				minetest.chat_send_player(pname, "pos1 set to ("..realterrain.pos1.x..","..realterrain.pos1.y..","..realterrain.pos1.z..")")
+				show_rc_form(pname)
+				return true
+			elseif fields.setpos2 then
+				realterrain.pos2 = {x=math.floor(ppos.x+0.5),y=math.floor(ppos.y+0.5),z=math.floor(ppos.z+0.5)}
+				minetest.chat_send_player(pname, "pos2 set to ("..realterrain.pos2.x..","..realterrain.pos2.y..","..realterrain.pos2.z..")")
+				show_rc_form(pname)
+				return true
+			elseif fields.posreset then
+				realterrain.pos1 = nil
+				realterrain.pos2 = nil
+				show_rc_form(pname)
+				return true
+			elseif fields.savestructure then
+				if realterrain.pos1 and realterrain.pos2 then --will always be since button not shown otherwise
+					realterrain.save_structure(realterrain.pos1,realterrain.pos2)
+					minetest.chat_send_player(pname, "structure persisted to file")
+				end
+				return true
+			end
+			
+			--actual form submissions
+			if fields.output or fields.fileelev or fields.filecover or fields.fileinput
+				or fields.fileinput2 or fields.fileinput3 then
+				--check to see if the source rasters were changed, if so re-initialize
+				local old_output, old_elev, old_cover, old_input
+				old_output = realterrain.settings.output
+				old_elev = realterrain.settings.fileelev
+				old_cover = realterrain.settings.filecover
+				old_input = realterrain.settings.fileinput
+				
+				-- @todo validation for mode and raster selection changes, or not
+				
+				-- save form fields, if errors then show popup
+				local invalids = realterrain.validate_and_save(fields)
+				if invalids ~= false then
+					show_invalidated(pname, formname, invalids)
+					return false
+				end
+				
+				minetest.chat_send_player(pname, "You changed the mapgen settings!")
+				if old_elev ~= realterrain.settings.fileelev
+					or old_cover ~= realterrain.settings.filecover
+					or old_input ~= realterrain.settings.fileinput then
+					realterrain.init()
+				end
+				if old_output ~= realterrain.settings.output then
+					--redisplay the form so that mode-specific stuff is shown/hidden
+					show_rc_form(pname)
+					return true
+				end
+				
+            elseif fields.exit then --Apply or any other button
+				
+				-- save form fields, if errors then show popup
+				local invalids = realterrain.validate_and_save(fields)
+				if invalids ~= false then
+					show_invalidated(pname, formname, invalids)
+					return false
+				end
+				
+				minetest.chat_send_player(pname, "You changed the mapgen settings!")
+			end
+			if fields.exit == "Delete" then --@todo use the popup form do display a confirmation dialog box
+                --kick all players and delete the map file
+                local players = minetest.get_connected_players()
+				for k, player in next, players do
+					minetest.kick_player(player:get_player_name(), "map.sqlite deleted by admin, reload level")	
+				end
+				minetest.register_on_shutdown(function()
+					local wait = os.clock()
+					while os.clock() - wait < 1 do end --the following delete happens too fast otherwise @todo this doesn't help
+					os.remove(WORLDPATH.."/map.sqlite")
+				end)
+				
+                return true
+			elseif fields.exit == "Biomes" then
+				show_cover_form(pname)
+				return true
+			elseif fields.exit == "Ores" then
+				show_ores_form(pname)
+				return true
+			elseif fields.exit == "Symbols" then
+				show_symbology(pname)
+				return true
+			end
+			return true
+		end
+		
+		--cover config form
+		if formname == "realterrain:cover_config" then
+			-- @todo validated all non dropdown fields (numbers as numbers)
+				
+			-- save form fields, if errors then show popup
+			local invalids = realterrain.validate_and_save(fields)
+			if invalids ~= false then
+				show_invalidated(pname, formname, invalids)
+				return false
+			end
+			
+			minetest.chat_send_player(pname, "You changed the biome settings!")
+			if fields.exit == "Apply" then
+				show_rc_form(pname)
+				return true
+			elseif fields.ground then
+				local setting = "b"..fields.ground.."ground"
+				show_item_images(pname, list_nodes(), setting)
+			elseif fields.ground2 then
+				local setting = "b"..fields.ground2.."ground2"
+				show_item_images(pname, list_nodes(), setting)
+			elseif fields.shrub then
+				local setting = "b"..fields.shrub.."shrub"
+				show_item_images(pname, list_plants(), setting)
+			elseif fields.shrub2 then
+				local setting = "b"..fields.shrub2.."shrub2"
+				show_item_images(pname, list_plants(), setting)
+			end
+			return true
+		end
+		--item image selection form
+		if formname == "realterrain:image_items" then
+			
+			-- save form fields, if errors then show popup
+			local invalids = realterrain.validate_and_save(fields)
+			if invalids ~= false then
+				show_invalidated(pname, formname, invalids)
+				return false
+			end
+			
+			minetest.chat_send_player(pname, "You changed the biome settings!")
+			show_cover_form(pname)
+			return true
+		end
+		--raster symbology selection form
+		if formname == "realterrain:symbology" then
+			-- @todo validated all non dropdown fields (numbers as numbers)
+				
+			-- save form fields, if errors then show popup
+			local invalids = realterrain.validate_and_save(fields)
+			if invalids ~= false then
+				show_invalidated(pname, formname, invalids)
+				return false
+			end
+			
+			minetest.chat_send_player(pname, "You changed the symbology settings!")
+			if fields.exit == "Apply" then
+				show_rc_form(pname)
+				return true
+			elseif fields.rastsymbol then 
+				local setting = "rastsymbol"..fields.rastsymbol
+				minetest.chat_send_player(pname, "please be patient while all symbols load")
+				show_all_symbols(pname, list_symbology(), setting)
+			end
+			return true
+		end
+		--symbology selection form
+		if formname == "realterrain:all_symbols" then
+			-- save form fields, if errors then show popup
+			local invalids = realterrain.validate_and_save(fields)
+			if invalids ~= false then
+				show_invalidated(pname, formname, invalids)
+				return false
+			end
+			minetest.chat_send_player(pname, "You changed the symbology settings!")
+			show_symbology(pname)
+			return true
+		end
+		return true
+	end
+end)
+
+
