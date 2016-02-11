@@ -95,7 +95,7 @@ local function height_fill_below(x,z,heightmap)
 	return height -1
 end
 
-local function get_structures_for_chunk(x0,y0,z0)
+local function get_structures_for_chunk(x0,y0,z0, sidelen)
 	local structures = {}
 	--look in the structures folder and check each one to see if it is in the chunk
 	local list = {}
@@ -123,7 +123,7 @@ local function get_structures_for_chunk(x0,y0,z0)
 		local ymin = tonumber(split[2])
 		local zmin = tonumber(split[3])
 		--print("x0 "..x0..", y0 "..y0..", z0 "..z0..", xmin "..xmin..", ymin "..ymin..", zmin "..zmin)
-		if xmin >= x0 and xmin < x0 +80 and ymin >= y0 and ymin < y0 +80 and zmin >= z0 and zmin < z0 +80 then
+		if xmin >= x0 and xmin < x0 + sidelen and ymin >= y0 and ymin < y0 + sidelen and zmin >= z0 and zmin < z0 + sidelen then
 			print("structure found for this chunk")
 			table.insert(structures,{x=xmin,y=ymin,z=zmin,schemname=v})
 		end
@@ -239,18 +239,18 @@ function realterrain.generate(minp, maxp)
 	local treemap = {}
 	local fillmap = {}
 	--print("x0:"..x0..",y0:"..y0..",z0:"..z0..";x1:"..x1..",y1:"..y1..",z1:"..z1)
-	local sidelen = x1 - x0 + 1
-	local ystridevm = sidelen + 32
-	
-	--calculate the chunk coordinates
-	local cx0 = math.floor((x0 + 32) / 80)
-	local cy0 = math.floor((y0 + 32) / 80)
-	local cz0 = math.floor((z0 + 32) / 80) 
-	
 	
 	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
 	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
 	local data = vm:get_data()
+	
+	local sidelen = x1 - x0 + 1
+	local ystridevm = area.ystride
+
+	--calculate the chunk coordinates
+	local cx0 = math.ceil(x0 / sidelen)
+	local cy0 = math.ceil(y0 / sidelen)
+	local cz0 = math.ceil(z0 / sidelen) 
 	
 	local mode = realterrain.get_mode()
 	local modename = mode.name
@@ -673,7 +673,7 @@ function realterrain.generate(minp, maxp)
 	end
 	
 	--place all structures whose pmin are in this chunk
-	local structures = get_structures_for_chunk(x0,y0,z0)
+	local structures = get_structures_for_chunk(x0,y0,z0, sidelen)
 	for k,v in next, structures do
 		minetest.place_schematic({x=v.x,y=v.y,z=v.z}, STRUCTURES..v.schemname..".mts")
 	end
