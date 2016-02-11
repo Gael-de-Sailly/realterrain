@@ -95,6 +95,136 @@ local function height_fill_below(x,z,heightmap)
 	return height -1
 end
 
+local function get_structures_for_chunk(x0,y0,z0)
+	local structures = {}
+	--look in the structures folder and check each one to see if it is in the chunk
+	local list = {}
+	if package.config:sub(1,1) == "/" then
+	--Unix
+		--Loop through all files
+		for file in io.popen('find "'..STRUCTURES..'" -type f'):lines() do                         
+			local filename = string.sub(file, #STRUCTURES + 1)
+			if string.find(file, ".mts", -4) ~= nil then
+				table.insert(list, string.sub(filename, 1, -5))
+			end
+		end
+	else
+	--Windows
+		--Open directory look for files, loop through all files 
+		for filename in io.popen('dir "'..STRUCTURES..'" /b'):lines() do
+			if string.find(filename, ".mts", -4) ~= nil then
+				table.insert(list, string.sub(filename, 1, -5))
+			end
+		end
+	end
+	for k,v in next, list do
+		local split = string.split(v,"_")
+		local xmin = tonumber(split[1])
+		local ymin = tonumber(split[2])
+		local zmin = tonumber(split[3])
+		--print("x0 "..x0..", y0 "..y0..", z0 "..z0..", xmin "..xmin..", ymin "..ymin..", zmin "..zmin)
+		if xmin >= x0 and xmin < x0 +80 and ymin >= y0 and ymin < y0 +80 and zmin >= z0 and zmin < z0 +80 then
+			print("structure found for this chunk")
+			table.insert(structures,{x=xmin,y=ymin,z=zmin,schemname=v})
+		end
+	end
+	return structures
+end
+
+local function get_aspect(n, rad)
+	local rise_xrun = ((n.c + 2 * n.f + n.i) - (n.a + 2 * n.d + n.g)) / 8
+	local rise_zrun = ((n.g + 2 * n.h + n.i) - (n.a + 2 * n.b + n.c)) / 8
+	local aspect
+	if rise_xrun ~= 0 then 
+		aspect = math.atan2(rise_zrun, - rise_xrun) * 180 / math.pi 
+		if aspect < 0 then aspect = 2 * math.pi + aspect end
+	else 
+		if rise_zrun > 0 then aspect = math.pi / 2 
+		elseif rise_zrun < 0 then aspect = 2 * math.pi - (math.pi/2)
+		else aspect = 0 -- @todo not sure if this is actually 0
+		end
+	end
+	if rad then return aspect 
+	else	
+		local cell
+		if aspect < 0 then cell = 90.0 - aspect
+		elseif aspect > 90.0 then
+			cell = 360.0 - aspect + 90.0
+		else
+			cell = 90.0 - aspect
+		end
+		return math.floor(cell + 0.5)
+	end
+end
+
+local function get_curvature(n)
+	local curve
+	--[[local A,B,C,D,E,F,G,H,I --terms for polynomial
+	A = ((n.a + n.c + n.g + n.i) / 4  - (n.b + n.d + n.f + n.h) / 2 + n.e) -- / L^4 (cell size)
+	B = ((n.a + n.c - n.g - n.i) /4 - (n.b - n.h) /2) -- / L^3
+	C = ((-n.a + n.c - n.g + n.i) /4 + (n.d - n.f) /2) -- / L^3--]]
+	local D = ((n.d + n.f) /2 - n.e) -- / L^2
+	local E = ((n.b + n.h) /2 - n.e) -- / L^2
+	--[[F = (-n.a + n.c + n.g - n.i) -- / 4L^2
+	G = (-n.d + n.f) -- / 2^L
+	H = (n.b - n.h) -- / 2^L
+	I = n.e--]]
+	curve = -2*(D + E) -- * 100
+	return curve
+end
+
+-- this is not tested with offsets and scales but should work
+local function get_distance(x,y,z, heightmap)
+	local limit = realterrain.settings.dist_lim
+	local dist_mode = realterrain.settings.dist_mode
+	local shortest = limit
+	local to_min = realterrain.settings.dist_to_min
+	local to_max = realterrain.settings.dist_to_max
+	--print("min: "..to_min..", max: "..to_max)
+	--buid a square around the search pixel
+	local c=0
+	for j=z-limit, z+limit do
+		for i=x-limit, x+limit do
+			c = c +1
+			local v, e
+			if heightmap[j] and heightmap[j][i] and heightmap[j][i].input then
+				v = heightmap[j][i].input
+				if dist_mode == "3D" then
+					e = heightmap[j][i].elev
+				end
+				if v and v >= to_min and v <= to_max then
+					local distance
+					if dist_mode == "2D" then
+						distance = math.sqrt(((z-j)^2)+((x-i)^2))
+					elseif dist_mode == "3D" then
+						distance = math.sqrt(((z-j)^2)+((x-i)^2)+((y-e)^2))
+					end
+					
+					--print("candidate: "..distance)
+					if distance < shortest then
+						shortest = distance
+						--print("shorter found: "..shortest)
+					end
+				end
+			end
+		end
+	end
+	--print(c)
+	--print("distance: "..shortest)
+	return shortest
+end
+
+local function get_slope(n, rad)
+	--print(dump(n))
+	local x_cellsize, z_cellsize = 1, 1
+	local rise_xrun = ((n.c + 2 * n.f + n.i) - (n.a + 2 * n.d + n.g)) / (8 * x_cellsize)
+	local rise_zrun = ((n.g + 2 * n.h + n.i) - (n.a + 2 * n.b + n.c)) / (8 * z_cellsize)
+	local rise_xzrun = math.sqrt( rise_xrun ^ 2 + rise_zrun ^ 2 )
+	if rad then return rise_xzrun end
+	local degrees = math.atan(rise_xzrun) * 180 / math.pi
+	return math.floor(degrees + 0.5)
+end
+
 local surface_cache = {} --used to prevent reading of DEM for skyblocks
 
 function realterrain.generate(minp, maxp)
@@ -402,7 +532,7 @@ function realterrain.generate(minp, maxp)
 									--print("elev: "..elev)
 									data[vi] = cids[color]				
 								elseif modename == "slope" then
-									local slope = realterrain.get_slope(neighbors)
+									local slope = get_slope(neighbors)
 									if slope < 1 then color = "symbol1"
 									elseif slope < 2 then color = "symbol2"
 									elseif slope < 5 then color = "symbol3"
@@ -416,7 +546,7 @@ function realterrain.generate(minp, maxp)
 									--print("slope: "..slope)
 									data[vi] = cids[color]							
 								elseif modename == "aspect" then
-									local aspect = realterrain.get_aspect(neighbors)
+									local aspect = get_aspect(neighbors)
 									local slice = 22.5
 									if aspect > 360 - slice or aspect <= slice then color = "aspect1"
 									elseif aspect <= slice * 3 then color = "aspect2"
@@ -429,7 +559,7 @@ function realterrain.generate(minp, maxp)
 									--print(aspect..":"..color)
 									data[vi] = cids[color]
 								elseif modename == "curvature" then
-									local curve = realterrain.get_curvature(neighbors)
+									local curve = get_curvature(neighbors)
 									--print("raw curvature: "..curve)
 									if curve < -4 then color = "symbol1"
 									elseif curve < -3 then color = "symbol2"
@@ -446,7 +576,7 @@ function realterrain.generate(minp, maxp)
 									local limit = realterrain.settings.dist_lim
 									--if there is no input present in the full search extent skip
 									if input_present then 
-										local distance = realterrain.get_distance(x,y,z, heightmap)
+										local distance = get_distance(x,y,z, heightmap)
 										if distance < (limit/10) then color = "symbol1"
 										elseif distance < (limit/10)*2 then color = "symbol2"
 										elseif distance < (limit/10)*3 then color = "symbol3"
@@ -543,65 +673,11 @@ function realterrain.generate(minp, maxp)
 	end
 	
 	--place all structures whose pmin are in this chunk
-	local structures = realterrain.get_structures_for_chunk(x0,y0,z0)
+	local structures = get_structures_for_chunk(x0,y0,z0)
 	for k,v in next, structures do
 		minetest.place_schematic({x=v.x,y=v.y,z=v.z}, STRUCTURES..v.schemname..".mts")
 	end
 	
 	local chugent = math.ceil((os.clock() - t0) * 1000)
 	print ("[GEN] "..chugent.." ms  mapchunk ("..cx0..", "..cy0..", "..cz0..")")
-end
-
-function realterrain.get_structures_for_chunk(x0,y0,z0)
-	local structures = {}
-	--look in the structures folder and check each one to see if it is in the chunk
-	local list = {}
-	if package.config:sub(1,1) == "/" then
-	--Unix
-		--Loop through all files
-		for file in io.popen('find "'..STRUCTURES..'" -type f'):lines() do                         
-			local filename = string.sub(file, #STRUCTURES + 1)
-			if string.find(file, ".mts", -4) ~= nil then
-				table.insert(list, string.sub(filename, 1, -5))
-			end
-		end
-	else
-	--Windows
-		--Open directory look for files, loop through all files 
-		for filename in io.popen('dir "'..STRUCTURES..'" /b'):lines() do
-			if string.find(filename, ".mts", -4) ~= nil then
-				table.insert(list, string.sub(filename, 1, -5))
-			end
-		end
-	end
-	for k,v in next, list do
-		local split = string.split(v,"_")
-		local xmin = tonumber(split[1])
-		local ymin = tonumber(split[2])
-		local zmin = tonumber(split[3])
-		--print("x0 "..x0..", y0 "..y0..", z0 "..z0..", xmin "..xmin..", ymin "..ymin..", zmin "..zmin)
-		if xmin >= x0 and xmin < x0 +80 and ymin >= y0 and ymin < y0 +80 and zmin >= z0 and zmin < z0 +80 then
-			print("structure found for this chunk")
-			table.insert(structures,{x=xmin,y=ymin,z=zmin,schemname=v})
-		end
-	end
-	return structures
-end
-
-function realterrain.save_structure(pos1,pos2)
-	--swap the max and mins until pos1 is the pmin and pos2 is the pmax
-	local xmin,ymin,zmin,xmax,ymax,zmax
-	if pos1.x < pos2.x then xmin = pos1.x else xmin = pos2.x end
-	if pos1.y < pos2.y then ymin = pos1.y else ymin = pos2.y end
-	if pos1.z < pos2.z then zmin = pos1.z else zmin = pos2.z end
-	if pos1.x > pos2.x then xmax = pos1.x else xmax = pos2.x end
-	if pos1.y > pos2.y then ymax = pos1.y else ymax = pos2.y end
-	if pos1.z > pos2.z then zmax = pos1.z else zmax = pos2.z end
-	pos1 = {x=xmin, y=ymin, z=zmin}
-	pos2 = {x=xmax, y=ymax, z=zmax}
-	
-	if minetest.create_schematic(pos1, pos2, nil, STRUCTURES..pos1.x.."_"..pos1.y.."_"..pos1.z..".mts") then
-		return true
-	end
-	
 end

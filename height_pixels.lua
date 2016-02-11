@@ -3,10 +3,11 @@ local PROCESSOR = realterrain.processor
 local py = realterrain.py
 
 --the raw get pixel method that uses the selected method and accounts for bit depth
-function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
+local function get_raw_pixel(x,z, rastername) -- "rastername" is a string
 	--print("x: "..x.." z: "..z..", rastername: "..rastername)
+	local raster = realterrain[rastername]
 	local colstart, rowstart = 0,0
-	if PROCESSOR == "native" and realterrain[rastername].format == "bmp" then
+	if PROCESSOR == "native" and raster.format == "bmp" then
 		x=x+1
 		z=z-1
 		colstart = 1
@@ -16,14 +17,14 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 	z = -z
 	local r,g,b
 	local width, length
-	width = realterrain[rastername].width
-	length = realterrain[rastername].length
+	width = raster.width
+	length = raster.length
 	--check to see if the image is even on the raster, otherwise skip
 	if width and length and ( x >= rowstart and x <= width ) and ( z >= colstart and z <= length ) then
 		--print(rastername..": x "..x..", z "..z)
 		if PROCESSOR == "native" then
-			if realterrain[rastername].format == "bmp" then
-				local bitmap = realterrain[rastername].image
+			if raster.format == "bmp" then
+				local bitmap = raster.image
 				local c
 				if bitmap.pixels[z] and bitmap.pixels[z][x] then
 					c = bitmap.pixels[z][x]
@@ -32,8 +33,8 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 					b = c.b
 					--print("r: ".. r..", g: "..g..", b: "..b)
 				end
-			elseif realterrain[rastername].format == "png" then
-				local bitmap = realterrain[rastername].image
+			elseif raster.format == "png" then
+				local bitmap = raster.image
 				local c
 				if bitmap.pixels[z] and bitmap.pixels[z][x] then
 					c = bitmap.pixels[z][x]
@@ -41,14 +42,14 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 					g = c.g
 					b = c.b
 				end
-			elseif realterrain[rastername].format == "tiff" then
-				local file = realterrain[rastername].image
+			elseif raster.format == "tiff" then
+				local file = raster.image
 				if not file then
 					print("tiff mode problem retrieving file handle")
 				end
 				--print(file)
 				if x < 0 or z < 0 or x >= width or z >= length then return end
-				if realterrain[rastername].bits == 8 then
+				if raster.bits == 8 then
 					file:seek("set", ((z) * width) + x + 8)
 					r = file:read(1)
 					if r then
@@ -73,7 +74,7 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 				end
 			end
 		elseif PROCESSOR == "py" then
-			if realterrain[rastername].mode == "RGB" then
+			if raster.mode == "RGB" then
 				py.execute(rastername.."_r, "..rastername.."_g,"..rastername.."_b = "..rastername.."_pixels["..x..", "..z.."]")
 				r = tonumber(tostring(py.eval(rastername.."_r")))
 				g = tonumber(tostring(py.eval(rastername.."_g")))
@@ -83,17 +84,17 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 			end
 			--print(r)
 		else
-			if realterrain[rastername].image then
+			if raster.image then
 				if PROCESSOR == "magick" then
-					r,g,b = realterrain[rastername].image:get_pixel(x, z) --@todo change when magick autodetects bit depth
+					r,g,b = raster.image:get_pixel(x, z) --@todo change when magick autodetects bit depth
 					--print(rastername.." raw r: "..r..", g: "..g..", b: "..b..", a: "..a)
-					r = math.floor(r * (2^realterrain[rastername].bits))
-					g = math.floor(g * (2^realterrain[rastername].bits))
-					b = math.floor(b * (2^realterrain[rastername].bits))
+					r = math.floor(r * (2^raster.bits))
+					g = math.floor(g * (2^raster.bits))
+					b = math.floor(b * (2^raster.bits))
 				elseif PROCESSOR == "imlib2" then
-					r = realterrain[rastername].image:get_pixel(x, z).red
-					g = realterrain[rastername].image:get_pixel(x, z).green
-					b = realterrain[rastername].image:get_pixel(x, z).blue
+					r = raster.image:get_pixel(x, z).red
+					g = raster.image:get_pixel(x, z).green
+					b = raster.image:get_pixel(x, z).blue
 				end
 			end
 		end
@@ -102,7 +103,7 @@ function realterrain.get_raw_pixel(x,z, rastername) -- "rastername" is a string
 	end
 end
 
-function realterrain.get_brot_pixel(x,z)
+local function get_brot_pixel(x,z)
 	--taken from https://plus.maths.org/content/computing-mandelbrot-set
 	--Where do we want to center the brot?
 	local cx = realterrain.settings.xoffset
@@ -134,7 +135,7 @@ function realterrain.get_brot_pixel(x,z)
 	return lp
 end
 
-function realterrain.polynomial(x,z)
+local function polynomial(x,z)
 	local a,b,c,d,e,f,g,h
 	a = realterrain.settings.polya
 	b = realterrain.settings.polyb
@@ -151,7 +152,7 @@ function realterrain.polynomial(x,z)
 end
 
 --this function parses a line of IM or GM pixel enumeration without any scaling or adjustment
-function realterrain.parse_enumeration(line, get_rgb)
+local function parse_enumeration(line, get_rgb)
 	local value
 	if line then
 		--print("enumeration line: "..line)
@@ -198,16 +199,17 @@ function realterrain.parse_enumeration(line, get_rgb)
 	end
 end
 
-function realterrain.get_enumeration(rastername, firstcol, width, firstrow, length)
+local function get_enumeration(rastername, firstcol, width, firstrow, length)
 	--print(rastername)
+	local raster = realterrain[rastername]
 	local table_enum = {}
 	local enumeration
 	if PROCESSOR == "gm" then
-		enumeration = realterrain[rastername].image:clone():crop(width,length,firstcol,firstrow):format("txt"):toString()
+		enumeration = raster.image:clone():crop(width,length,firstcol,firstrow):format("txt"):toString()
 		table_enum = string.split(enumeration, "\n")
 	elseif PROCESSOR == "magick" then
 		local tmpimg
-		tmpimg = realterrain[rastername].image:clone()
+		tmpimg = raster.image:clone()
 		tmpimg:crop(width,length,firstcol,firstrow)
 		tmpimg:set_format("txt")
 		enumeration = tmpimg:get_blob()
@@ -250,12 +252,13 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 		if mode.get_input3  and realterrain.settings.fileinput3 ~= "" then table.insert(rasternames, "input3") end
 		
 		for k,rastername in next, rasternames do
+			local raster = realterrain[rastername]
 			--see if we are even on the raster or that there is a raster
 			if( not realterrain.settings["file"..rastername]
 			or (scaled_x1 < 0)
-			or (scaled_x0 > realterrain[rastername].width)
+			or (scaled_x0 > raster.width)
 			or (scaled_z0 > 0)
-			or (-scaled_z1 > realterrain[rastername].length)) then
+			or (-scaled_z1 > raster.length)) then
 				--print("off raster request: scaled_x0: "..scaled_x0.." scaled_x1: "..scaled_x1.." scaled_z0: "..scaled_z0.." scaled_z1: "..scaled_z1)
 				return heightmap
 			end
@@ -282,15 +285,15 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 					cropstartz = 0
 				end
 				--don't request pixels beyond maxrows or maxcols in the raster  --@todo this doesn't account for scaling, offsets
-				if scaled_x1 > realterrain[rastername].width then cropendx = realterrain[rastername].width end
-				if -scaled_z0 > realterrain[rastername].length then cropendz = realterrain[rastername].length end
+				if scaled_x1 > raster.width then cropendx = raster.width end
+				if -scaled_z0 > raster.length then cropendz = raster.length end
 				local cropwidth = cropendx-cropstartx+1
 				local croplength = cropendz-cropstartz+1	
 				
 				--print(rastername..": offcrop cols: "..empty_cols..", rows: "..empty_rows)
 				--print(rastername.." request range: x:"..x0..","..x1.."; z:"..z0..","..z1)
 				--print(rastername.." request entries: "..(x1-x0+1)*(z1-z0+1))
-				local enumeration = realterrain.get_enumeration(rastername, cropstartx, cropwidth, cropstartz, croplength)
+				local enumeration = get_enumeration(rastername, cropstartx, cropwidth, cropstartz, croplength)
 				
 				--print(dump(enumeration))
 				
@@ -309,9 +312,9 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 						
 						local value, right, down
 						if rastername == "input" and mode.get_input_color then
-							value,right,down = realterrain.parse_enumeration(line, true)
+							value,right,down = parse_enumeration(line, true)
 						else
-							value,right,down = realterrain.parse_enumeration(line)
+							value,right,down = parse_enumeration(line)
 							
 						end	
 						
@@ -360,15 +363,15 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 						if not heightmap[z][x] then heightmap[z][x] = {} end
 						if rastername == "input" and mode.get_input_color then
 							heightmap[z][x]["input"], heightmap[z][x]["input2"], heightmap[z][x]["input3"]
-								= realterrain.get_raw_pixel(scaled_x,scaled_z, "input")
+								= get_raw_pixel(scaled_x,scaled_z, "input")
 						else
 							if rastername == "elev" or (modename == "elevchange" and rastername == "input") then
-								local value = realterrain.get_raw_pixel(scaled_x,scaled_z, "elev")
+								local value = get_raw_pixel(scaled_x,scaled_z, "elev")
 								if value then
 									heightmap[z][x][rastername] = math.floor(value*yscale+yoffset+0.5)
 								end
 							else
-								heightmap[z][x][rastername] = realterrain.get_raw_pixel(scaled_x,scaled_z, rastername)
+								heightmap[z][x][rastername] = get_raw_pixel(scaled_x,scaled_z, rastername)
 							end
 						end
 					end
@@ -381,108 +384,14 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 			for x=x0,x1 do
 				if not heightmap[z][x] then heightmap[z][x] = {} end
 				if modename == "mandelbrot" then
-					heightmap[z][x]["elev"] = realterrain.get_brot_pixel(x,z)
+					heightmap[z][x]["elev"] = get_brot_pixel(x,z)
 				elseif modename == "polynomial" then
-					heightmap[z][x]["elev"] = realterrain.polynomial(x,z)
+					heightmap[z][x]["elev"] = polynomial(x,z)
 				end
 			end
 		end
 	end --end if computed
 	return heightmap
-end
-
-function realterrain.get_slope(n, rad)
-	--print(dump(n))
-	local x_cellsize, z_cellsize = 1, 1
-	local rise_xrun = ((n.c + 2 * n.f + n.i) - (n.a + 2 * n.d + n.g)) / (8 * x_cellsize)
-	local rise_zrun = ((n.g + 2 * n.h + n.i) - (n.a + 2 * n.b + n.c)) / (8 * z_cellsize)
-	local rise_xzrun = math.sqrt( rise_xrun ^ 2 + rise_zrun ^ 2 )
-	if rad then return rise_xzrun end
-	local degrees = math.atan(rise_xzrun) * 180 / math.pi
-	return math.floor(degrees + 0.5)
-end
-
-function realterrain.get_aspect(n, rad)
-	local rise_xrun = ((n.c + 2 * n.f + n.i) - (n.a + 2 * n.d + n.g)) / 8
-	local rise_zrun = ((n.g + 2 * n.h + n.i) - (n.a + 2 * n.b + n.c)) / 8
-	local aspect
-	if rise_xrun ~= 0 then 
-		aspect = math.atan2(rise_zrun, - rise_xrun) * 180 / math.pi 
-		if aspect < 0 then aspect = 2 * math.pi + aspect end
-	else 
-		if rise_zrun > 0 then aspect = math.pi / 2 
-		elseif rise_zrun < 0 then aspect = 2 * math.pi - (math.pi/2)
-		else aspect = 0 -- @todo not sure if this is actually 0
-		end
-	end
-	if rad then return aspect 
-	else	
-		local cell
-		if aspect < 0 then cell = 90.0 - aspect
-		elseif aspect > 90.0 then
-			cell = 360.0 - aspect + 90.0
-		else
-			cell = 90.0 - aspect
-		end
-		return math.floor(cell + 0.5)
-	end
-end
-
-function realterrain.get_curvature(n)
-	local curve
-	--[[local A,B,C,D,E,F,G,H,I --terms for polynomial
-	A = ((n.a + n.c + n.g + n.i) / 4  - (n.b + n.d + n.f + n.h) / 2 + n.e) -- / L^4 (cell size)
-	B = ((n.a + n.c - n.g - n.i) /4 - (n.b - n.h) /2) -- / L^3
-	C = ((-n.a + n.c - n.g + n.i) /4 + (n.d - n.f) /2) -- / L^3--]]
-	local D = ((n.d + n.f) /2 - n.e) -- / L^2
-	local E = ((n.b + n.h) /2 - n.e) -- / L^2
-	--[[F = (-n.a + n.c + n.g - n.i) -- / 4L^2
-	G = (-n.d + n.f) -- / 2^L
-	H = (n.b - n.h) -- / 2^L
-	I = n.e--]]
-	curve = -2*(D + E) -- * 100
-	return curve
-end
-
--- this is not tested with offsets and scales but should work
-function realterrain.get_distance(x,y,z, heightmap)
-	local limit = realterrain.settings.dist_lim
-	local dist_mode = realterrain.settings.dist_mode
-	local shortest = limit
-	local to_min = realterrain.settings.dist_to_min
-	local to_max = realterrain.settings.dist_to_max
-	--print("min: "..to_min..", max: "..to_max)
-	--buid a square around the search pixel
-	local c=0
-	for j=z-limit, z+limit do
-		for i=x-limit, x+limit do
-			c = c +1
-			local v, e
-			if heightmap[j] and heightmap[j][i] and heightmap[j][i].input then
-				v = heightmap[j][i].input
-				if dist_mode == "3D" then
-					e = heightmap[j][i].elev
-				end
-				if v and v >= to_min and v <= to_max then
-					local distance
-					if dist_mode == "2D" then
-						distance = math.sqrt(((z-j)^2)+((x-i)^2))
-					elseif dist_mode == "3D" then
-						distance = math.sqrt(((z-j)^2)+((x-i)^2)+((y-e)^2))
-					end
-					
-					--print("candidate: "..distance)
-					if distance < shortest then
-						shortest = distance
-						--print("shorter found: "..shortest)
-					end
-				end
-			end
-		end
-	end
-	--print(c)
-	--print("distance: "..shortest)
-	return shortest
 end
 
 --after the mapgen has run, this gets the surface level

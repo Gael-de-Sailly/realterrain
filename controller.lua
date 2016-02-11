@@ -508,6 +508,24 @@ minetest.register_tool("realterrain:remote" , {
 	end,
 })
 
+local function save_structure(pos1,pos2)
+	--swap the max and mins until pos1 is the pmin and pos2 is the pmax
+	local xmin,ymin,zmin,xmax,ymax,zmax
+	if pos1.x < pos2.x then xmin = pos1.x else xmin = pos2.x end
+	if pos1.y < pos2.y then ymin = pos1.y else ymin = pos2.y end
+	if pos1.z < pos2.z then zmin = pos1.z else zmin = pos2.z end
+	if pos1.x > pos2.x then xmax = pos1.x else xmax = pos2.x end
+	if pos1.y > pos2.y then ymax = pos1.y else ymax = pos2.y end
+	if pos1.z > pos2.z then zmax = pos1.z else zmax = pos2.z end
+	pos1 = {x=xmin, y=ymin, z=zmin}
+	pos2 = {x=xmax, y=ymax, z=zmax}
+	
+	if minetest.create_schematic(pos1, pos2, nil, STRUCTURES..pos1.x.."_"..pos1.y.."_"..pos1.z..".mts") then
+		return true
+	end
+	
+end
+
 -- Processing the form from the RC
 minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if string.sub(formname, 1, 12) == "realterrain:" then
@@ -562,7 +580,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				return true
 			elseif fields.savestructure then
 				if realterrain.pos1 and realterrain.pos2 then --will always be since button not shown otherwise
-					realterrain.save_structure(realterrain.pos1,realterrain.pos2)
+					save_structure(realterrain.pos1,realterrain.pos2)
 					minetest.chat_send_player(pname, "structure persisted to file")
 				end
 				return true

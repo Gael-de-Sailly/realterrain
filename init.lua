@@ -111,6 +111,7 @@ function realterrain.init()
 		if mode.get_input2 then	table.insert(rasternames, "input2")	end
 		if mode.get_input3 then	table.insert(rasternames, "input3")	end
 		for k,rastername in next, rasternames do
+			local raster = realterrain[rastername]
 				
 			if realterrain.settings["file"..rastername] ~= ""  then 
 				if PROCESSOR == "native" then
@@ -121,69 +122,69 @@ function realterrain.init()
 						dofile(MODPATH.."/lib/loader_bmp.lua")
 						local bitmap, e = imageloader.load(RASTERS..realterrain.settings["file"..rastername])
 						if e then print(e) end
-						realterrain[rastername].image = bitmap
-						realterrain[rastername].width = width
-						realterrain[rastername].length = length
-						realterrain[rastername].bits = realterrain.settings[rastername.."bits"]
-						realterrain[rastername].format = "bmp"
+						raster.image = bitmap
+						raster.width = width
+						raster.length = length
+						raster.bits = realterrain.settings[rastername.."bits"]
+						raster.format = "bmp"
 					elseif format == "image/png" then
 						dofile(MODPATH.."/lib/loader_png.lua")
 						local bitmap, e = imageloader.load(RASTERS..realterrain.settings["file"..rastername])
 						if e then print(e) end
-						realterrain[rastername].image = bitmap
-						realterrain[rastername].width = width
-						realterrain[rastername].length = length
-						realterrain[rastername].format = "png"
+						raster.image = bitmap
+						raster.width = width
+						raster.length = length
+						raster.format = "png"
 					elseif format == "image/tiff" then
 						local file = io.open(RASTERS..realterrain.settings["file"..rastername], "rb")
-						realterrain[rastername].image = file
-						realterrain[rastername].width = width
-						realterrain[rastername].length = length
-						realterrain[rastername].bits = realterrain.settings[rastername.."bits"]
-						realterrain[rastername].format = "tiff"
+						raster.image = file
+						raster.width = width
+						raster.length = length
+						raster.bits = realterrain.settings[rastername.."bits"]
+						raster.format = "tiff"
 					else
 						print("your file should be an uncompressed tiff, png or bmp")
 					end
 				elseif PROCESSOR == "convert" then
 					local width, length, format = realterrain.imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
-					realterrain[rastername].width = width
-					realterrain[rastername].length = length
+					raster.width = width
+					raster.length = length
 				elseif PROCESSOR == "py" then
 					--get metadata from the raster using GDAL
 					py.execute("dataset = gdal.Open( '"..RASTERS..realterrain.settings["file"..rastername].."', GA_ReadOnly )")
-					realterrain[rastername].driver_short = tostring(py.eval("dataset.GetDriver().ShortName"))
-					realterrain[rastername].driver_long = tostring(py.eval("dataset.GetDriver().LongName"))
-					realterrain[rastername].raster_x_size = tostring(py.eval("dataset.RasterXSize"))
-					realterrain[rastername].raster_y_size = tostring(py.eval("dataset.RasterYSize"))
-					realterrain[rastername].projection = tostring(py.eval("dataset.GetProjection()"))
+					raster.driver_short = tostring(py.eval("dataset.GetDriver().ShortName"))
+					raster.driver_long = tostring(py.eval("dataset.GetDriver().LongName"))
+					raster.raster_x_size = tostring(py.eval("dataset.RasterXSize"))
+					raster.raster_y_size = tostring(py.eval("dataset.RasterYSize"))
+					raster.projection = tostring(py.eval("dataset.GetProjection()"))
 					--[[py.execute("geotransform = dataset.GetGeoTansform()")
-					realterrain[rastername].origin_x = tostring(py.eval("geotransform[0]") or "")
-					realterrain[rastername].origin_y = tostring(py.eval("geotransform[3]") or "")
-					realterrain[rastername].pixel_x_size = tostring(py.eval("geotransform[1]") or "")
-					realterrain[rastername].pixel_y_size = tostring(py.eval("geotransform[5]") or "")--]]
+					raster.origin_x = tostring(py.eval("geotransform[0]") or "")
+					raster.origin_y = tostring(py.eval("geotransform[3]") or "")
+					raster.pixel_x_size = tostring(py.eval("geotransform[1]") or "")
+					raster.pixel_y_size = tostring(py.eval("geotransform[5]") or "")--]]
 					
-					print("driver short name: "..realterrain[rastername].driver_short)
-					print("driver long name: "..realterrain[rastername].driver_long)
-					print("size: "..realterrain[rastername].raster_x_size.."x"..realterrain[rastername].raster_y_size)
-					print("projection: "..realterrain[rastername].projection)
-					--print("origin: "..realterrain[rastername].origin_x.."x"..realterrain[rastername].origin_y)
-					--print("pixel size: "..realterrain[rastername].pixel_x_size.."x"..realterrain[rastername].pixel_y_size)
+					print("driver short name: "..raster.driver_short)
+					print("driver long name: "..raster.driver_long)
+					print("size: "..raster.raster_x_size.."x"..raster.raster_y_size)
+					print("projection: "..raster.projection)
+					--print("origin: "..raster.origin_x.."x"..raster.origin_y)
+					--print("pixel size: "..raster.pixel_x_size.."x"..raster.pixel_y_size)
 					
-					realterrain[rastername].metadata = tostring(py.eval("dataset.GetMetadata()"))
+					raster.metadata = tostring(py.eval("dataset.GetMetadata()"))
 					
-					print(realterrain[rastername].metadata)
+					print(raster.metadata)
 					
 					py.execute("dataset_band1 = dataset.GetRasterBand(1)")
-					realterrain[rastername].nodata = tostring(py.eval("dataset_band1.GetNoDataValue()"))
-					realterrain[rastername].min = tostring(py.eval("dataset_band1.GetMinimum()"))
-					realterrain[rastername].max = tostring(py.eval("dataset_band1.GetMaximum()"))
-					realterrain[rastername].scale = tostring(py.eval("dataset_band1.GetScale()"))
-					realterrain[rastername].unit = tostring(py.eval("dataset_band1.GetUnitType()"))
-					print("nodata: "..realterrain[rastername].nodata)
-					print("min: "..realterrain[rastername].min)
-					print("max: "..realterrain[rastername].max)
-					print("scale: "..realterrain[rastername].scale)
-					print("unit: "..realterrain[rastername].unit)
+					raster.nodata = tostring(py.eval("dataset_band1.GetNoDataValue()"))
+					raster.min = tostring(py.eval("dataset_band1.GetMinimum()"))
+					raster.max = tostring(py.eval("dataset_band1.GetMaximum()"))
+					raster.scale = tostring(py.eval("dataset_band1.GetScale()"))
+					raster.unit = tostring(py.eval("dataset_band1.GetUnitType()"))
+					print("nodata: "..raster.nodata)
+					print("min: "..raster.min)
+					print("max: "..raster.max)
+					print("scale: "..raster.scale)
+					print("unit: "..raster.unit)
 					
 					
 					py.execute("dataset = None")
@@ -191,31 +192,31 @@ function realterrain.init()
 					
 					py.execute(rastername.." = Image.open('"..RASTERS..realterrain.settings["file"..rastername] .."')")
 					py.execute(rastername.."_w, "..rastername.."_l = "..rastername..".size")
-					realterrain[rastername].width = tonumber(tostring(py.eval(rastername.."_w")))
-					realterrain[rastername].length = tonumber(tostring(py.eval(rastername.."_l")))
-					realterrain[rastername].mode = tostring(py.eval(rastername..".mode"))
-					print(rastername.." mode: "..realterrain[rastername].mode)
+					raster.width = tonumber(tostring(py.eval(rastername.."_w")))
+					raster.length = tonumber(tostring(py.eval(rastername.."_l")))
+					raster.mode = tostring(py.eval(rastername..".mode"))
+					print(rastername.." mode: "..raster.mode)
 					--if we are doing a color overlay and the raster is a grayscale then CONVERT to color
 					--@todo this should only happen to the input raster
-					if mode.get_input_color and realterrain[rastername].mode ~= "RGB" then
+					if mode.get_input_color and raster.mode ~= "RGB" then
 						py.execute(rastername.." = "..rastername..".convert('RGB')")
-						realterrain[rastername].mode = "RGB"
+						raster.mode = "RGB"
 					--if a color raster was supplied when a grayscale is needed, CONVERT to grayscale (L mode)
-					elseif not mode.get_input_color and realterrain[rastername].mode == "RGB" then
+					elseif not mode.get_input_color and raster.mode == "RGB" then
 						py.execute(rastername.." = "..rastername..".convert('L')")
-						realterrain[rastername].mode = "L"
+						raster.mode = "L"
 					end
 					py.execute(rastername.."_pixels = "..rastername..".load()")
 				else 
-					realterrain[rastername].image = imageload(RASTERS..realterrain.settings["file"..rastername])
-					if realterrain[rastername].image then
+					raster.image = imageload(RASTERS..realterrain.settings["file"..rastername])
+					if raster.image then
 						if PROCESSOR == "gm" then
-							realterrain[rastername].width, realterrain[rastername].length = realterrain[rastername].image:size()
+							raster.width, raster.length = raster.image:size()
 						else--imagick or imlib2
-							realterrain[rastername].width = realterrain[rastername].image:get_width()
-							realterrain[rastername].length = realterrain[rastername].image:get_height()
+							raster.width = raster.image:get_width()
+							raster.length = raster.image:get_height()
 							if PROCESSOR == "magick" then
-								realterrain[rastername].bits = realterrain.settings[rastername.."bits"]
+								raster.bits = realterrain.settings[rastername.."bits"]
 							end
 						end
 					else
@@ -223,7 +224,7 @@ function realterrain.init()
 						realterrain[rastername] = {}
 					end
 				end
-				print("["..PROCESSOR.."-"..rastername.."] file: "..realterrain.settings["file"..rastername].." width: "..realterrain[rastername].width..", length: "..realterrain[rastername].length)
+				print("["..PROCESSOR.."-"..rastername.."] file: "..realterrain.settings["file"..rastername].." width: "..raster.width..", length: "..raster.length)
 			else
 				print("no "..rastername.." selected")
 				realterrain[rastername] = {}
