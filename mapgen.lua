@@ -59,15 +59,15 @@ local function build_cids()
 	end
 
 	--register cids for ASPECT mode.name
-	for k, code in next, realterrain.aspectcolors do
+	for k, code in ipairs(realterrain.aspectcolors) do
 		cids["aspect"..k] = minetest.get_content_id("realterrain:".."aspect"..k)
 	end
 
 
 	cids["symbol10"] = minetest.get_content_id("realterrain:slope10")
 
-	for k,v in next, realterrain.symbols do
-		cids[v] = minetest.get_content_id("realterrain:"..v)
+	for _, symbol in ipairs(realterrain.symbols) do
+		cids[symbol] = minetest.get_content_id("realterrain:"..symbol)
 	end
 end
 
@@ -78,7 +78,7 @@ local function height_fill_below(x,z,heightmap)
 	local height_below_chunk = 0
 	local below_positions = {}
 	local elev = heightmap[z][x].elev
-	for dir, offset in next, realterrain.neighborhood do
+	for dir, offset in ipairs(realterrain.neighborhood) do
 		--get elev for all surrounding nodes
 		if dir == "b" or dir == "d" or dir == "f" or dir == "h" then
 			
@@ -117,7 +117,7 @@ local function get_structures_for_chunk(x0,y0,z0, sidelen)
 			end
 		end
 	end
-	for k,v in next, list do
+	for _, v in ipairs(list) do
 		local split = string.split(v,"_")
 		local xmin = tonumber(split[1])
 		local ymin = tonumber(split[2])
@@ -333,8 +333,8 @@ function realterrain.generate(minp, maxp)
 	--making distance more efficient
 	local input_present = false
 	if modename == "distance" then
-		for z,v1 in next, heightmap do
-			for x,v2 in next, v1 do
+		for z,v1 in pairs(heightmap) do
+			for x in pairs(v1) do
 				if not input_present and heightmap[z][x].input and heightmap[z][x].input > 0 then
 					input_present = true
 				end
@@ -502,7 +502,7 @@ function realterrain.generate(minp, maxp)
 							--moving window mode.names need neighborhood built
 							if moving_window then
 								neighbors["e"] = y
-								for dir, offset in next, realterrain.neighborhood do
+								for dir, offset in ipairs(realterrain.neighborhood) do
 									--get elev for all surrounding nodes
 									local nelev
 									if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x]then
@@ -668,14 +668,14 @@ function realterrain.generate(minp, maxp)
 	vm:update_liquids()
 	
 	--place all the trees (schems assumed to be 7x7 bases with tree in center)
-	for k,v in next, treemap do
-		minetest.place_schematic({x=v.pos.x-3,y=v.pos.y,z=v.pos.z-3}, SCHEMS..v.type..".mts", (math.floor(math.random(0,3)) * 90), nil, false)
+	for _, tree in ipairs(treemap) do
+		minetest.place_schematic({x=tree.pos.x-3,y=tree.pos.y,z=tree.pos.z-3}, SCHEMS..tree.type..".mts", (math.floor(math.random(0,3)) * 90), nil, false)
 	end
 	
 	--place all structures whose pmin are in this chunk
 	local structures = get_structures_for_chunk(x0,y0,z0, sidelen)
-	for k,v in next, structures do
-		minetest.place_schematic({x=v.x,y=v.y,z=v.z}, STRUCTURES..v.schemname..".mts")
+	for _, str in ipairs(structures) do
+		minetest.place_schematic({x=str.x,y=str.y,z=str.z}, STRUCTURES..str.schemname..".mts")
 	end
 	
 	local chugent = math.ceil((os.clock() - t0) * 1000)

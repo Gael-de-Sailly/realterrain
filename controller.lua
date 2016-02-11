@@ -59,9 +59,9 @@ end
 local function list_nodes()
 	local list = {}
 	--generate a list of all registered nodes that are simple blocks
-	for k,v in next, minetest.registered_nodes do
-		if v.drawtype == "normal" and string.sub(k, 1, 12) ~= "realterrain:" then
-			table.insert(list, k)
+	for name, def in pairs(minetest.registered_nodes) do
+		if def.drawtype == "normal" and string.sub(name, 1, 12) ~= "realterrain:" then
+			table.insert(list, name)
 		end
 	end
 	--add water and lava
@@ -74,9 +74,9 @@ end
 local function list_plants()
 	local list = {}
 	--generate a list of all registered nodes that are simple blocks
-	for k,v in next, minetest.registered_nodes do
-		if v.drawtype == "plantlike" and string.sub(k, 1, 8) ~= "vessels:"  then
-			table.insert(list, k)
+	for name, def in pairs(minetest.registered_nodes) do
+		if def.drawtype == "plantlike" and string.sub(name, 1, 8) ~= "vessels:"  then
+			table.insert(list, name)
 		end
 	end
 	return list
@@ -85,9 +85,9 @@ end
 local function list_symbology()
 	local list = {}
 	--generate a list of all registered nodes that are simple blocks
-	for k,v in next, minetest.registered_nodes do
-		if v.drawtype == "normal" and string.sub(k, 1, 12) == "realterrain:"  then
-			table.insert(list, k)
+	for name, def in pairs(minetest.registered_nodes) do
+		if def.drawtype == "normal" and string.sub(name, 1, 12) == "realterrain:"  then
+			table.insert(list, name)
 		end
 	end
 	return list
@@ -127,8 +127,8 @@ local function show_rc_form(pname)
 	
 	local images = list_images()
 	local f_images = ""
-	for k,v in next, images do
-		f_images = f_images .. v .. ","
+	for _, image in ipairs(images) do
+		f_images = f_images .. image .. ","
 	end
 	local bits = {}
 	bits["8"] = "1"
@@ -139,11 +139,11 @@ local function show_rc_form(pname)
 	dmode["3D"] = "2"
 	
 	local f_modes = ""
-	for k,v in next, realterrain.modes do
+	for _, mode in ipairs(realterrain.modes) do
 		if f_modes == ""  then
-			f_modes = v.name
+			f_modes = mode.name
 		else
-			f_modes = f_modes .. "," .. v.name
+			f_modes = f_modes .. "," .. mode.name
 		end
 	end
 	
@@ -335,8 +335,8 @@ end
 local function show_cover_form(pname)
 	local schems = list_schems()
 	local f_schems = ""
-	for k,v in next, schems do
-		f_schems = f_schems .. v .. ","
+	for _, schem in ipairs(schems) do
+		f_schems = f_schems .. schem .. ","
 	end
 	
 	local col= {0.01,  0.5,1.3,2.1,   3.5,5.5,6.5,8.5,   10,11,12,13,   12.5}
@@ -430,8 +430,8 @@ local function show_item_images(pname, items, setting)
 	local f_images = ""
 	local i = 1
 	local j = 1
-	for k,v in next, items do
-		f_images = f_images .. "item_image_button["..i..","..j..";1,1;"..items[k]..";"..setting..";"..items[k].."]"
+	for _, item in ipairs(items) do
+		f_images = f_images .. "item_image_button["..i..","..j..";1,1;"..item..";"..setting..";"..item.."]"
 		if i < 12 then
 			i = i + 1
 		else
@@ -453,8 +453,8 @@ local function show_all_symbols(pname, items, setting)
 	local f_images = ""
 	local i = 1
 	local j = 1
-	for k,v in next, items do
-		f_images = f_images .. "item_image_button["..(i*0.6)..","..(j*0.6)..";0.6,0.6;"..items[k]..";"..setting..";"..items[k].."]"
+	for _, item in ipairs(items) do
+		f_images = f_images .. "item_image_button["..(i*0.6)..","..(j*0.6)..";0.6,0.6;"..item..";"..setting..";"..item.."]"
 		if i < 16 then
 			i = i + 1
 		else
@@ -480,11 +480,11 @@ local function show_invalidated(pname, formname, fields)
 	elseif formname == "realterrain:ores_config" then back = "Ores"
 	elseif formname == "realterrain:symbology" then back = "Symbols"
 	end
-	for k,v in next, fields do
+	for _, field in pairs(fields) do
 		if not message then
-			message = "The following fields were invalid: "..v
+			message = "The following fields were invalid: "..field
 		else
-			message = message .. ", "..v
+			message = message .. ", "..field
 		end
 	end
 	
@@ -631,7 +631,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			if fields.exit == "Delete" then --@todo use the popup form do display a confirmation dialog box
                 --kick all players and delete the map file
                 local players = minetest.get_connected_players()
-				for k, player in next, players do
+				for _, player in ipairs(players) do
 					minetest.kick_player(player:get_player_name(), "map.sqlite deleted by admin, reload level")	
 				end
 				minetest.register_on_shutdown(function()

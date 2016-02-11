@@ -251,7 +251,7 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 		if mode.get_input2  and realterrain.settings.fileinput2 ~= "" then table.insert(rasternames, "input2") end
 		if mode.get_input3  and realterrain.settings.fileinput3 ~= "" then table.insert(rasternames, "input3") end
 		
-		for k,rastername in next, rasternames do
+		for _, rastername in ipairs(rasternames) do
 			local raster = realterrain[rastername]
 			--see if we are even on the raster or that there is a raster
 			if( not realterrain.settings["file"..rastername]
@@ -302,7 +302,7 @@ function realterrain.build_heightmap(x0, x1, z0, z1)
 				local mincol, maxcol, minrow, maxrow
 				local firstline = true
 				--build the pixel table from the enumeration
-				for k,line in next, enumeration do                         
+				for _, line in ipairs(enumeration) do                         
 					if firstline and (PROCESSOR == "magick" or (PROCESSOR == "convert" and string.sub(CONVERT, 1, 2) ~= "gm" )) then
 						firstline = false --first line is a header in IM but not GM
 						--and do nothing

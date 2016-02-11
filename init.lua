@@ -24,9 +24,9 @@ realterrain.slopecolors = {"00f700", "5af700", "8cf700", "b5f700", "def700", "f7
 realterrain.aspectcolors = {"ff0000","ffa600","ffff00","00ff00","00ffff","00a6ff","0000ff","ff00ff"}
 local websafe = {"00","33","66","99","cc","ff"}
 realterrain.symbols = {}
-for k,u in next, websafe do
-	for k,v in next, websafe do
-		for k,w in next, websafe do
+for _, u in ipairs(websafe) do
+	for _, v in ipairs(websafe) do
+		for _, w in ipairs(websafe) do
 			table.insert(realterrain.symbols, u..v..w)
 		end
 	end
@@ -64,9 +64,9 @@ realterrain.modes = {
 }
 
 function realterrain.get_mode_idx(modename)
-	for k,v in next, realterrain.modes do
-		if v.name == modename then
-			return k
+	for n, mode in ipairs(realterrain.modes) do
+		if mode.name == modename then
+			return n
 		end
 	end
 end
@@ -77,10 +77,10 @@ end
 
 function realterrain.get_idx(haystack, needle)
 	--returns the image id or if the image is not found it returns zero
-	for k,v in next, haystack do
-		if v == needle then
-			return k
-		end		
+	for n, image in ipairs(haystack) do
+		if image == needle then
+			return n
+		end
 	end
 	return 0
 end
@@ -110,7 +110,7 @@ function realterrain.init()
 		if mode.get_input then table.insert(rasternames, "input") end
 		if mode.get_input2 then	table.insert(rasternames, "input2")	end
 		if mode.get_input3 then	table.insert(rasternames, "input3")	end
-		for k,rastername in next, rasternames do
+		for _, rastername in ipairs(rasternames) do
 			local raster = realterrain[rastername]
 				
 			if realterrain.settings["file"..rastername] ~= ""  then 

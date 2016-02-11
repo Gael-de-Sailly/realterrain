@@ -260,7 +260,7 @@ realterrain.settings.rastsymbol10 = "realterrain:slope10"
 function realterrain.save_settings()
 	local file = io.open(WORLDPATH.."/realterrain_settings", "w")
 	if file then
-		for k,v in next, realterrain.settings do
+		for k, v in pairs(realterrain.settings) do
 			local line = {key=k, values=v}
 			file:write(minetest.serialize(line).."\n")
 		end
@@ -270,7 +270,7 @@ end
 
 function realterrain.validate_and_save(fields)
 	local errors
-	for k,v in next, fields do
+	for k, v in pairs(fields) do
 		if validate[k] then
 			--print("field, "..k.." has a validation rule")
 			local rule = validate[k]

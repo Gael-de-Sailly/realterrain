@@ -1,4 +1,4 @@
-for k, colorcode in next, realterrain.slopecolors do
+for k, colorcode in ipairs(realterrain.slopecolors) do
 	minetest.register_node(
 		'realterrain:slope'..k, {
 			description = "Slope: "..k,
@@ -14,7 +14,7 @@ for k, colorcode in next, realterrain.slopecolors do
 end
 
 --register the aspect symbology nodes
-for k,colorcode in next, realterrain.aspectcolors do
+for k, colorcode in ipairs(realterrain.aspectcolors) do
 	minetest.register_node(
 		'realterrain:aspect'..k, {
 			description = "Aspect: "..k,
@@ -29,11 +29,11 @@ for k,colorcode in next, realterrain.aspectcolors do
 	})
 end
 
-for k,v in next, realterrain.symbols do
+for k, symbol in ipairs(realterrain.symbols) do
 	minetest.register_node(
-		'realterrain:'..v, {
-			description = "Symbol: "..v,
-			tiles = { "white.bmp^[colorize:#"..v },
+		'realterrain:'..symbol, {
+			description = "Symbol: "..symbol,
+			tiles = { "white.bmp^[colorize:#"..symbol },
 			light_source = 9,
 			groups = {oddly_breakable_by_hand=1, not_in_creative_inventory=1},
 			--[[after_place_node = function(pos, placer, itemstack, pointed_thing)
