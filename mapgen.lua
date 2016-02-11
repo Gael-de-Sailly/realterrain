@@ -3,56 +3,26 @@ local STRUCTURES = realterrain.structures
 
 local cids = nil
 local function build_cids()
-	cids = {}
-	--turn various content ids into variables for speed
-	cids["dirt"] = minetest.get_content_id("default:dirt")
-	cids["stone"] = minetest.get_content_id("default:stone")
-	cids["alpine"] = minetest.get_content_id("default:gravel")
-	cids["water_bottom"] = minetest.get_content_id("default:sand")
-	cids["water"] = minetest.get_content_id("water_source")
-	cids["air"] = minetest.get_content_id("air")
-	cids["lava"] = minetest.get_content_id("lava_source")
-	
-	cids[0] = {ground=minetest.get_content_id(realterrain.settings.b0ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b0ground2),
-			   shrub=minetest.get_content_id(realterrain.settings.b0shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b0shrub2)}
-	cids[1]  = {ground=minetest.get_content_id(realterrain.settings.b1ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b1ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b1shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b1shrub2)}
-	cids[2]  = {ground=minetest.get_content_id(realterrain.settings.b2ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b2ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b2shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b2shrub2)}
-	cids[3]  = {ground=minetest.get_content_id(realterrain.settings.b3ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b3ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b3shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b3shrub2)}
-	cids[4]  = {ground=minetest.get_content_id(realterrain.settings.b4ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b4ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b4shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b4shrub2)}
-	cids[5]  = {ground=minetest.get_content_id(realterrain.settings.b5ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b5ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b5shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b5shrub2)}
-	cids[6]  = {ground=minetest.get_content_id(realterrain.settings.b6ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b6ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b6shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b6shrub2)}
-	cids[7]  = {ground=minetest.get_content_id(realterrain.settings.b7ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b7ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b7shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b7shrub2)}
-	cids[8]  = {ground=minetest.get_content_id(realterrain.settings.b8ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b8ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b8shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b8shrub2)}
-	cids[9]  = {ground=minetest.get_content_id(realterrain.settings.b9ground),
-			   ground2=minetest.get_content_id(realterrain.settings.b9ground2),
-				shrub=minetest.get_content_id(realterrain.settings.b9shrub),
-			   shrub2=minetest.get_content_id(realterrain.settings.b9shrub2)}
+	cids = { --turn various content ids into variables for speed
+		dirt = minetest.get_content_id("default:dirt"),
+		stone = minetest.get_content_id("default:stone"),
+		alpine = minetest.get_content_id("default:gravel"),
+		water_bottom = minetest.get_content_id("default:sand"),
+		water = minetest.get_content_id("water_source"),
+		air = minetest.get_content_id("air"),
+		lava = minetest.get_content_id("lava_source"),
+	}
+
+	for i=0, 9 do
+		local prefix = "b" .. i
+		cids[i] = {
+			ground = minetest.get_content_id(realterrain.settings[prefix.."ground"]),
+			ground2 = minetest.get_content_id(realterrain.settings[prefix.."ground2"]),
+			shrub = minetest.get_content_id(realterrain.settings[prefix.."shrub"]),
+			shrub2 = minetest.get_content_id(realterrain.settings[prefix.."shrub2"])
+		}
+	end
+
 	--register cids for SLOPE mode.name
 	for i=1,10 do
 		cids["symbol"..i] = minetest.get_content_id(realterrain.settings["rastsymbol"..i])
