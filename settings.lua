@@ -256,12 +256,22 @@ realterrain.settings.rastsymbol8 = "realterrain:slope8"
 realterrain.settings.rastsymbol9 = "realterrain:slope9"
 realterrain.settings.rastsymbol10 = "realterrain:slope10"
 
+local function alphabetical_sorter(a, b)
+	return a.key < b.key
+end
+
 --called at each form submission
 function realterrain.save_settings()
 	local file = io.open(WORLDPATH.."/realterrain_settings", "w")
 	if file then
+		local list = {}
 		for k, v in pairs(realterrain.settings) do
-			local line = {key=k, values=v}
+			table.insert(list, {key=k, values=v})
+		end
+
+		table.sort(list, alphabetical_sorter) -- Sort alphabetically
+
+		for _, line in ipairs(list) do
 			file:write(minetest.serialize(line).."\n")
 		end
 		file:close()
