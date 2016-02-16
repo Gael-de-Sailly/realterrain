@@ -41,7 +41,7 @@ local function build_cids()
 	end
 end
 
---this funcion gets the hieght needed to fill below a node for surface-only modes
+--this function gets the height needed to fill below a node for surface-only modes
 local function height_fill_below(x,z,heightmap)
 	local height = 0
 	local height_in_chunk = 0
