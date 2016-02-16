@@ -267,3 +267,10 @@ end)
 
 realterrain.init()
 --minelev, maxelev = realterrain.get_elev_range()
+
+-- Remove global variables for security, see https://github.com/minetest/minetest/blob/0851724/doc/lua_api.txt#L2437-L2442
+realterrain.imagesize = nil
+realterrain.py = nil
+realterrain.gm = nil
+realterrain.magick = nil
+realterrain.imlib2 = nil
