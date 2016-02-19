@@ -8,16 +8,56 @@ local STRUCTURES = WORLDPATH .. "/structures/"
 --make sure the structures folder is present
 minetest.mkdir(STRUCTURES)
 
+local PROCESSOR = "native" -- options are: "native", "py", "gm", "magick", "imlib2"
+print("PROCESSOR is "..PROCESSOR)
+--imlib2 treats 16-bit as 8-bit and requires imlib2, magick requires magick wand -- magick is the most tested mode
+--gm does not work and requires graphicksmagick, py is bit slow and requires lunatic-python to be built, and the PIL,
+--CONVERT uses commandline imagemagick "convert" or graphicsmagick "gm CONVERT" ("CONVERT.exe" or "gm.exe CONVERT")
+--native handles png, tiff, and bmp files but none currently only bmp works and only on 24 bit images with good headers
+
+local ie = minetest.request_insecure_environment()
+
+--ie.require "luarocks.loader" --if you use luarocks to install some of the packages below you may need this
+
+package.path = (MODPATH.."/lib/lua-imagesize-1.2/?.lua;"..package.path)
+local imagesize = ie.require "imagesize"
+
+--[[package.path = (MODPATH.."/lib/luasocket/?.lua;"..MODPATH.."/lib/luasocket/?/init.lua;"..package.path)
+local socket = ie.require "socket"--]]
+local py, gm, magick, imlib2
+if PROCESSOR == "py" then
+	package.loadlib("/usr/lib/x86_64-linux-gnu/libpython2.7.so", "*") --may not need to explicitly state this
+	package.path = (MODPATH.."/lib/lunatic-python-bugfix-1.1.1/?.lua;"..package.path)
+	py = ie.require("python", "*")
+	py.execute("import Image")
+	--py.execute("import numpy")
+	--py.execute("import grass.script as gscript")
+	py.execute("from osgeo import gdal")
+	py.execute("from gdalconst import *")
+elseif PROCESSOR == "magick" then
+	package.path = (MODPATH.."/lib/magick/?.lua;"..MODPATH.."/lib/magick/?/init.lua;"..package.path)
+	magick = ie.require "magick"
+	MAGICK_AS_CONVERT = true --when false uses pixel-access, true uses enumeration-parsing (as GM does) (bit detection, slower)
+elseif PROCESSOR == "imlib2" then
+	package.path = (MODPATH.."/lib/lua-imlib2/?.lua;"..package.path)
+	imlib2 = ie.require "imlib2"
+elseif PROCESSOR == "gm" then
+	package.path = (MODPATH.."/lib/?.lua;"..MODPATH.."/lib/?/init.lua;"..package.path)
+	gm = ie.require "graphicsmagick"
+elseif PROCESSOR == "convert" then
+	CONVERT = "gm convert" -- could also be CONVERT.exe, "gm CONVERT" or "gm.exe CONVERT"
+elseif PROCESSOR == "native" then
+	dofile(MODPATH.."/lib/iohelpers.lua")
+	dofile(MODPATH.."/lib/imageloader.lua")
+end
+
+realterrain.processor = PROCESSOR
+
 realterrain.modpath = MODPATH
 realterrain.worldpath = WORLDPATH
 realterrain.rasters = RASTERS
 realterrain.schems = SCHEMS
 realterrain.structures = STRUCTURES
-
-dofile(MODPATH .. "/processor.lua")
-local imagesize, py, gm, magick, imlib2 = realterrain.imagesize, realterrain.py, realterrain.gm, realterrain.magick, realterrain.imlib2 -- prefer local variables
-local PROCESSOR = realterrain.processor
-dofile(MODPATH .. "/settings.lua")
 
 --define global constants
 realterrain.slopecolors = {"00f700", "5af700", "8cf700", "b5f700", "def700", "f7de00", "ffb500", "ff8400","ff4a00", "f70000"}
@@ -32,6 +72,26 @@ for _, u in ipairs(websafe) do
 	end
 end
 
+-- Put libraries into global constants, to be used by other files.
+realterrain.py = py
+realterrain.gm = gm
+realterrain.magick = magick
+realterrain.imlib2 = imlib2
+realterrain.imagesize = imagesize
+
+dofile(MODPATH .. "/settings.lua")
+dofile(MODPATH .. "/nodes.lua")
+dofile(MODPATH .. "/mapgen.lua")
+dofile(MODPATH .. "/height_pixels.lua")
+dofile(MODPATH .. "/controller.lua")
+
+-- Remove global libraries for security, see https://github.com/minetest/minetest/blob/5dbaa68/doc/lua_api.txt#L2437-L2442
+realterrain.imagesize = nil
+realterrain.py = nil
+realterrain.gm = nil
+realterrain.magick = nil
+realterrain.imlib2 = nil
+
 realterrain.neighborhood = {
 	a = {x= 1,y= 0,z= 1}, -- NW
 	b = {x= 0,y= 0,z= 1}, -- N
@@ -43,8 +103,6 @@ realterrain.neighborhood = {
 	h = {x= 0,y= 0,z=-1}, -- S
 	i = {x= 1,y= 0,z=-1}, -- SE
 }
-
-dofile(MODPATH .. "/nodes.lua")
 
 --modes table for easier feature addition, fillbelow and moving_window require a buffer of at least 1
 realterrain.modes = {
@@ -85,10 +143,6 @@ function realterrain.get_idx(haystack, needle)
 	return 0
 end
 
-dofile(MODPATH .. "/mapgen.lua")
-dofile(MODPATH .. "/height_pixels.lua")
-dofile(MODPATH .. "/controller.lua")
-
 -- SELECT the mechanism for loading the image which is later uesed by get_pixel()
 --@todo throw warning if image sizes do not match the elev size
 realterrain.elev = {}
@@ -116,7 +170,7 @@ function realterrain.init()
 			if realterrain.settings["file"..rastername] ~= ""  then 
 				if PROCESSOR == "native" then
 					--use imagesize to get the dimensions and header offset
-					local width, length, format = realterrain.imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
+					local width, length, format = imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
 					print(rastername..": format: "..format.." width: "..width.." length: "..length)
 					if string.sub(format, -3) == "bmp" or string.sub(format, -6) == "bitmap" then
 						dofile(MODPATH.."/lib/loader_bmp.lua")
@@ -146,7 +200,7 @@ function realterrain.init()
 						print("your file should be an uncompressed tiff, png or bmp")
 					end
 				elseif PROCESSOR == "convert" then
-					local width, length, format = realterrain.imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
+					local width, length, format = imagesize.imgsize(RASTERS..realterrain.settings["file"..rastername])
 					raster.width = width
 					raster.length = length
 				elseif PROCESSOR == "py" then
@@ -267,10 +321,3 @@ end)
 
 realterrain.init()
 --minelev, maxelev = realterrain.get_elev_range()
-
--- Remove global variables for security, see https://github.com/minetest/minetest/blob/0851724/doc/lua_api.txt#L2437-L2442
-realterrain.imagesize = nil
-realterrain.py = nil
-realterrain.gm = nil
-realterrain.magick = nil
-realterrain.imlib2 = nil
