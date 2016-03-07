@@ -37,7 +37,7 @@ if PROCESSOR == "py" then
 elseif PROCESSOR == "magick" then
 	package.path = (MODPATH.."/lib/magick/?.lua;"..MODPATH.."/lib/magick/?/init.lua;"..package.path)
 	magick = ie.require "magick"
-	MAGICK_AS_CONVERT = true --when false uses pixel-access, true uses enumeration-parsing (as GM does) (bit detection, slower)
+	MAGICK_AS_CONVERT = false --when false uses pixel-access, true uses enumeration-parsing (as GM does) (bit detection, slower)
 elseif PROCESSOR == "imlib2" then
 	package.path = (MODPATH.."/lib/lua-imlib2/?.lua;"..package.path)
 	imlib2 = ie.require "imlib2"
