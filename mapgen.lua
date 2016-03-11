@@ -472,7 +472,7 @@ function realterrain.generate(minp, maxp)
 							--moving window mode.names need neighborhood built
 							if moving_window then
 								neighbors["e"] = y
-								for dir, offset in ipairs(realterrain.neighborhood) do
+								for dir, offset in pairs(realterrain.neighborhood) do
 									--get elev for all surrounding nodes
 									local nelev
 									if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x]then
