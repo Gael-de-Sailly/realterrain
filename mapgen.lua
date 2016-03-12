@@ -41,6 +41,18 @@ local function build_cids()
 	end
 end
 
+local neighborhood = {
+	a = {x= 1,y= 0,z= 1}, -- NW
+	b = {x= 0,y= 0,z= 1}, -- N
+	c = {x= 1,y= 0,z= 1}, -- NE
+	d = {x=-1,y= 0,z= 0}, -- W
+--	e = {x= 0,y= 0,z= 0}, -- SELF
+	f = {x= 1,y= 0,z= 0}, -- E
+	g = {x=-1,y= 0,z=-1}, -- SW
+	h = {x= 0,y= 0,z=-1}, -- S
+	i = {x= 1,y= 0,z=-1}, -- SE
+}
+
 --this function gets the height needed to fill below a node for surface-only modes
 local function height_fill_below(x,z,heightmap)
 	local height = 0
@@ -48,7 +60,7 @@ local function height_fill_below(x,z,heightmap)
 	local height_below_chunk = 0
 	local below_positions = {}
 	local elev = heightmap[z][x].elev
-	for dir, offset in ipairs(realterrain.neighborhood) do
+	for dir, offset in pairs(neighborhood) do
 		--get elev for all surrounding nodes
 		if dir == "b" or dir == "d" or dir == "f" or dir == "h" then
 			
@@ -472,7 +484,7 @@ function realterrain.generate(minp, maxp)
 							--moving window mode.names need neighborhood built
 							if moving_window then
 								neighbors["e"] = y
-								for dir, offset in pairs(realterrain.neighborhood) do
+								for dir, offset in pairs(neighborhood) do
 									--get elev for all surrounding nodes
 									local nelev
 									if heightmap[z+offset.z] and heightmap[z+offset.z][x+offset.x]then

@@ -92,18 +92,6 @@ realterrain.gm = nil
 realterrain.magick = nil
 realterrain.imlib2 = nil
 
-realterrain.neighborhood = {
-	a = {x= 1,y= 0,z= 1}, -- NW
-	b = {x= 0,y= 0,z= 1}, -- N
-	c = {x= 1,y= 0,z= 1}, -- NE
-	d = {x=-1,y= 0,z= 0}, -- W
---	e = {x= 0,y= 0,z= 0}, -- SELF
-	f = {x= 1,y= 0,z= 0}, -- E
-	g = {x=-1,y= 0,z=-1}, -- SW
-	h = {x= 0,y= 0,z=-1}, -- S
-	i = {x= 1,y= 0,z=-1}, -- SE
-}
-
 --modes table for easier feature addition, fillbelow and moving_window require a buffer of at least 1
 realterrain.modes = {
 	{name="normal", get_cover=true},
